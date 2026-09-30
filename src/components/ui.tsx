@@ -158,7 +158,8 @@ export function MonthTable({ rows, labels, withSum }: { rows: RowDef[]; labels: 
                   {(r.tex || r.tip) && <Formula tex={r.tex} text={r.tip} />}
                 </td>
                 {r.values.map((v, ci) => {
-                  const h = r.hint?.(ci, v)
+                  let h: CellHint | null = null
+                  try { h = r.hint?.(ci, v) ?? null } catch { /* хинт не должен ронять таблицу */ }
                   return (
                     <td key={ci}>
                       {h ? <Hint hint={h}><span className="cellval">{f(v, r.fmt)}</span></Hint> : f(v, r.fmt)}
@@ -167,7 +168,9 @@ export function MonthTable({ rows, labels, withSum }: { rows: RowDef[]; labels: 
                 })}
                 {withSum && (() => {
                   const sumV = typeof r.values[0] === 'number' ? (r.values as number[]).reduce((a, b) => a + b, 0) : '—'
-                  const h = r.hint?.(-1, sumV)
+                  const h = (r.hint || r.tip || r.tex)
+                    ? { title: r.label, text: r.tip ?? 'Сумма по строке за весь период.', tex: r.tex, calc: `Σ ${labels.length} мес = ${f(sumV, r.fmt)}` }
+                    : null
                   return (
                     <td className="sum">
                       {h ? <Hint hint={h}><span className="cellval">{f(sumV, r.fmt)}</span></Hint> : f(sumV, r.fmt)}
