@@ -1,0 +1,71 @@
+import type { NomenclatureItem, OpexMonth, Params, RevenueMonth } from './types'
+
+// Landed cost: цена + MAX(доставка фикс, цена × доставка %) — Номенклатура!J
+export function landedCost(item: NomenclatureItem): number {
+  return item.price + Math.max(item.deliveryFix, item.price * item.deliveryPct)
+}
+
+// Переменные расходы статьи = слоты × Σ(норма_слот) + гости × Σ(норма_гость) + Σ(норма_мес)
+// Порт OPEX!C20:C29 (SUMPRODUCT по справочнику).
+export function computeOpexMonth(
+  params: Params,
+  items: NomenclatureItem[],
+  rev: RevenueMonth,
+  k: number,
+): OpexMonth {
+  const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+
+  const fixed = params.opexFixed.map(
+    (f) => f.base * (f.perModule ? activeModuleCount(params) : 1) * infl,
+  )
+  const fixedTotal = fixed.reduce((a, b) => a + b, 0)
+
+  const articles = [
+    'Представительские', 'Веники', 'Дрова основные', 'Дрова для очага', 'Брикеты руф',
+    'Средства гигиены', 'Косметика / SPA', 'Косметика / массаж', 'Инвентарь / уборка',
+    'Прачечная / текстиль',
+  ]
+  const opexItems = items.filter((it) => it.use === 'OPEX')
+  const variable = articles.map((article) => {
+    const rel = opexItems.filter((it) => it.opexArticle === article)
+    const byBase = (base: string) =>
+      rel
+        .filter((it) => it.normBase === base)
+        .reduce((s, it) => s + it.norm * landedCost(it), 0)
+    const amount =
+      (rev.slots * byBase('слот') + rev.guests * byBase('гость') + byBase('мес')) * infl
+    return { article, amount }
+  })
+  const variableTotal = variable.reduce((s, v) => s + v.amount, 0)
+
+  const acquiring = params.opexPct.acquiring * rev.total
+  const maintenance = params.opexPct.maintenance * rev.total
+  return {
+    fixed,
+    fixedTotal,
+    variable,
+    variableTotal,
+    pct: { acquiring, maintenance },
+    pctTotal: acquiring + maintenance,
+    total: fixedTotal + variableTotal + acquiring + maintenance,
+  }
+}
+
+export function computeOpex(
+  params: Params,
+  items: NomenclatureItem[],
+  revenue: RevenueMonth[],
+): OpexMonth[] {
+  return revenue.map((r, k) => computeOpexMonth(params, items, r, k))
+}
+
+export function activeModuleCount(params: Params): number {
+  return params.modules.filter((m) => m.status === 'Активен').length
+}
+
+// Наполнение CAPEX из справочника: Σ landedCost × qty по позициям use='CAPEX' — CAPEX!G30/H30
+export function nomenclatureCapexEur(items: NomenclatureItem[]): number {
+  return items
+    .filter((it) => it.use === 'CAPEX')
+    .reduce((s, it) => s + landedCost(it) * it.qty, 0)
+}
