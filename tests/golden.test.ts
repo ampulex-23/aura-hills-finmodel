@@ -13,12 +13,12 @@ const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 
 // Оракул: formulas-движок на AURA_HILLS_MODEL.xlsx (пакетный режим, НДС=Гросс,
-// после перевода OPEX на номенклатуру). NPV/IRR/payback — из прогона,
-// расхождение ядра < 0.01% — остаток это float-шум движка-оракула.
+// после перевода OPEX на номенклатуру И фикса привязки услуг к текущему месяцу).
+// NPV/IRR/payback — из прогона, расхождение ядра < 0.01% — остаток float-шум оракула.
 const ORACLE = {
-  Conservative: { npv: 4260954, irr: 0.962, payback: 26, discPayback: 28, peak: -1597957 },
-  Base: { npv: 7045027, irr: 1.656, payback: 21, discPayback: 22, peak: -1364680 },
-  Aggressive: { npv: 10076178, irr: 2.248, payback: 17, discPayback: 19, peak: -1346680 },
+  Conservative: { npv: 4607483, irr: 0.9638, payback: 27, discPayback: 29, peak: -1597957 },
+  Base: { npv: 7196339, irr: 1.5930, payback: 22, discPayback: 22, peak: -1364680 },
+  Aggressive: { npv: 9972774, irr: 2.1306, payback: 19, discPayback: 19, peak: -1346680 },
 }
 
 describe('golden-master: TS-ядро vs formulas-оракул', () => {

@@ -17,7 +17,6 @@ export function computeRevenueMonth(
   params: Params,
   sc: ResolvedScenario,
   k: number,
-  slotsMonth1: number,
 ): RevenueMonth {
   const at = addMonths(params.meta.openingDate, k)
   const yearIdx = Math.min(4, Math.floor(k / 12))
@@ -49,9 +48,9 @@ export function computeRevenueMonth(
 
   const cap = sc.avgCapacity
   const up = sc.effectiveUptake
-  // Внимание: в Excel услуги привязаны к C13 — слотам ПЕРВОГО месяца (константа
-  // по горизонту), а не к слотам текущего месяца. Воспроизводим 1:1.
-  const svc = slotsMonth1
+  // Услуги привязаны к слотам ТЕКУЩЕГО месяца (slots), а не первого:
+  // исходный Excel баг — ссылка на C13 как константа — исправлен и здесь, и в книге.
+  const svc = slots
   const swp = (set: { prices: number[]; weights: number[] }) =>
     set.prices.reduce((acc, p, j) => acc + p * set.weights[j], 0)
 
@@ -128,28 +127,12 @@ export function computeRevenueMonth(
   }
 }
 
-// Слоты первого операционного месяца (Выручка!C13) — на них завязаны услуги.
-export function slotsOfMonth(params: Params, sc: ResolvedScenario, k: number): number {
-  const at = addMonths(params.meta.openingDate, k)
-  const yearIdx = Math.min(4, Math.floor(k / 12))
-  const ramp = Math.min(1, (k + 1) / sc.rampMonths)
-  const seas = params.seasonality.baths[at.month - 1]
-  const load = Math.min(1, params.service.demandMult * sc.bathsLoad[yearIdx] * seas * ramp)
-  let slots = 0
-  for (const m of params.modules) {
-    if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) continue
-    slots += 30 * m.slotsPerDay * m.uptime * load
-  }
-  return slots
-}
-
 export function computeRevenue(
   params: Params,
   sc: ResolvedScenario,
 ): RevenueMonth[] {
-  const slotsMonth1 = slotsOfMonth(params, sc, 0)
   const out: RevenueMonth[] = []
   for (let k = 0; k < params.meta.opsMonths; k++)
-    out.push(computeRevenueMonth(params, sc, k, slotsMonth1))
+    out.push(computeRevenueMonth(params, sc, k))
   return out
 }

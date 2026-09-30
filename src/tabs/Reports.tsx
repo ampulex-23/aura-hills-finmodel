@@ -26,7 +26,6 @@ function revenueHints(params: Params, r: ModelResult) {
   const sc = r.scenario
   const R = r.revenue
   const dm = params.service.demandMult
-  const svc1 = R[0]?.slots ?? 0 // Excel-квирк: услуги привязаны к слотам 1-го месяца
   const cap = sc.avgCapacity
   const up = sc.effectiveUptake
   const wExtra = params.service.walletExtraShare
@@ -35,8 +34,6 @@ function revenueHints(params: Params, r: ModelResult) {
   const sumLine = (m: (typeof R)[0]) =>
     `Аренда ${e0(m.rental)} + Парения ${e0(m.steamTotal)} + Массаж ${e0(m.massageTotal)} ` +
     `+ Доп.услуги ${e0(m.extraTotal)} + Глэмпинг ${e0(m.glamping)} + Членства ${e0(m.membershipTotal)} + F&B ${e0(m.fb)}`
-  const svcNote =
-    'Услуги привязаны к слотам первого операционного месяца — так работает исходная Excel-модель.'
 
   return {
     load: (i: number): CellHint => {
@@ -75,25 +72,25 @@ function revenueHints(params: Params, r: ModelResult) {
       const m = R[i]
       return {
         title: 'Парения',
-        text: `Процедуры из депозитного кошелька по базе ${e0(params.deposit.steamBase)} + доплаты за апгрейд (${pc(params.service.upgradeShare)} гостей). ${svcNote}`,
-        tex: String.raw`\mathrm{слоты}_1\cdot\mathrm{гостей/слот}\cdot\mathrm{доля}\cdot\big[(1-w_{доп})\,P_{база}+u_{апгр}\,\overline{(P-P_{база})}\big]\cdot\mathrm{рост}`,
-        calc: `${fmt(svc1)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
+        text: `Процедуры из депозитного кошелька по базе ${e0(params.deposit.steamBase)} + доплаты за апгрейд (${pc(params.service.upgradeShare)} гостей).`,
+        tex: String.raw`\mathrm{слоты}\cdot\mathrm{гостей/слот}\cdot\mathrm{доля}\cdot\big[(1-w_{доп})\,P_{база}+u_{апгр}\,\overline{(P-P_{база})}\big]\cdot\mathrm{рост}`,
+        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
       }
     },
     massage: (i: number): CellHint => {
       const m = R[i]
       return {
         title: 'Массаж',
-        text: `Та же схема, что у парений: база в кошельке ${e0(params.deposit.massageBase)} + доплаты за апгрейд. ${svcNote}`,
-        calc: `${fmt(svc1)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
+        text: `Та же схема, что у парений: база в кошельке ${e0(params.deposit.massageBase)} + доплаты за апгрейд.`,
+        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
       }
     },
     extra: (i: number): CellHint => {
       const m = R[i]
       return {
         title: 'Доп.услуги',
-        text: `Доля кошелька на доп.услуги (${pc(wExtra)}) × депозит ${e0(params.deposit.base)} × распределение по услугам. ${svcNote}`,
-        calc: `${fmt(svc1)} × ${fmt(cap, 1)} × ${pc(up)} × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
+        text: `Доля кошелька на доп.услуги (${pc(wExtra)}) × депозит ${e0(params.deposit.base)} × распределение по услугам.`,
+        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} × ${pc(up)} × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
       }
     },
     glamping: (i: number): CellHint => {
