@@ -12,7 +12,10 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 
 .tabs { margin: 18px 0; }
 .tabs .mantine-Tabs-list { border-color: #26314a; gap: 4px; align-items: center; }
-.tabs .mantine-Tabs-tab { padding: 8px 14px; }
+.tabs .tabs-list { scrollbar-width: none; -ms-overflow-style: none; }
+.tabs .tabs-list::-webkit-scrollbar { display: none; }
+.tabs .mantine-Tabs-tab { padding: 8px 14px; white-space: nowrap; flex-shrink: 0; }
+.tabs .tab-group-label { flex-shrink: 0; }
 .tab-group-label {
   align-self: center; font-size: 10px; font-weight: 600; text-transform: uppercase;
   letter-spacing: .08em; color: #5d6b82; padding: 0 8px 0 4px; user-select: none;

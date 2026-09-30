@@ -85,7 +85,7 @@ export default function App() {
         variant="outline"
         className="tabs"
       >
-        <Tabs.List style={{ flexWrap: 'wrap' }}>
+        <Tabs.List className="tabs-list" style={{ flexWrap: 'nowrap', overflowX: 'auto' }}>
           <span className="tab-group-label">Параметры</span>
           {INPUT_TABS.map((t) => (
             <Tabs.Tab key={t} value={t} leftSection={<span className="dot-input" />}>
