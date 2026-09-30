@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { HoverCard, NumberInput } from '@mantine/core'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 
@@ -19,48 +20,47 @@ export function NumField({
 }) {
   const [text, setText] = useState('')
   const [editing, setEditing] = useState(false)
-  const shown = pct ? (value * 100).toString() : String(value)
+  const shown = pct ? value * 100 : value
   return (
-    <input
+    <NumberInput
       className="num"
-      type="number"
+      size="xs"
+      hideControls
       step={step ?? (pct ? 1 : 0.01)}
+      suffix={suffix ? ` ${suffix}` : undefined}
       value={editing ? text : shown}
       onFocus={() => {
         setEditing(true)
-        setText(shown)
+        setText(String(shown))
       }}
       onBlur={() => setEditing(false)}
-      onChange={(e) => {
-        setText(e.target.value)
-        const v = parseFloat(e.target.value)
-        if (isFinite(v)) onChange(pct ? v / 100 : v)
+      onChange={(v) => {
+        setText(String(v))
+        const n = typeof v === 'number' ? v : parseFloat(String(v))
+        if (isFinite(n)) onChange(pct ? n / 100 : n)
       }}
-      title={suffix}
     />
   )
 }
 
-// Тултип с формулой — LaTeX через KaTeX.
+// Тултип с формулой — LaTeX через KaTeX внутри Mantine HoverCard.
 export function Formula({ tex, label }: { tex: string; label?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const [open, setOpen] = useState(false)
-  useEffect(() => {
-    if (open && ref.current) {
-      try {
-        katex.render(tex, ref.current, { throwOnError: false })
-      } catch { /* noop */ }
+  const html = useMemo(() => {
+    try {
+      return katex.renderToString(tex, { throwOnError: false })
+    } catch {
+      return tex
     }
-  }, [open, tex])
+  }, [tex])
   return (
-    <span className="formula" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      ⓘ{label ? ` ${label}` : ''}
-      {open && (
-        <span className="formula-tip">
-          <span ref={ref} />
-        </span>
-      )}
-    </span>
+    <HoverCard position="bottom-start" shadow="md" withinPortal>
+      <HoverCard.Target>
+        <span className="formula">ⓘ{label ? ` ${label}` : ''}</span>
+      </HoverCard.Target>
+      <HoverCard.Dropdown>
+        <span dangerouslySetInnerHTML={{ __html: html }} />
+      </HoverCard.Dropdown>
+    </HoverCard>
   )
 }
 

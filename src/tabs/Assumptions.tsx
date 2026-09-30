@@ -1,3 +1,4 @@
+import { Select, SegmentedControl } from '@mantine/core'
 import { useModel } from '../store'
 import { NumField } from '../components/ui'
 
@@ -19,15 +20,22 @@ export function Assumptions() {
         <legend>Режимы</legend>
         <label className="field">
           <span>Пакетный режим (депозит)</span>
-          <select value={P.meta.mode} onChange={(e) => setParam('meta.mode', e.target.value)}>
-            <option>Да</option><option>Нет</option>
-          </select>
+          <SegmentedControl
+            size="xs"
+            data={['Да', 'Нет']}
+            value={P.meta.mode}
+            onChange={(v) => setParam('meta.mode', v)}
+          />
         </label>
         <label className="field">
           <span>Режим НДС</span>
-          <select value={P.meta.vatMode} onChange={(e) => setParam('meta.vatMode', e.target.value)}>
-            <option>Гросс</option><option>С возмещением</option>
-          </select>
+          <Select
+            size="xs" w={150}
+            data={['Гросс', 'С возмещением']}
+            value={P.meta.vatMode}
+            onChange={(v) => v && setParam('meta.vatMode', v)}
+            allowDeselect={false}
+          />
         </label>
         <Row label="Мультипликатор спроса" path="service.demandMult" value={P.service.demandMult} step={0.05} />
       </fieldset>
@@ -93,9 +101,12 @@ export function Assumptions() {
         {P.modules.map((m, i) => (
           <div className="field pair" key={m.id}>
             <span>Модуль {m.id} ({m.capacity} гостей)</span>
-            <select value={m.status} onChange={(e) => setParam(`modules.${i}.status`, e.target.value)}>
-              <option>Активен</option><option>В резерве</option>
-            </select>
+            <SegmentedControl
+              size="xs"
+              data={['Активен', 'В резерве']}
+              value={m.status}
+              onChange={(v) => setParam(`modules.${i}.status`, v)}
+            />
             <NumField value={m.slotsPerDay} onChange={(v) => setParam(`modules.${i}.slotsPerDay`, v)} step={1} />
           </div>
         ))}

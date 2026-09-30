@@ -69,7 +69,14 @@ export const useModel = create<ModelState>()(
         })
       },
     }),
-    { name: 'aura-hills-model' },
+    {
+      name: 'aura-hills-model',
+      version: 1,
+      // Устаревшая форма состояния → сброс к дефолтам вместо падения
+      migrate: () =>
+        ({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }) as ModelState,
+      partialize: (s) => ({ params: s.params, matrix: s.matrix, items: s.items, scenario: s.scenario }),
+    },
   ),
 )
 

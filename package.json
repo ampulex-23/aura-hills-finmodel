@@ -11,20 +11,25 @@
     "deploy": "vite build && gh-pages -d dist"
   },
   "dependencies": {
+    "@mantine/core": "^7.17.8",
+    "@mantine/hooks": "^7.17.8",
+    "exceljs": "^4.4.0",
+    "katex": "^0.16.11",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "recharts": "^2.12.7",
-    "katex": "^0.16.11",
-    "exceljs": "^4.4.0",
     "zustand": "^4.5.4"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "gh-pages": "^6.1.1",
+    "postcss": "^8.5.28",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1",
     "typescript": "^5.5.3",
     "vite": "^5.4.8",
-    "vitest": "^2.1.1",
-    "gh-pages": "^6.1.1"
+    "vitest": "^2.1.1"
   }
 }

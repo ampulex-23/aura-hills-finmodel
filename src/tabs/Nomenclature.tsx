@@ -1,3 +1,4 @@
+import { Select } from '@mantine/core'
 import { useModel } from '../store'
 import { NumField, fmt } from '../components/ui'
 import { landedCost } from '../model/opex'
@@ -38,9 +39,13 @@ export function Nomenclature() {
                 <td><NumField value={it.deliveryPct} onChange={(v) => setItem(i, { deliveryPct: v })} pct /></td>
                 <td><b>{fmt(landedCost(it), 2)}</b></td>
                 <td>
-                  <select value={it.use} onChange={(e) => setItem(i, { use: e.target.value })}>
-                    <option>OPEX</option><option>CAPEX</option><option>Спецификация</option>
-                  </select>
+                  <Select
+                    size="xs" w={120}
+                    data={['OPEX', 'CAPEX', 'Спецификация']}
+                    value={it.use}
+                    onChange={(v) => v && setItem(i, { use: v })}
+                    allowDeselect={false}
+                  />
                 </td>
                 <td className="lft">{it.opexArticle ?? '—'}</td>
                 <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} /></td>

@@ -1,3 +1,4 @@
+import { Select } from '@mantine/core'
 import { useModel } from '../store'
 import { NumField, fmtPct } from '../components/ui'
 
@@ -22,12 +23,13 @@ export function Scenarios() {
   return (
     <div>
       <div className="controls" style={{ marginBottom: 16 }}>
-        <label>
-          Активный сценарий{' '}
-          <select value={scenario} onChange={(e) => setScenario(e.target.value)}>
-            {matrix.names.map((n) => <option key={n}>{n}</option>)}
-          </select>
-        </label>
+        <Select
+          size="xs" w={200} label="Активный сценарий"
+          data={[...matrix.names]}
+          value={scenario}
+          onChange={(v) => v && setScenario(v)}
+          allowDeselect={false}
+        />
       </div>
       <div className="table-wrap">
         <table className="month-table scen">

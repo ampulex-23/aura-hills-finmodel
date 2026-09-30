@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Button, Group, Select, Tabs, Title } from '@mantine/core'
 import { useModel } from './store'
 import { runModel } from './model/run'
 import { exportWorkbook } from './export/excel'
@@ -38,47 +39,54 @@ export default function App() {
   }
   const upload = (f: File) => f.text().then(importJson)
 
+  const exportExcel = async () => {
+    const blob = await exportWorkbook(params, matrix, items)
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'aura-hills-model.xlsx'
+    a.click()
+  }
+
   return (
     <div className="app">
       <header>
-        <h1>AURA HILLS — финансовая модель</h1>
-        <div className="controls">
-          <label>
-            Сценарий{' '}
-            <select value={scenario} onChange={(e) => setScenario(e.target.value)}>
-              {matrix.names.map((n) => <option key={n}>{n}</option>)}
-            </select>
-          </label>
-          <button onClick={download}>Сохранить JSON</button>
-          <button
-            onClick={async () => {
-              const blob = await exportWorkbook(params, matrix, items)
-              const a = document.createElement('a')
-              a.href = URL.createObjectURL(blob)
-              a.download = 'aura-hills-model.xlsx'
-              a.click()
-            }}
-          >
-            Экспорт Excel
-          </button>
-          <button onClick={() => fileRef.current?.click()}>Загрузить JSON</button>
+        <Title order={3}>AURA HILLS — финансовая модель</Title>
+        <Group gap="xs" wrap="wrap">
+          <Select
+            size="xs" w={170} label="Сценарий"
+            data={[...matrix.names]}
+            value={scenario}
+            onChange={(v) => v && setScenario(v)}
+            allowDeselect={false}
+          />
+          <Button size="xs" variant="default" onClick={download}>Сохранить JSON</Button>
+          <Button size="xs" onClick={exportExcel}>Экспорт Excel</Button>
+          <Button size="xs" variant="default" onClick={() => fileRef.current?.click()}>Загрузить JSON</Button>
           <input
             ref={fileRef} type="file" accept=".json" hidden
             onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
           />
-          <button className="ghost" onClick={() => confirm('Сбросить все параметры к значениям по умолчанию?') && resetAll()}>
+          <Button
+            size="xs" variant="subtle" color="gray"
+            onClick={() => confirm('Сбросить все параметры к значениям по умолчанию?') && resetAll()}
+          >
             Сбросить
-          </button>
-        </div>
+          </Button>
+        </Group>
       </header>
 
-      <nav className="tabs">
-        {TABS.map((t) => (
-          <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
-            {t}
-          </button>
-        ))}
-      </nav>
+      <Tabs
+        value={tab}
+        onChange={(v) => v && setTab(v as (typeof TABS)[number])}
+        variant="outline"
+        className="tabs"
+      >
+        <Tabs.List style={{ flexWrap: 'wrap' }}>
+          {TABS.map((t) => (
+            <Tabs.Tab key={t} value={t}>{t}</Tabs.Tab>
+          ))}
+        </Tabs.List>
+      </Tabs>
 
       <main>
         {tab === 'Дашборд' && <Dashboard r={result} />}
