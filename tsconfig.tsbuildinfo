@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/model/capex.ts","./src/model/cashflow.ts","./src/model/fot.ts","./src/model/kpis.ts","./src/model/opex.ts","./src/model/pnl.ts","./src/model/revenue.ts","./src/model/run.ts","./src/model/scenario.ts","./src/model/taxes.ts","./src/model/types.ts"],"version":"5.9.3"}
