@@ -11,7 +11,16 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 .tabs { margin: 18px 0; }
-.tabs .mantine-Tabs-list { border-color: #26314a; }
+.tabs .mantine-Tabs-list { border-color: #26314a; gap: 4px; align-items: center; }
+.tabs .mantine-Tabs-tab { padding: 8px 14px; }
+.tab-group-label {
+  align-self: center; font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: #5d6b82; padding: 0 8px 0 4px; user-select: none;
+}
+.tab-group-label + .tab-group-label, .mantine-Tabs-tab + .tab-group-label { padding-left: 18px; }
+.dot-input {
+  width: 6px; height: 6px; border-radius: 50%; background: #4cc38a; display: inline-block;
+}
 
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 8px 0 20px; }
 .kpi { background: #1b2330; border: 1px solid #2a3548; border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
@@ -38,6 +47,9 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
   background: #101826; border-color: #2a3548; padding: 2px 6px; min-height: 24px; height: 24px;
 }
 .month-table.sens td { text-align: center; }
+.month-table td.neg { color: #e07a7a; }
+.month-table tr.spec-item td { color: #7f93b8; border-bottom-style: dotted; }
+.month-table tr.spec-item .num input { width: 64px; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 fieldset { border: 1px solid #26314a; border-radius: 10px; padding: 12px 16px 16px; }

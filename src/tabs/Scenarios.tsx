@@ -1,19 +1,24 @@
-import { Select } from '@mantine/core'
 import { useModel } from '../store'
 import { NumField, fmtPct } from '../components/ui'
 
 // Редактор матрицы сценариев — лист «Сценарии» в виде формы.
 export function Scenarios() {
-  const { matrix, setMatrixCell, scenario, setScenario } = useModel()
+  const { matrix, setMatrixCell, scenario, params } = useModel()
+  const packageMode = params.meta.mode === 'Да'
 
-  const Row = ({ label, path, pct }: { label: string; path: string; pct?: boolean }) => {
+  const Row = ({ label, path, pct, locked }: { label: string; path: string; pct?: boolean; locked?: boolean }) => {
     const vals = path.split('.').reduce((o: any, k) => o[k], matrix as any) as number[]
     return (
       <tr>
         <td>{label}</td>
         {vals.map((v, i) => (
           <td key={i}>
-            <NumField value={v} onChange={(nv) => setMatrixCell(path, i, nv)} pct={pct} step={pct ? 1 : 0.05} />
+            <NumField
+              value={locked ? 1 : v}
+              onChange={(nv) => setMatrixCell(path, i, nv)}
+              pct={pct} step={pct ? 1 : 0.05}
+              disabled={locked}
+            />
           </td>
         ))}
       </tr>
@@ -22,15 +27,9 @@ export function Scenarios() {
 
   return (
     <div>
-      <div className="controls" style={{ marginBottom: 16 }}>
-        <Select
-          size="xs" w={200} label="Активный сценарий"
-          data={[...matrix.names]}
-          value={scenario}
-          onChange={(v) => v && setScenario(v)}
-          allowDeselect={false}
-        />
-      </div>
+      <p className="note">
+        Активный сценарий выбирается в шапке — сейчас «{scenario}».
+      </p>
       <div className="table-wrap">
         <table className="month-table scen">
           <thead>
@@ -53,7 +52,10 @@ export function Scenarios() {
             <Row label="Рост цен, годовой" path="priceGrowth" pct />
             <Row label="Корректировка CAPEX" path="capexAdj" pct />
             <Row label="Период выхода на план, мес." path="rampMonths" />
-            <Row label="Доля реализации услуг (непакетная)" path="uptake" pct />
+            <Row
+              label={packageMode ? 'Доля реализации услуг (=100% в пакетном режиме)' : 'Доля реализации услуг (непакетная)'}
+              path="uptake" pct locked={packageMode}
+            />
           </tbody>
         </table>
       </div>

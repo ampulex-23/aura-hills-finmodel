@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Button, Group, Select, Tabs, Title } from '@mantine/core'
+import { Button, Group, Select, Tabs, Text, Title } from '@mantine/core'
 import { useModel } from './store'
 import { runModel } from './model/run'
 import { exportWorkbook } from './export/excel'
@@ -9,12 +9,15 @@ import { Assumptions } from './tabs/Assumptions'
 import { Scenarios } from './tabs/Scenarios'
 import { CashFlow, Capex, Fot, Opex, Pnl, Revenue, Taxes } from './tabs/Reports'
 import { Nomenclature } from './tabs/Nomenclature'
+import { Specs } from './tabs/Specs'
 import { Sensitivity } from './tabs/Sensitivity'
 
-const TABS = [
-  'Дашборд', 'Допущения', 'Сценарии', 'Выручка', 'OPEX', 'ФОТ',
-  'CAPEX', 'Налоги', 'P&L', 'Cash-Flow', 'Номенклатура', 'Sensitivity',
+// Вкладки-ввод сгруппированы слева, отчётные — справа.
+const INPUT_TABS = ['Допущения', 'Сценарии', 'Номенклатура', 'Спецификации'] as const
+const REPORT_TABS = [
+  'Дашборд', 'Выручка', 'OPEX', 'ФОТ', 'CAPEX', 'Налоги', 'P&L', 'Cash-Flow', 'Sensitivity',
 ] as const
+const TABS = [...INPUT_TABS, ...REPORT_TABS] as const
 
 export default function App() {
   const { params, matrix, items, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
@@ -51,9 +54,10 @@ export default function App() {
     <div className="app">
       <header>
         <Title order={3}>AURA HILLS — финансовая модель</Title>
-        <Group gap="xs" wrap="wrap">
+        <Group gap="xs" wrap="wrap" align="center">
+          <Text size="xs" c="dimmed">Сценарий</Text>
           <Select
-            size="xs" w={170} label="Сценарий"
+            size="xs" w={160}
             data={[...matrix.names]}
             value={scenario}
             onChange={(v) => v && setScenario(v)}
@@ -82,7 +86,14 @@ export default function App() {
         className="tabs"
       >
         <Tabs.List style={{ flexWrap: 'wrap' }}>
-          {TABS.map((t) => (
+          <span className="tab-group-label">Параметры</span>
+          {INPUT_TABS.map((t) => (
+            <Tabs.Tab key={t} value={t} leftSection={<span className="dot-input" />}>
+              {t}
+            </Tabs.Tab>
+          ))}
+          <span className="tab-group-label">Отчёты</span>
+          {REPORT_TABS.map((t) => (
             <Tabs.Tab key={t} value={t}>{t}</Tabs.Tab>
           ))}
         </Tabs.List>
@@ -100,6 +111,7 @@ export default function App() {
         {tab === 'P&L' && <Pnl r={result} labels={opsLabels} />}
         {tab === 'Cash-Flow' && <CashFlow r={result} />}
         {tab === 'Номенклатура' && <Nomenclature />}
+        {tab === 'Спецификации' && <Specs />}
         {tab === 'Sensitivity' && <Sensitivity />}
       </main>
     </div>

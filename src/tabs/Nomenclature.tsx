@@ -7,6 +7,7 @@ import { landedCost } from '../model/opex'
 export function Nomenclature() {
   const { items, setItem } = useModel()
   const opexItems = items.filter((i) => i.use === 'OPEX').length
+  const specItems = items.filter((i) => i.use === 'Спецификация').length
   const capexEur = items
     .filter((i) => i.use === 'CAPEX')
     .reduce((s, i) => s + landedCost(i) * i.qty, 0)
@@ -14,7 +15,7 @@ export function Nomenclature() {
   return (
     <div>
       <p className="note">
-        {items.length} позиций · OPEX: {opexItems} · наполнение CAPEX: €{fmt(capexEur)} ·
+        {items.length} позиций · OPEX: {opexItems} · Спецификация: {specItems} · наполнение CAPEX: €{fmt(capexEur)} ·
         landed cost = цена + max(доставка €/ед, цена × доставка %)
       </p>
       <div className="table-wrap">

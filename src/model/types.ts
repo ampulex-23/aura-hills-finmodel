@@ -46,6 +46,35 @@ export interface NomenclatureItem {
   note: string | null
 }
 
+// Спецификация услуги: материалы по кодам номенклатуры + труд по ролям.
+export interface LaborRole {
+  role: string
+  rateHour: number // €/час с учётом взносов работодателя (заглушка до листа ФОТ)
+  note?: string
+}
+export interface SpecItem {
+  kind: 'material' | 'labor'
+  code?: string   // для material — код номенклатуры
+  role?: string   // для labor — роль из LaborRole
+  qty?: number    // для material — кол-во единиц
+  minutes?: number // для labor — минуты работы
+}
+export interface ServiceSpec {
+  code: string
+  direction: string // Аренда бани / Парения / Массаж / Доп. услуги
+  name: string
+  price: number
+  items: SpecItem[]
+}
+export interface ServiceCost {
+  spec: ServiceSpec
+  materialsCost: number
+  laborCost: number
+  cost: number
+  margin: number
+  marginPct: number
+}
+
 export interface CapexItem {
   name: string
   unit: string

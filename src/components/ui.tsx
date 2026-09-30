@@ -10,22 +10,25 @@ export const fmtPct = (v: number, digits = 0) => `${(v * 100).toFixed(digits)}%`
 
 // Редактируемое числовое поле: value — текущее, onChange получает число.
 export function NumField({
-  value, onChange, step, pct, suffix,
+  value, onChange, step, pct, suffix, disabled,
 }: {
   value: number
   onChange: (v: number) => void
   step?: number
   pct?: boolean
   suffix?: string
+  disabled?: boolean
 }) {
   const [text, setText] = useState('')
   const [editing, setEditing] = useState(false)
-  const shown = pct ? value * 100 : value
+  // Округление — иначе 0.55 * 100 показывается как 55.00000000000001
+  const shown = Number((pct ? value * 100 : value).toFixed(6))
   return (
     <NumberInput
       className="num"
       size="xs"
       hideControls
+      disabled={disabled}
       step={step ?? (pct ? 1 : 0.01)}
       suffix={suffix ? ` ${suffix}` : undefined}
       value={editing ? text : shown}

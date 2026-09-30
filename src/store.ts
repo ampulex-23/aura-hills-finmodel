@@ -3,17 +3,25 @@ import { persist } from 'zustand/middleware'
 import paramsJson from './data/params.json'
 import scenariosJson from './data/scenarios.json'
 import nomenclatureJson from './data/nomenclature.json'
-import type { NomenclatureItem, Params, ScenarioMatrix } from './model/types'
+import servicesJson from './data/services.json'
+import type {
+  LaborRole, NomenclatureItem, Params, ScenarioMatrix, ServiceSpec,
+} from './model/types'
 
 interface ModelState {
   params: Params
   matrix: ScenarioMatrix
   items: NomenclatureItem[]
+  services: ServiceSpec[]
+  labor: LaborRole[]
   scenario: string
   setScenario: (s: string) => void
   setParam: (path: string, value: unknown) => void
   setItem: (idx: number, patch: Partial<NomenclatureItem>) => void
   setMatrixCell: (path: string, col: number, value: number) => void
+  setServicePrice: (code: string, price: number) => void
+  setSpecQty: (serviceCode: string, itemIdx: number, qty: number) => void
+  setLaborRate: (role: string, rateHour: number) => void
   resetAll: () => void
   exportJson: () => string
   importJson: (json: string) => void
@@ -23,6 +31,8 @@ const defaults = () => ({
   params: paramsJson as Params,
   matrix: scenariosJson as ScenarioMatrix,
   items: nomenclatureJson as NomenclatureItem[],
+  services: servicesJson.services as ServiceSpec[],
+  labor: servicesJson.labor as LaborRole[],
 })
 
 // setParam('general.wacc', 0.12) — точечное обновление по пути
@@ -53,10 +63,27 @@ export const useModel = create<ModelState>()(
         cur[keys[keys.length - 1]][col] = value
         set({ matrix: copy })
       },
+      setServicePrice: (code, price) =>
+        set({
+          services: get().services.map((s) => (s.code === code ? { ...s, price } : s)),
+        }),
+      setSpecQty: (serviceCode, itemIdx, qty) =>
+        set({
+          services: get().services.map((s) =>
+            s.code === serviceCode
+              ? { ...s, items: s.items.map((it, i) => (i === itemIdx ? { ...it, ...(it.kind === 'labor' ? { minutes: qty } : { qty }) } : it)) }
+              : s,
+          ),
+        }),
+      setLaborRate: (role, rateHour) =>
+        set({ labor: get().labor.map((l) => (l.role === role ? { ...l, rateHour } : l)) }),
       resetAll: () => set({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }),
       exportJson: () =>
         JSON.stringify(
-          { params: get().params, matrix: get().matrix, items: get().items, scenario: get().scenario },
+          {
+            params: get().params, matrix: get().matrix, items: get().items,
+            services: get().services, labor: get().labor, scenario: get().scenario,
+          },
           null, 2,
         ),
       importJson: (json) => {
@@ -65,6 +92,8 @@ export const useModel = create<ModelState>()(
           params: d.params ?? get().params,
           matrix: d.matrix ?? get().matrix,
           items: d.items ?? get().items,
+          services: d.services ?? get().services,
+          labor: d.labor ?? get().labor,
           scenario: d.scenario ?? get().scenario,
         })
       },
@@ -75,7 +104,10 @@ export const useModel = create<ModelState>()(
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>
         ({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }) as ModelState,
-      partialize: (s) => ({ params: s.params, matrix: s.matrix, items: s.items, scenario: s.scenario }),
+      partialize: (s) => ({
+        params: s.params, matrix: s.matrix, items: s.items,
+        services: s.services, labor: s.labor, scenario: s.scenario,
+      }),
     },
   ),
 )
