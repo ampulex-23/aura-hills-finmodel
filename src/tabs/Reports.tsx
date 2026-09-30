@@ -1,65 +1,284 @@
-import type { ModelResult } from '../model/types'
-import { MonthTable, monthLabels, fmt, fmtEur } from '../components/ui'
+import type { ModelResult, ModuleSpec, NomenclatureItem, Params } from '../model/types'
+import { landedCost, activeModuleCount } from '../model/opex'
+import { useModel } from '../store'
+import { MonthTable, monthLabels, fmt, fmtEur, fmtPct, Hint } from '../components/ui'
+import type { CellHint, RowDef } from '../components/ui'
 
 // Расчётные вкладки: помесячные таблицы 1:1 листам Excel.
+// hint(ci) → пояснялка клетки: смысл, формула словами и подстановка чисел.
+
+const pc = (v: number, d = 1) => `${(v * 100).toFixed(d).replace(/\.0$/, '')}%`
+const e0 = (v: number) => `€${fmt(v)}`
+const e1 = (v: number) => `€${fmt(v, 1)}`
+const growthAt = (g: number, k: number) => Math.pow(1 + g, Math.floor(k / 12))
+
+// Активные модули в операционный месяц k (по launchDate, как в модели).
+function modulesAt(params: Params, k: number): ModuleSpec[] {
+  const [y0, m0] = params.meta.openingDate.slice(0, 7).split('-').map(Number)
+  const t = y0 * 12 + (m0 - 1) + k
+  const at = Math.floor(t / 12) * 12 + (t % 12) + 1
+  return params.modules.filter(
+    (m) => m.status === 'Активен' && Number(m.launchDate.replace('-', '')) <= at,
+  )
+}
+
+function revenueHints(params: Params, r: ModelResult) {
+  const sc = r.scenario
+  const R = r.revenue
+  const dm = params.service.demandMult
+  const svc1 = R[0]?.slots ?? 0 // Excel-квирк: услуги привязаны к слотам 1-го месяца
+  const cap = sc.avgCapacity
+  const up = sc.effectiveUptake
+  const wExtra = params.service.walletExtraShare
+  const season = (m: (typeof R)[0]) => params.seasonality.baths[m.monthOfYear - 1]
+  const gAt = (k: number) => growthAt(sc.priceGrowth, k)
+  const sumLine = (m: (typeof R)[0]) =>
+    `Аренда ${e0(m.rental)} + Парения ${e0(m.steamTotal)} + Массаж ${e0(m.massageTotal)} ` +
+    `+ Доп.услуги ${e0(m.extraTotal)} + Глэмпинг ${e0(m.glamping)} + Членства ${e0(m.membershipTotal)} + F&B ${e0(m.fb)}`
+  const svcNote =
+    'Услуги привязаны к слотам первого операционного месяца — так работает исходная Excel-модель.'
+
+  return {
+    load: (i: number): CellHint => {
+      const m = R[i]
+      return {
+        title: 'Загрузка бань',
+        text: 'Доля проданных слотов: множитель спроса × целевая загрузка года (сценарий) × сезонность месяца × раскачка после открытия. Не выше 100%.',
+        tex: String.raw`\mathrm{load}=\min(1,\ \mathrm{спрос}\cdot\mathrm{цель_{год}}\cdot\mathrm{сезон}\cdot\mathrm{ramp})`,
+        calc: `min(100%, ${dm} × ${pc(sc.bathsLoad[m.yearIdx])} × ${season(m)} × ${pc(m.ramp)}) = ${pc(m.bathsLoad)}`,
+      }
+    },
+    slots: (i: number): CellHint => {
+      const m = R[i]
+      const mods = modulesAt(params, i)
+      const spd = mods.reduce((s, x) => s + x.slotsPerDay, 0)
+      const upAvg = spd ? mods.reduce((s, x) => s + x.slotsPerDay * x.uptime, 0) / spd : 0
+      return {
+        title: 'Проданные слоты',
+        text: `30 дней × слоты в день × аптайм × загрузка — по каждому из ${mods.length} активных модулей.`,
+        tex: String.raw`\mathrm{slots}=\sum_{модулей} 30\cdot\mathrm{слоты/день}\cdot\mathrm{uptime}\cdot\mathrm{load}`,
+        calc: `30 дн × ${fmt(spd)} слот/день × аптайм ~${pc(upAvg)} × загрузка ${pc(m.bathsLoad)} ≈ ${fmt(m.slots)}`,
+      }
+    },
+    rental: (i: number): CellHint => {
+      const m = R[i]
+      const g = gAt(i)
+      const avgPrice = m.slots ? m.rental / (m.slots * g) : 0
+      return {
+        title: 'Аренда бань',
+        text: 'Проданные слоты × средняя цена слота (микс утро/день/вечер по модулю) × годовой рост цен.',
+        tex: String.raw`\mathrm{rental}=\mathrm{slots}\cdot\overline{\mathrm{цена}}_{\mathrm{микс}}\cdot(1+\mathrm{рост})^{\mathrm{год}}`,
+        calc: `${fmt(m.slots)} слот × ${e1(avgPrice)} × рост ${g.toFixed(2)} = ${e0(m.rental)}`,
+      }
+    },
+    steam: (i: number): CellHint => {
+      const m = R[i]
+      return {
+        title: 'Парения',
+        text: `Процедуры из депозитного кошелька по базе ${e0(params.deposit.steamBase)} + доплаты за апгрейд (${pc(params.service.upgradeShare)} гостей). ${svcNote}`,
+        tex: String.raw`\mathrm{слоты}_1\cdot\mathrm{гостей/слот}\cdot\mathrm{доля}\cdot\big[(1-w_{доп})\,P_{база}+u_{апгр}\,\overline{(P-P_{база})}\big]\cdot\mathrm{рост}`,
+        calc: `${fmt(svc1)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
+      }
+    },
+    massage: (i: number): CellHint => {
+      const m = R[i]
+      return {
+        title: 'Массаж',
+        text: `Та же схема, что у парений: база в кошельке ${e0(params.deposit.massageBase)} + доплаты за апгрейд. ${svcNote}`,
+        calc: `${fmt(svc1)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
+      }
+    },
+    extra: (i: number): CellHint => {
+      const m = R[i]
+      return {
+        title: 'Доп.услуги',
+        text: `Доля кошелька на доп.услуги (${pc(wExtra)}) × депозит ${e0(params.deposit.base)} × распределение по услугам. ${svcNote}`,
+        calc: `${fmt(svc1)} × ${fmt(cap, 1)} × ${pc(up)} × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
+      }
+    },
+    glamping: (i: number): CellHint => {
+      const m = R[i]
+      const seasG = params.seasonality.glamping[m.monthOfYear - 1]
+      const gl = Math.min(1, dm * sc.glampLoad[m.yearIdx] * seasG * m.ramp)
+      return {
+        title: 'Глэмпинг',
+        text: '30 дней × (юниты × загрузка × цена) для малого и большого глэмпинга × рост цен.',
+        calc: `30 дн × (${params.units.glampSmall} шт × ${pc(gl)} × ${e0(params.prices.glampSmall)} + ${params.units.glampBig} шт × ${pc(gl)} × ${e0(params.prices.glampBig)}) × ${gAt(i).toFixed(2)} = ${e0(m.glamping)}`,
+      }
+    },
+    membership: (i: number): CellHint => {
+      const m = R[i]
+      const g = gAt(i)
+      return {
+        title: 'Членства + сертификаты',
+        text: `Месячные (${e0(params.prices.membershipMonth)}), годовые (${e0(params.prices.membershipYear)}, план/год ÷ 12) и подарочные сертификаты (${e0(params.prices.certificate)}) — с раскачкой и ростом цен.`,
+        calc: `месячные ${e0(m.membersMonth)} + годовые ${e0(m.membersYear)} + сертификаты ${e0(m.certificates)} = ${e0(m.membershipTotal)} (рост ${g.toFixed(2)})`,
+      }
+    },
+    fb: (i: number): CellHint => {
+      const m = R[i]
+      return {
+        title: 'F&B (чайная зона)',
+        text: 'Представительские продажи: гости × средний чек на гостя × рост цен.',
+        calc: `${fmt(m.guests)} гостей × ${e1(params.prices.fbPerGuest)} × рост ${gAt(i).toFixed(2)} = ${e0(m.fb)}`,
+      }
+    },
+    total: (i: number): CellHint => {
+      const m = R[i]
+      return {
+        title: 'Итого выручка',
+        text: 'Сумма всех потоков выручки за месяц.',
+        calc: `${sumLine(m)} = ${e0(m.total)}`,
+      }
+    },
+  }
+}
 
 export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
+  const { params } = useModel()
   const R = r.revenue
   const stream = (get: (m: (typeof R)[0]) => number) => R.map(get)
-  const rows = [
-    { label: 'Загрузка бань', values: stream((m) => m.bathsLoad), fmt: 'pct' as const,
-      tex: String.raw`\min(1,\ demand \times load_{year} \times season_{month} \times ramp)` },
-    { label: 'Слоты (шт)', values: stream((m) => m.slots), tex: String.raw`30 \times slots_{day} \times uptime \times load` },
-    { label: 'Аренда бань', values: stream((m) => m.rental), tex: String.raw`\sum_{mod} slots \times \overline{price}_{mod} \times (1+g)^{year}` },
-    { label: 'Парения', values: stream((m) => m.steamTotal), tex: String.raw`slots_{m1} \times \overline{cap} \times uptake \times base` },
-    { label: 'Массаж', values: stream((m) => m.massageTotal) },
-    { label: 'Доп.услуги', values: stream((m) => m.extraTotal), tex: String.raw`svc \times cap \times uptake \times wallet_{share} \times deposit` },
-    { label: 'Глэмпинг', values: stream((m) => m.glamping) },
-    { label: 'Членства + сертификаты', values: stream((m) => m.membershipTotal) },
-    { label: 'F&B', values: stream((m) => m.fb), tex: String.raw`guests \times price_{fb}` },
-    { label: 'ИТОГО ВЫРУЧКА', values: stream((m) => m.total), bold: true },
+  const h = revenueHints(params, r)
+  const rows: RowDef[] = [
+    { label: 'Загрузка бань', values: stream((m) => m.bathsLoad), fmt: 'pct' as const, hint: h.load },
+    { label: 'Слоты (шт)', values: stream((m) => m.slots), hint: h.slots },
+    { label: 'Аренда бань', values: stream((m) => m.rental), hint: h.rental },
+    { label: 'Парения', values: stream((m) => m.steamTotal), hint: h.steam },
+    { label: 'Массаж', values: stream((m) => m.massageTotal), hint: h.massage },
+    { label: 'Доп.услуги', values: stream((m) => m.extraTotal), hint: h.extra },
+    { label: 'Глэмпинг', values: stream((m) => m.glamping), hint: h.glamping },
+    { label: 'Членства + сертификаты', values: stream((m) => m.membershipTotal), hint: h.membership },
+    { label: 'F&B', values: stream((m) => m.fb), hint: h.fb },
+    { label: 'ИТОГО ВЫРУЧКА', values: stream((m) => m.total), bold: true, hint: h.total },
   ]
   return <MonthTable rows={rows} labels={labels} withSum />
 }
 
 export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
+  const { params, items } = useModel()
   const O = r.opex
-  const fixedNames = r.opex[0].fixed.map((_, i) => r.opex[0].fixed[i])
-  void fixedNames
-  const fixedLabels = ['Маркетинг','Электроэнергия','Водоснабжение','Отопление','Транспорт','Прочие','Страхование','Бухгалтерия','Обслуживание модулей']
-  const rows: any[] = [
+  const R = r.revenue
+  const inflAt = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+  const nModules = activeModuleCount(params)
+
+  const fixedHint = (i: number) => (ci: number): CellHint | null => {
+    const f = params.opexFixed[i]
+    if (!f) return null
+    const infl = inflAt(ci)
+    return {
+      title: f.name,
+      text: f.perModule
+        ? `Постоянная статья, зависящая от числа модулей: база × ${nModules} модулей × инфляция.`
+        : 'Постоянная месячная статья с индексацией на инфляцию.',
+      calc: `${e0(f.base)}/мес${f.perModule ? ` × ${nModules} мод.` : ''} × инфл ${infl.toFixed(2)} = ${e0(O[ci].fixed[i])}`,
+    }
+  }
+
+  const byBase = (article: string, base: string, its: NomenclatureItem[]) =>
+    its
+      .filter((it) => it.use === 'OPEX' && it.opexArticle === article && it.normBase === base)
+      .reduce((s, it) => s + it.norm * landedCost(it), 0)
+
+  const variableHint = (article: string) => (ci: number): CellHint => {
+    const m = R[ci]
+    const infl = inflAt(ci)
+    const sSlot = byBase(article, 'слот', items)
+    const sGuest = byBase(article, 'гость', items)
+    const sMonth = byBase(article, 'мес', items)
+    const amount = O[ci].variable.find((x) => x.article === article)?.amount ?? 0
+    return {
+      title: article,
+      text: 'Нормы расхода по справочнику номенклатуры: на слот, на гостя и в месяц — по landed-цене (цена + доставка), с индексацией на инфляцию.',
+      tex: String.raw`\mathrm{слоты}\cdot\Sigma\mathrm{норма}_{слот}+\mathrm{гости}\cdot\Sigma\mathrm{норма}_{гость}+\Sigma\mathrm{норма}_{мес}`,
+      calc: `${fmt(m.slots)}×${e1(sSlot)} + ${fmt(m.guests)}×${e1(sGuest)} + ${e1(sMonth)}/мес, × инфл ${infl.toFixed(2)} = ${e0(amount)}`,
+    }
+  }
+
+  const pctHint = (name: string, key: 'acquiring' | 'maintenance') => (ci: number): CellHint => ({
+    title: name,
+    text: 'Процент от брутто-выручки месяца.',
+    calc: `${pc(params.opexPct[key], 2)} × ${e0(R[ci].total)} = ${e0(O[ci].pct[key])}`,
+  })
+
+  const rows: RowDef[] = [
     { label: 'ПОСТОЯННЫЕ', values: [], section: true },
-    ...fixedLabels.map((n, i) => ({ label: n, values: O.map((m) => m.fixed[i]) })),
-    { label: 'Итого постоянные', values: O.map((m) => m.fixedTotal), bold: true,
-      tex: String.raw`base \times (1+infl)^{year}` },
+    ...params.opexFixed.map((f, i) => ({
+      label: f.name, values: O.map((m) => m.fixed[i]), hint: fixedHint(i),
+    })),
+    {
+      label: 'Итого постоянные', values: O.map((m) => m.fixedTotal), bold: true,
+      tip: 'Сумма постоянных статей с индексацией на инфляцию.',
+      hint: (ci) => ({ title: 'Итого постоянные', calc: `Σ постоянных = ${e0(O[ci].fixedTotal)}` }),
+    },
     { label: 'ПЕРЕМЕННЫЕ (номенклатура)', values: [], section: true },
     ...O[0].variable.map((v) => ({
-      label: v.article, values: O.map((m) => m.variable.find((x) => x.article === v.article)?.amount ?? 0),
-      tex: String.raw`(slots \times \sum norm_{slot} + guests \times \sum norm_{guest} + \sum norm_{month}) \times infl`,
+      label: v.article,
+      values: O.map((m) => m.variable.find((x) => x.article === v.article)?.amount ?? 0),
+      hint: variableHint(v.article),
     })),
-    { label: 'Итого переменные', values: O.map((m) => m.variableTotal), bold: true },
+    {
+      label: 'Итого переменные', values: O.map((m) => m.variableTotal), bold: true,
+      hint: (ci) => ({ title: 'Итого переменные', calc: `Σ переменных = ${e0(O[ci].variableTotal)}` }),
+    },
     { label: '% ОТ ВЫРУЧКИ', values: [], section: true },
-    { label: 'Эквайринг', values: O.map((m) => m.pct.acquiring), tex: String.raw`2\% \times revenue` },
-    { label: 'Ремонт/обслуживание', values: O.map((m) => m.pct.maintenance) },
-    { label: 'ИТОГО OPEX', values: O.map((m) => m.total), bold: true },
+    { label: 'Эквайринг', values: O.map((m) => m.pct.acquiring), hint: pctHint('Эквайринг', 'acquiring') },
+    { label: 'Ремонт/обслуживание', values: O.map((m) => m.pct.maintenance), hint: pctHint('Ремонт/обслуживание', 'maintenance') },
+    {
+      label: 'ИТОГО OPEX', values: O.map((m) => m.total), bold: true,
+      hint: (ci) => ({
+        title: 'Итого OPEX',
+        calc: `${e0(O[ci].fixedTotal)} пост. + ${e0(O[ci].variableTotal)} перем. + ${e0(O[ci].pctTotal)} % = ${e0(O[ci].total)}`,
+      }),
+    },
   ]
   return <MonthTable rows={rows} labels={labels} withSum />
 }
 
 export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
+  const { params } = useModel()
   const F = r.fot
-  const rows = [
-    { label: 'Оклады (фикс.)', values: F.map((m) => m.salaries), tex: String.raw`\sum(count \times salary) \times (1+infl)^{year}` },
-    { label: 'KPI бонусы', values: F.map((m) => m.bonuses), tex: String.raw`30\%\,steam + 30\%\,massage + 1\%\,revenue` },
-    { label: 'Итого ФОТ (gross)', values: F.map((m) => m.gross), bold: true },
-    { label: 'Взносы 15.15%', values: F.map((m) => m.employerContrib) },
-    { label: 'ИТОГО ФОТ + взносы', values: F.map((m) => m.total), bold: true },
+  const R = r.revenue
+  const inflAt = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+  const baseSalaries = params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0)
+  const kpi = params.kpi
+  const rows: RowDef[] = [
+    {
+      label: 'Оклады (фикс.)', values: F.map((m) => m.salaries),
+      tip: 'Фонд окладов штата, индексируется на инфляцию ежегодно.',
+      hint: (ci) => ({
+        title: 'Оклады',
+        calc: `${e0(baseSalaries)}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
+      }),
+    },
+    {
+      label: 'KPI бонусы', values: F.map((m) => m.bonuses),
+      tip: 'Переменная часть: доля от выручки парений и массажа + доля от всей выручки.',
+      hint: (ci) => ({
+        title: 'KPI бонусы',
+        calc: `парения ${e0(R[ci].steamTotal)}×${pc(kpi.steamShare)} + массаж ${e0(R[ci].massageTotal)}×${pc(kpi.massageShare)} + выручка ${e0(R[ci].total)}×${pc(kpi.revenueShare, 1)} = ${e0(F[ci].bonuses)}`,
+      }),
+    },
+    {
+      label: 'Итого ФОТ (gross)', values: F.map((m) => m.gross), bold: true,
+      hint: (ci) => ({ title: 'ФОТ gross', calc: `${e0(F[ci].salaries)} + ${e0(F[ci].bonuses)} = ${e0(F[ci].gross)}` }),
+    },
+    {
+      label: `Взносы ${pc(params.taxes.employerRate, 2)}`, values: F.map((m) => m.employerContrib),
+      tip: 'Взносы работодателя (соцстрах и пр.) на фонд оплаты труда.',
+      hint: (ci) => ({ title: 'Взносы работодателя', calc: `${e0(F[ci].gross)} × ${pc(params.taxes.employerRate, 2)} = ${e0(F[ci].employerContrib)}` }),
+    },
+    {
+      label: 'ИТОГО ФОТ + взносы', values: F.map((m) => m.total), bold: true,
+      hint: (ci) => ({ title: 'Итого ФОТ', calc: `${e0(F[ci].gross)} + ${e0(F[ci].employerContrib)} = ${e0(F[ci].total)}` }),
+    },
   ]
   return <MonthTable rows={rows} labels={labels} withSum />
 }
 
 export function Capex({ r }: { r: ModelResult }) {
+  const { params } = useModel()
   const { capex } = r
+  const amortTex = String.raw`\mathrm{аморт}=\sum_{групп}\frac{\mathrm{CAPEX}\cdot\mathrm{доля}_{группы}}{\mathrm{срок}_{лет}\cdot 12}`
   return (
     <div>
       <table className="month-table">
@@ -68,9 +287,37 @@ export function Capex({ r }: { r: ModelResult }) {
           {capex.items.map((i) => (
             <tr key={i.name}><td className="sticky">{i.name}</td><td>{fmt(i.eur)}</td></tr>
           ))}
-          <tr className="bold"><td className="sticky">ИТОГО CAPEX</td><td>{fmt(capex.totalEur)}</td></tr>
-          <tr className="bold"><td className="sticky">С буфером сценария</td><td>{fmt(capex.adjustedEur)}</td></tr>
-          <tr><td className="sticky">Амортизация, €/мес</td><td>{fmt(capex.monthlyAmort)}</td></tr>
+          <tr className="bold">
+            <td className="sticky">ИТОГО CAPEX</td>
+            <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций, включая наполнение из справочника номенклатуры (landed-цена × кол-во).' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
+          </tr>
+          <tr className="bold">
+            <td className="sticky">С буфером сценария</td>
+            <td>
+              <Hint hint={{
+                title: 'CAPEX с буфером',
+                text: 'Сценарная надбавка к стоимости строительства (риск удорожания).',
+                calc: `${e0(capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${e0(capex.adjustedEur)}`,
+              }}>
+                <span className="cellval">{fmt(capex.adjustedEur)}</span>
+              </Hint>
+            </td>
+          </tr>
+          <tr>
+            <td className="sticky">Амортизация, €/мес</td>
+            <td>
+              <Hint hint={{
+                title: 'Амортизация',
+                text: 'Линейная: для каждой группы CAPEX — сумма × доля группы ÷ (срок службы × 12 мес).',
+                tex: amortTex,
+                calc: params.amort.groups
+                  .map((g, i) => `${g}: ${pc(params.amort.shares[i])} / ${params.amort.years[i]} лет`)
+                  .join(' · ') + ` → ${e0(capex.monthlyAmort)}/мес`,
+              }}>
+                <span className="cellval">{fmt(capex.monthlyAmort)}</span>
+              </Hint>
+            </td>
+          </tr>
         </tbody>
       </table>
       <p className="note">Амортизация линейная: Σ (CAPEX × доля группы) / (срок × 12 мес).</p>
@@ -79,18 +326,121 @@ export function Capex({ r }: { r: ModelResult }) {
 }
 
 export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
+  const { params } = useModel()
   const T = r.taxes
-  const rows = [
-    { label: 'НДС 19% (выходной)', values: T.map((m) => m.vatOut19) },
-    { label: 'НДС 9% (глэмпинг+F&B)', values: T.map((m) => m.vatOut9), tex: String.raw`rev \times \frac{r}{1+r}` },
-    { label: 'Входной НДС', values: T.map((m) => m.inputVat) },
-    { label: 'НДС-кредит переходящий', values: T.map((m) => m.vatCredit) },
-    { label: 'НДС к уплате', values: T.map((m) => m.vatPayable), bold: true,
-      tex: String.raw`\max(0,\ out - in - credit_{prev})` },
-    { label: 'CIT (июнь/декабрь)', values: T.map((m) => m.cit) },
-    { label: 'Дивиденды (лаг 12 мес)', values: T.map((m) => m.dividends) },
-    { label: 'Defence Tax (SDC)', values: T.map((m) => m.sdc) },
-    { label: 'ИТОГО НАЛОГИ', values: T.map((m) => m.total), bold: true },
+  const R = r.revenue
+  const t = params.taxes
+  const reimb = params.meta.vatMode === 'С возмещением'
+  const years = Math.ceil(params.meta.opsMonths / 12)
+  const distShare = params.partners.shares.reduce((a, b) => a + b, 0) + params.partners.corporate.mgmt
+  const sdcRate = params.partners.shares.reduce(
+    (s, sh, i) => s + sh * (params.partners.statuses[i] === 'Резидент Кипра (17%)' ? t.sdc : 0), 0,
+  ) / distShare
+  const eff19 = t.vatStd / (1 + t.vatStd)
+
+  const rows: RowDef[] = [
+    {
+      label: `НДС ${pc(t.vatStd)} (выходной)`, values: T.map((m) => m.vatOut19),
+      tip: 'НДС, «сидящий» внутри выручки бань, процедур и членств (цены включают НДС).',
+      tex: String.raw`\mathrm{НДС}=\mathrm{выручка}\cdot\frac{r}{1+r}`,
+      hint: (ci) => {
+        const m = R[ci]
+        const base = m.rental + m.steamTotal + m.massageTotal + m.extraTotal + m.membershipTotal
+        return {
+          title: 'НДС выходной 19%',
+          text: 'Выручка бань + услуг + членств × доля НДС в цене.',
+          calc: `${e0(base)} × ${pc(eff19, 2)} = ${e0(T[ci].vatOut19)}`,
+        }
+      },
+    },
+    {
+      label: `НДС ${pc(t.vatGlamp)} (глэмпинг+F&B)`, values: T.map((m) => m.vatOut9),
+      tip: 'Пониженная ставка НДС на размещение и F&B.',
+      hint: (ci) => {
+        const m = R[ci]
+        return {
+          title: 'НДС выходной 9%',
+          calc: `глэмпинг ${e0(m.glamping)}×${pc(t.vatGlamp / (1 + t.vatGlamp), 2)} + F&B ${e0(m.fb)}×${pc(t.vatFb / (1 + t.vatFb), 2)} = ${e0(T[ci].vatOut9)}`,
+        }
+      },
+    },
+    {
+      label: 'Входной НДС', values: T.map((m) => m.inputVat),
+      tip: reimb
+        ? 'Режим «С возмещением»: НДС с OPEX помесячно и с CAPEX разово в первом месяце уменьшает платёж.'
+        : 'Режим «Гросс»: входной НДС не возмещается и включён в расходы.',
+      hint: (ci) => ({
+        title: 'Входной НДС',
+        text: reimb ? undefined : 'В режиме «Гросс» входной НДС не возмещается — всегда 0.',
+        calc: reimb
+          ? `(OPEX ${e0(r.opex[ci].fixedTotal + r.opex[ci].variableTotal)}${ci === 0 ? ` + CAPEX ${e0(r.capex.adjustedEur)}` : ''}) × ${pc(eff19, 2)} = ${e0(T[ci].inputVat)}`
+          : '—',
+      }),
+    },
+    {
+      label: 'НДС-кредит переходящий', values: T.map((m) => m.vatCredit),
+      tip: 'Входной НДС сверх выходного переносится на следующие месяцы и уменьшает будущие платежи.',
+      hint: (ci) => {
+        const prev = ci > 0 ? T[ci - 1].vatCredit : 0
+        const out = T[ci].vatOut19 + T[ci].vatOut9
+        return {
+          title: 'НДС-кредит',
+          calc: `max(0, кредит ${e0(prev)} + входной ${e0(T[ci].inputVat)} − выходной ${e0(out)}) = ${e0(T[ci].vatCredit)}`,
+        }
+      },
+    },
+    {
+      label: 'НДС к уплате', values: T.map((m) => m.vatPayable), bold: true,
+      hint: (ci) => {
+        const prev = ci > 0 ? T[ci - 1].vatCredit : 0
+        const out = T[ci].vatOut19 + T[ci].vatOut9
+        return {
+          title: 'НДС к уплате',
+          calc: `max(0, ${e0(out)} − ${e0(T[ci].inputVat)} − ${e0(prev)} кредит) = ${e0(T[ci].vatPayable)}`,
+        }
+      },
+    },
+    {
+      label: 'CIT (июнь/декабрь)', values: T.map((m) => m.cit),
+      tip: 'Корпоративный налог на прибыль (EBIT за вычетом перенесённых убытков). Уплата двумя авансами: июнь и декабрь.',
+      hint: (ci) => {
+        const y = Math.min(years - 1, Math.floor(ci / 12))
+        return {
+          title: 'CIT',
+          text: `Год ${y + 1}: CIT ${e0(r.citByYear[y] ?? 0)} (${pc(t.cit)} от налогооблагаемой базы с переносом убытков).`,
+          calc: T[ci].cit
+            ? `${e0(r.citByYear[y])} / 2 = ${e0(T[ci].cit)}`
+            : 'Уплата только в июне и декабре',
+        }
+      },
+    },
+    {
+      label: 'Дивиденды (лаг 12 мес)', values: T.map((m) => m.dividends),
+      tip: 'Выплата партнёрам: чистая прибыль того же месяца годом ранее × доля распределения. Начинается с 13-го месяца.',
+      hint: (ci) => {
+        if (ci < 12) return { title: 'Дивиденды', text: 'Выплаты начинаются с 13-го месяца — распределяется прибыль с лагом в год.' }
+        const np = r.pnl[ci - 12].netProfit
+        return {
+          title: 'Дивиденды',
+          calc: `ЧП годом ранее ${e0(Math.max(0, np))} × доля партнёров ${pc(distShare)} = ${e0(T[ci].dividends)}`,
+        }
+      },
+    },
+    {
+      label: 'Defence Tax (SDC)', values: T.map((m) => m.sdc),
+      tip: 'Special Defence Contribution — налог на дивиденды резидентам Кипра; взвешен по долям партнёров.',
+      hint: (ci) => ({
+        title: 'SDC на дивиденды',
+        calc: `${e0(T[ci].dividends)} × взвеш. ставка ${pc(sdcRate, 2)} = ${e0(T[ci].sdc)}`,
+      }),
+    },
+    {
+      label: 'ИТОГО НАЛОГИ', values: T.map((m) => m.total), bold: true,
+      hint: (ci) => ({
+        title: 'Итого налоги',
+        calc: `НДС ${e0(T[ci].vatPayable)} + CIT ${e0(T[ci].cit)} + SDC ${e0(T[ci].sdc)} = ${e0(T[ci].total)}`,
+      }),
+    },
   ]
   return (
     <div>
@@ -102,45 +452,161 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
 
 export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
   const P = r.pnl
-  const rows = [
-    { label: 'Выручка (брутто)', values: P.map((m) => m.revenueGross) },
-    { label: 'НДС к уплате', values: P.map((m) => -m.revenueGross + m.revenueNet) },
-    { label: 'Выручка (нетто)', values: P.map((m) => m.revenueNet), bold: true },
-    { label: 'Переменные расходы', values: P.map((m) => m.variableOpex) },
-    { label: '% от выручки', values: P.map((m) => m.pctOpex) },
-    { label: 'Маржинальная прибыль', values: P.map((m) => m.marginalProfit), bold: true },
-    { label: 'Постоянные расходы', values: P.map((m) => m.fixedOpex) },
-    { label: 'ФОТ + взносы', values: P.map((m) => m.fot) },
-    { label: 'EBITDA', values: P.map((m) => m.ebitda), bold: true },
-    { label: 'Маржа EBITDA', values: P.map((m) => m.revenueNet ? m.ebitda / m.revenueNet : 0), fmt: 'pct' as const },
-    { label: 'Амортизация', values: P.map((m) => m.amortization) },
-    { label: 'EBIT', values: P.map((m) => m.ebit), bold: true },
-    { label: 'CIT', values: P.map((m) => m.cit) },
-    { label: 'Чистая прибыль', values: P.map((m) => m.netProfit), bold: true },
-    { label: 'Дивиденды', values: P.map((m) => m.dividends) },
-    { label: 'SDC', values: P.map((m) => m.sdc) },
-    { label: 'ЧП после SDC', values: P.map((m) => m.netAfterSdc), bold: true },
+  const arith = (title: string, text: string, parts: (ci: number) => string) => (ci: number): CellHint => ({
+    title, text, calc: parts(ci),
+  })
+  const rows: RowDef[] = [
+    {
+      label: 'Выручка (брутто)', values: P.map((m) => m.revenueGross),
+      tip: 'Вся выручка месяца, включая НДС внутри цен.',
+      hint: (ci) => ({ title: 'Выручка брутто', calc: `Σ потоков выручки = ${e0(P[ci].revenueGross)}` }),
+    },
+    {
+      label: 'НДС к уплате', values: P.map((m) => -m.revenueGross + m.revenueNet),
+      tip: 'НДС, который уходит государству (выходной минус возмещённый).',
+      hint: (ci) => ({ title: 'НДС к уплате', calc: `${e0(r.taxes[ci].vatPayable)}` }),
+    },
+    {
+      label: 'Выручка (нетто)', values: P.map((m) => m.revenueNet), bold: true,
+      hint: (ci) => ({ title: 'Выручка нетто', calc: `${e0(P[ci].revenueGross)} − ${e0(r.taxes[ci].vatPayable)} НДС = ${e0(P[ci].revenueNet)}` }),
+    },
+    {
+      label: 'Переменные расходы', values: P.map((m) => m.variableOpex),
+      tip: 'Расходники по справочнику номенклатуры (см. вкладку OPEX).',
+      hint: arith('Переменные', 'Расходники по нормам на слот/гостя/месяц.', (ci) => `Σ статей = ${e0(P[ci].variableOpex)}`),
+    },
+    {
+      label: '% от выручки', values: P.map((m) => m.pctOpex),
+      tip: 'Эквайринг и ремонт/обслуживание — процент от брутто-выручки.',
+      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. = ${e0(P[ci].pctOpex)}`),
+    },
+    {
+      label: 'Маржинальная прибыль', values: P.map((m) => m.marginalProfit), bold: true,
+      tex: String.raw`\mathrm{MP}=\mathrm{выручка}_{нетто}-\mathrm{переменные}-\%\mathrm{расходы}`,
+      hint: (ci) => ({ title: 'Маржинальная прибыль', calc: `${e0(P[ci].revenueNet)} − ${e0(P[ci].variableOpex)} − ${e0(P[ci].pctOpex)} = ${e0(P[ci].marginalProfit)}` }),
+    },
+    {
+      label: 'Постоянные расходы', values: P.map((m) => m.fixedOpex),
+      hint: arith('Постоянные', 'Фиксированные месячные статьи с инфляцией.', (ci) => `Σ постоянных = ${e0(P[ci].fixedOpex)}`),
+    },
+    {
+      label: 'ФОТ + взносы', values: P.map((m) => m.fot),
+      hint: arith('ФОТ', 'Оклады + KPI-бонусы + взносы работодателя.', (ci) => `см. вкладку ФОТ = ${e0(P[ci].fot)}`),
+    },
+    {
+      label: 'EBITDA', values: P.map((m) => m.ebitda), bold: true,
+      tex: String.raw`\mathrm{EBITDA}=\mathrm{MP}-\mathrm{постоянные}-\mathrm{ФОТ}`,
+      hint: (ci) => ({ title: 'EBITDA', calc: `${e0(P[ci].marginalProfit)} − ${e0(P[ci].fixedOpex)} − ${e0(P[ci].fot)} = ${e0(P[ci].ebitda)}` }),
+    },
+    {
+      label: 'Маржа EBITDA', values: P.map((m) => (m.revenueNet ? m.ebitda / m.revenueNet : 0)), fmt: 'pct' as const,
+      hint: (ci) => ({ title: 'Маржа EBITDA', calc: `${e0(P[ci].ebitda)} / ${e0(P[ci].revenueNet)} = ${pc(P[ci].revenueNet ? P[ci].ebitda / P[ci].revenueNet : 0)}` }),
+    },
+    {
+      label: 'Амортизация', values: P.map((m) => m.amortization),
+      hint: arith('Амортизация', 'Линейная по группам CAPEX — см. вкладку CAPEX.', () => `${e0(r.capex.monthlyAmort)}/мес`),
+    },
+    {
+      label: 'EBIT', values: P.map((m) => m.ebit), bold: true,
+      hint: (ci) => ({ title: 'EBIT', calc: `${e0(P[ci].ebitda)} − ${e0(P[ci].amortization)} = ${e0(P[ci].ebit)}` }),
+    },
+    {
+      label: 'CIT', values: P.map((m) => m.cit),
+      hint: arith('CIT', 'Корпоративный налог — авансы в июне и декабре.', (ci) => `${e0(P[ci].cit)}`),
+    },
+    {
+      label: 'Чистая прибыль', values: P.map((m) => m.netProfit), bold: true,
+      hint: (ci) => ({ title: 'Чистая прибыль', calc: `${e0(P[ci].ebit)} − ${e0(P[ci].cit)} = ${e0(P[ci].netProfit)}` }),
+    },
+    {
+      label: 'Дивиденды', values: P.map((m) => m.dividends),
+      hint: arith('Дивиденды', 'Чистая прибыль годом ранее × доля партнёров.', (ci) => `${e0(P[ci].dividends)}`),
+    },
+    {
+      label: 'SDC', values: P.map((m) => m.sdc),
+      hint: arith('SDC', 'Defence Tax на дивиденды резидентов Кипра.', (ci) => `${e0(P[ci].sdc)}`),
+    },
+    {
+      label: 'ЧП после SDC', values: P.map((m) => m.netAfterSdc), bold: true,
+      hint: (ci) => ({ title: 'ЧП после SDC', calc: `${e0(P[ci].netProfit)} − ${e0(P[ci].sdc)} = ${e0(P[ci].netAfterSdc)}` }),
+    },
   ]
   return <MonthTable rows={rows} labels={labels} withSum />
 }
 
 export function CashFlow({ r }: { r: ModelResult }) {
+  const { params } = useModel()
   const labels = r.cashflow.map((m) => m.label)
   const C = r.cashflow
-  const rows = [
-    { label: 'Чистая прибыль', values: C.map((m) => m.netProfit) },
-    { label: '+ Амортизация', values: C.map((m) => m.amortization) },
-    { label: 'Операционный CF', values: C.map((m) => m.operatingCf), bold: true },
-    { label: 'CAPEX', values: C.map((m) => m.capex) },
-    { label: 'Пре-сейл', values: C.map((m) => m.presale) },
-    { label: 'FCFF', values: C.map((m) => m.fcff), bold: true },
-    { label: 'Дивиденды и УК', values: C.map((m) => m.dividends) },
-    { label: 'Defence Tax', values: C.map((m) => m.sdc) },
-    { label: 'CF после распределения', values: C.map((m) => m.totalCf), bold: true },
-    { label: 'Остаток денег', values: C.map((m) => m.cumCash) },
-    { label: 'Накопл. FCFF', values: C.map((m) => m.cumFcff) },
-    { label: 'Дисконт. FCFF', values: C.map((m) => m.discountedFcff) },
-    { label: 'Накопл. DCF (NPV)', values: C.map((m) => m.cumDcf), bold: true },
+  const sc = r.scenario
+  const presaleStart = params.meta.capexMonths - params.units.presaleMonths + 1
+  const ops = (ci: number, text: string) => (C[ci].isOps ? text : 'Период строительства — операций нет.')
+  const rows: RowDef[] = [
+    {
+      label: 'Чистая прибыль', values: C.map((m) => m.netProfit),
+      hint: (ci) => ({ title: 'Чистая прибыль', text: ops(ci, 'Из P&L соответствующего операционного месяца.'), calc: C[ci].isOps ? `${e0(C[ci].netProfit)}` : undefined }),
+    },
+    {
+      label: '+ Амортизация', values: C.map((m) => m.amortization),
+      hint: (ci) => ({ title: 'Амортизация', text: ops(ci, 'Неденежная статья — возвращается в поток.'), calc: C[ci].isOps ? `${e0(C[ci].amortization)}` : undefined }),
+    },
+    {
+      label: 'Операционный CF', values: C.map((m) => m.operatingCf), bold: true,
+      hint: (ci) => ({ title: 'Операционный CF', calc: `${e0(C[ci].netProfit)} + ${e0(C[ci].amortization)} = ${e0(C[ci].operatingCf)}` }),
+    },
+    {
+      label: 'CAPEX', values: C.map((m) => m.capex),
+      tip: `Инвестиции распределены равномерно по ${params.meta.capexMonths} мес строительства.`,
+      hint: (ci) => ({
+        title: 'CAPEX',
+        calc: C[ci].capex ? `−${e0(r.capex.adjustedEur)} / ${params.meta.capexMonths} мес = ${e0(C[ci].capex)}` : '—',
+      }),
+    },
+    {
+      label: 'Пре-сейл', values: C.map((m) => m.presale),
+      tip: `Продажа депозитов до открытия — месяцы ${presaleStart}–${params.meta.capexMonths} стройки.`,
+      hint: (ci) => ({ title: 'Пре-сейл', calc: C[ci].presale ? `${e0(sc.presaleMonthly)}/мес` : '—' }),
+    },
+    {
+      label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
+      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}`,
+      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} = ${e0(C[ci].fcff)}` }),
+    },
+    {
+      label: 'Дивиденды и УК', values: C.map((m) => m.dividends),
+      hint: (ci) => ({ title: 'Дивиденды', calc: C[ci].dividends ? `${e0(C[ci].dividends)}` : '—' }),
+    },
+    {
+      label: 'Defence Tax', values: C.map((m) => m.sdc),
+      hint: (ci) => ({ title: 'SDC', calc: C[ci].sdc ? `${e0(C[ci].sdc)}` : '—' }),
+    },
+    {
+      label: 'CF после распределения', values: C.map((m) => m.totalCf), bold: true,
+      hint: (ci) => ({ title: 'CF после распределения', calc: `${e0(C[ci].fcff)} + ${e0(C[ci].dividends)} + ${e0(C[ci].sdc)} = ${e0(C[ci].totalCf)}` }),
+    },
+    {
+      label: 'Остаток денег', values: C.map((m) => m.cumCash),
+      tip: 'Накопленный остаток денежных средств на конец месяца.',
+      hint: (ci) => ({ title: 'Остаток денег', calc: `Σ CF с начала = ${e0(C[ci].cumCash)}` }),
+    },
+    {
+      label: 'Накопл. FCFF', values: C.map((m) => m.cumFcff),
+      hint: (ci) => ({ title: 'Накопл. FCFF', calc: `Σ FCFF с начала = ${e0(C[ci].cumFcff)}` }),
+    },
+    {
+      label: 'Дисконт. FCFF', values: C.map((m) => m.discountedFcff),
+      tex: String.raw`\mathrm{DF}=\frac{1}{(1+\mathrm{WACC}/12)^{m}},\quad \mathrm{DCF}=\mathrm{FCFF}\cdot\mathrm{DF}`,
+      tip: `FCFF, приведённый к текущему моменту по ставке WACC = ${pc(params.general.wacc)} годовых.`,
+      hint: (ci) => ({
+        title: 'Дисконтированный FCFF',
+        calc: `${e0(C[ci].fcff)} × DF ${C[ci].discountFactor.toFixed(3)} = ${e0(C[ci].discountedFcff)}`,
+      }),
+    },
+    {
+      label: 'Накопл. DCF (NPV)', values: C.map((m) => m.cumDcf), bold: true,
+      tip: 'Бегущий NPV проекта — в последней колонке равен NPV за весь горизонт.',
+      hint: (ci) => ({ title: 'NPV накопительно', calc: `Σ дисконт. FCFF = ${e0(C[ci].cumDcf)}` }),
+    },
   ]
   return <MonthTable rows={rows} labels={labels} withSum />
 }

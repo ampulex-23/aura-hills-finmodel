@@ -35,13 +35,13 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .note { color: #8b98ad; font-size: 12px; line-height: 1.5; }
 
 .table-wrap { overflow-x: auto; border: 1px solid #26314a; border-radius: 8px; }
-.month-table { border-collapse: collapse; font-size: 12px; min-width: 100%; }
-.month-table th, .month-table td { padding: 4px 8px; text-align: right; white-space: nowrap; border-bottom: 1px solid #1d2636; }
+.month-table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
+.month-table th, .month-table td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid #1d2636; }
 .month-table th { background: #1a2334; color: #93a3bc; font-weight: 500; position: sticky; top: 0; }
 .month-table td.sticky, .month-table th.sticky { position: sticky; left: 0; background: #141b28; text-align: left; z-index: 2; min-width: 190px; }
 .month-table th.sticky { background: #1a2334; }
 .month-table tr.bold td { font-weight: 600; color: #fff; }
-.month-table tr.section td { background: #16202f; color: #7f93b8; font-weight: 600; font-size: 11px; letter-spacing: .04em; }
+.month-table tr.section td { background: #16202f; color: #7f93b8; font-weight: 600; font-size: 12px; letter-spacing: .04em; }
 .month-table td.sum { border-left: 1px solid #2a3548; color: #9fd3b4; }
 .month-table small { color: #7f93b8; }
 .month-table td.lft { text-align: left; }
@@ -68,3 +68,16 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
 
 .formula { color: #5b8dd9; cursor: help; font-size: 11px; margin-left: 4px; }
 .mantine-HoverCard-dropdown .katex { color: #d7e3f4; font-size: 14px; }
+
+/* Всплывающие пояснялки на клетках */
+.cellval { display: block; cursor: help; }
+.cellval:hover { text-decoration: underline dotted rgba(255,255,255,.28); text-underline-offset: 4px; }
+.hint { font-size: 12.5px; line-height: 1.45; }
+.hint-title { font-weight: 600; color: #e8eefb; margin-bottom: 4px; }
+.hint-text { color: #aab6c8; margin-bottom: 6px; }
+.hint-tex { padding: 6px 0; text-align: center; overflow-x: auto; }
+.hint-calc {
+  margin-top: 6px; padding: 6px 8px; background: #101826; border-radius: 6px;
+  color: #9fd3b4; font-size: 12px; font-variant-numeric: tabular-nums; white-space: normal;
+}
+.mantine-HoverCard-dropdown { background: #1b2432; border: 1px solid #32415c; }

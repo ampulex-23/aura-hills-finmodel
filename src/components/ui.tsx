@@ -46,22 +46,66 @@ export function NumField({
   )
 }
 
-// Тултип с формулой — LaTeX через KaTeX внутри Mantine HoverCard.
-export function Formula({ tex, label }: { tex: string; label?: string }) {
-  const html = useMemo(() => {
-    try {
-      return katex.renderToString(tex, { throwOnError: false })
-    } catch {
-      return tex
-    }
-  }, [tex])
+// Всплывающая пояснялка: заголовок, текст, LaTeX-формула и подстановка чисел.
+export interface CellHint {
+  title?: string
+  text?: string
+  tex?: string
+  calc?: string
+}
+
+const renderTex = (tex: string) => {
+  try {
+    return katex.renderToString(tex, { throwOnError: false })
+  } catch {
+    return tex
+  }
+}
+
+function HintBody({ hint }: { hint: CellHint }) {
+  const html = useMemo(() => (hint.tex ? renderTex(hint.tex) : null), [hint.tex])
   return (
-    <HoverCard position="bottom-start" shadow="md" withinPortal>
+    <div className="hint">
+      {hint.title && <div className="hint-title">{hint.title}</div>}
+      {hint.text && <div className="hint-text">{hint.text}</div>}
+      {html && <div className="hint-tex" dangerouslySetInnerHTML={{ __html: html }} />}
+      {hint.calc && <div className="hint-calc">{hint.calc}</div>}
+    </div>
+  )
+}
+
+// Обёртка: вешает балун-подсказку на произвольный элемент (клетку, число, KPI).
+// openDelay по умолчанию — чтобы балуны не спамили при движении мыши по таблице.
+export function Hint({
+  hint, delay = 450, children,
+}: {
+  hint: CellHint | null | undefined
+  delay?: number
+  children: React.ReactElement
+}) {
+  if (!hint) return children
+  return (
+    <HoverCard
+      position="top" openDelay={delay} closeDelay={90}
+      withArrow shadow="lg" withinPortal width={340}
+    >
+      <HoverCard.Target>{children}</HoverCard.Target>
+      <HoverCard.Dropdown>
+        <HintBody hint={hint} />
+      </HoverCard.Dropdown>
+    </HoverCard>
+  )
+}
+
+// Иконка ⓘ у заголовка строки — общая формула строки.
+export function Formula({ tex, label, text }: { tex?: string; label?: string; text?: string }) {
+  return (
+    <HoverCard position="bottom-start" openDelay={250} closeDelay={90} withArrow shadow="lg" withinPortal width={340}>
       <HoverCard.Target>
         <span className="formula">ⓘ{label ? ` ${label}` : ''}</span>
       </HoverCard.Target>
       <HoverCard.Dropdown>
-        <span dangerouslySetInnerHTML={{ __html: html }} />
+        <HintBody hint={{ text, tex }} />
       </HoverCard.Dropdown>
     </HoverCard>
   )
@@ -83,6 +127,8 @@ export interface RowDef {
   section?: boolean
   fmt?: 'eur' | 'num' | 'pct'
   tex?: string
+  tip?: string // человекочитаемое пояснение строки (иконка ⓘ)
+  hint?: (ci: number, v: number | string) => CellHint | null // пояснение клетки
 }
 
 // Помесячная таблица (аналог строки листа) — горизонтальный скролл, итог справа.
@@ -109,16 +155,25 @@ export function MonthTable({ rows, labels, withSum }: { rows: RowDef[]; labels: 
               <tr key={ri} className={r.bold ? 'bold' : ''}>
                 <td className="sticky">
                   {r.label}
-                  {r.tex && <Formula tex={r.tex} />}
+                  {(r.tex || r.tip) && <Formula tex={r.tex} text={r.tip} />}
                 </td>
-                {r.values.map((v, ci) => (
-                  <td key={ci}>{f(v, r.fmt)}</td>
-                ))}
-                {withSum && (
-                  <td className="sum">
-                    {f(typeof r.values[0] === 'number' ? (r.values as number[]).reduce((a, b) => a + b, 0) : '—', r.fmt)}
-                  </td>
-                )}
+                {r.values.map((v, ci) => {
+                  const h = r.hint?.(ci, v)
+                  return (
+                    <td key={ci}>
+                      {h ? <Hint hint={h}><span className="cellval">{f(v, r.fmt)}</span></Hint> : f(v, r.fmt)}
+                    </td>
+                  )
+                })}
+                {withSum && (() => {
+                  const sumV = typeof r.values[0] === 'number' ? (r.values as number[]).reduce((a, b) => a + b, 0) : '—'
+                  const h = r.hint?.(-1, sumV)
+                  return (
+                    <td className="sum">
+                      {h ? <Hint hint={h}><span className="cellval">{f(sumV, r.fmt)}</span></Hint> : f(sumV, r.fmt)}
+                    </td>
+                  )
+                })()}
               </tr>
             ),
           )}

@@ -4,7 +4,8 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { ModelResult } from '../model/types'
-import { fmt, fmtEur, fmtPct } from '../components/ui'
+import { fmt, fmtEur, fmtPct, Hint } from '../components/ui'
+import type { CellHint } from '../components/ui'
 
 const COLORS = ['#5b8dd9', '#9c6ade', '#4cc38a', '#f5a623', '#e5534b', '#50c8d8', '#d8b356']
 
@@ -34,15 +35,63 @@ export function Dashboard({ r }: { r: ModelResult }) {
     [r],
   )
   const k = r.kpis
+  const last = r.cashflow[r.cashflow.length - 1]
+  const kpis: { label: string; value: string; hint: CellHint }[] = [
+    {
+      label: 'NPV (5 лет)', value: fmtEur(k.npv),
+      hint: {
+        title: 'Чистая приведённая стоимость',
+        text: 'Сумма всех дисконтированных свободных потоков (FCFF) за 72 месяца: стройка + 5 лет операций.',
+        tex: String.raw`\mathrm{NPV}=\sum_{m}\frac{\mathrm{FCFF}_m}{(1+\mathrm{WACC}/12)^{m}}`,
+        calc: `Σ дисконт. FCFF = ${fmtEur(last.cumDcf)}`,
+      },
+    },
+    {
+      label: 'IRR годовой', value: fmtPct(k.irrAnnual),
+      hint: {
+        title: 'Внутренняя норма доходности',
+        text: 'Ставка, при которой NPV = 0. Считается по помесячным FCFF, переведена в годовую.',
+        calc: `IRR мес ${fmtPct(k.irrMonthly, 2)} → годовая ${fmtPct(k.irrAnnual)}`,
+      },
+    },
+    {
+      label: 'Окупаемость', value: `${k.paybackMonths} мес`,
+      hint: {
+        title: 'Окупаемость',
+        text: 'Первый месяц (от начала стройки), когда накопленный FCFF стал положительным.',
+      },
+    },
+    {
+      label: 'Диск. окупаемость', value: `${k.discountedPaybackMonths} мес`,
+      hint: {
+        title: 'Дисконтированная окупаемость',
+        text: 'То же, но по накопленному DCF (FCFF × дисконт-фактор WACC).',
+      },
+    },
+    {
+      label: 'Пиковая потребность', value: fmtEur(k.peakFundingNeed),
+      hint: {
+        title: 'Пиковая потребность в финансировании',
+        text: 'Максимальный отрицательный накопленный CF — сколько денег нужно в проект в самой глубокой точке.',
+      },
+    },
+    {
+      label: 'CAPEX (с буфером)', value: fmtEur(r.capex.adjustedEur),
+      hint: {
+        title: 'Инвестиции',
+        text: 'Смета строительства + сценарный буфер на удорожание.',
+        calc: `${fmtEur(r.capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${fmtEur(r.capex.adjustedEur)}`,
+      },
+    },
+  ]
   return (
     <div>
       <section className="kpis">
-        <div className="kpi"><span>NPV (5 лет)</span><b>{fmtEur(k.npv)}</b></div>
-        <div className="kpi"><span>IRR годовой</span><b>{fmtPct(k.irrAnnual)}</b></div>
-        <div className="kpi"><span>Окупаемость</span><b>{k.paybackMonths} мес</b></div>
-        <div className="kpi"><span>Диск. окупаемость</span><b>{k.discountedPaybackMonths} мес</b></div>
-        <div className="kpi"><span>Пиковая потребность</span><b>{fmtEur(k.peakFundingNeed)}</b></div>
-        <div className="kpi"><span>CAPEX (с буфером)</span><b>{fmtEur(r.capex.adjustedEur)}</b></div>
+        {kpis.map((kpi) => (
+          <Hint key={kpi.label} hint={kpi.hint}>
+            <div className="kpi"><span>{kpi.label}</span><b>{kpi.value}</b></div>
+          </Hint>
+        ))}
       </section>
 
       <div className="chart-card">
