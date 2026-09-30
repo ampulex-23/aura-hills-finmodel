@@ -6,6 +6,7 @@ import type { NomenclatureItem, Params, ScenarioMatrix } from '../src/model/type
 import { computeSensitivity } from '../src/model/sensitivity'
 
 const params = paramsJson as Params
+params.it.enabled = false // IT/АСУ нет в оракуле — сверяем ядро 1:1
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

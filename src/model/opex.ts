@@ -20,6 +20,12 @@ export function computeOpexMonth(
   )
   const fixedTotal = fixed.reduce((a, b) => a + b, 0)
 
+  // IT / АСУ: подписки и инфраструктура с индексацией на инфляцию
+  const it = params.it.enabled
+    ? params.it.opex.map((x) => ({ name: x.name, amount: x.base * infl }))
+    : []
+  const itTotal = it.reduce((s, x) => s + x.amount, 0)
+
   const articles = [
     'Представительские', 'Веники', 'Дрова основные', 'Дрова для очага', 'Брикеты руф',
     'Средства гигиены', 'Косметика / SPA', 'Косметика / массаж', 'Инвентарь / уборка',
@@ -43,11 +49,13 @@ export function computeOpexMonth(
   return {
     fixed,
     fixedTotal,
+    it,
+    itTotal,
     variable,
     variableTotal,
     pct: { acquiring, maintenance },
     pctTotal: acquiring + maintenance,
-    total: fixedTotal + variableTotal + acquiring + maintenance,
+    total: fixedTotal + itTotal + variableTotal + acquiring + maintenance,
   }
 }
 

@@ -115,6 +115,14 @@ export interface Params {
   slotMix: number[]
   slotNames: string[]
   opexFixed: { name: string; base: number; perModule?: boolean }[]
+  // IT / АСУ: кастомный слой — подписки и инфраструктура помесячно, внедрение в CAPEX.
+  // enabled=false возвращает модель к поведению исходного Excel (нужно golden-тестам).
+  it: {
+    enabled: boolean
+    curator: number // оклад IT-куратора €/мес gross, добавляется в ФОТ
+    opex: { name: string; base: number }[]
+    capex: { name: string; eur: number }[]
+  }
   fot: { roles: string[]; count: number[]; salary: number[] }
   capexItems: CapexItem[]
 }
@@ -186,6 +194,8 @@ export interface RevenueMonth {
 export interface OpexMonth {
   fixed: number[]
   fixedTotal: number
+  it: { name: string; amount: number }[]
+  itTotal: number
   variable: { article: string; amount: number }[]
   variableTotal: number
   pct: { acquiring: number; maintenance: number }

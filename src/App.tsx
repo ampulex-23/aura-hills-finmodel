@@ -10,10 +10,11 @@ import { Scenarios } from './tabs/Scenarios'
 import { CashFlow, Capex, Fot, Opex, Pnl, Revenue, Taxes } from './tabs/Reports'
 import { Nomenclature } from './tabs/Nomenclature'
 import { Specs } from './tabs/Specs'
+import { It } from './tabs/It'
 import { Sensitivity } from './tabs/Sensitivity'
 
 // Вкладки-ввод сгруппированы слева, отчётные — справа.
-const INPUT_TABS = ['Допущения', 'Сценарии', 'Номенклатура', 'Спецификации'] as const
+const INPUT_TABS = ['Допущения', 'Сценарии', 'Номенклатура', 'Спецификации', 'IT'] as const
 const REPORT_TABS = [
   'Дашборд', 'Выручка', 'OPEX', 'ФОТ', 'CAPEX', 'Налоги', 'P&L', 'Cash-Flow', 'Sensitivity',
 ] as const
@@ -112,6 +113,7 @@ export default function App() {
         {tab === 'Cash-Flow' && <CashFlow r={result} />}
         {tab === 'Номенклатура' && <Nomenclature />}
         {tab === 'Спецификации' && <Specs />}
+        {tab === 'IT' && <It />}
         {tab === 'Sensitivity' && <Sensitivity />}
       </main>
     </div>

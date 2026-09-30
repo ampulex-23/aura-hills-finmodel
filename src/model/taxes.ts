@@ -29,7 +29,7 @@ export function computeVat(
     const vatOut9 =
       (rev.glamping * r.vatGlamp) / (1 + r.vatGlamp) + (rev.fb * r.vatFb) / (1 + r.vatFb)
     const inputVat = reimb
-      ? ((opex[k].fixedTotal + opex[k].variableTotal) * r.vatInput) / (1 + r.vatInput) +
+      ? ((opex[k].fixedTotal + opex[k].variableTotal + opex[k].itTotal) * r.vatInput) / (1 + r.vatInput) +
         (k === 0 ? (capexAdjustedEur * r.vatInput) / (1 + r.vatInput) : 0)
       : 0
     const vatOut = vatOut19 + vatOut9

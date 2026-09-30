@@ -21,7 +21,7 @@ export function computePnl(
       variableOpex: opex[k].variableTotal,
       pctOpex: opex[k].pctTotal,
       marginalProfit,
-      fixedOpex: opex[k].fixedTotal,
+      fixedOpex: opex[k].fixedTotal + opex[k].itTotal,
       fot: fot[k].total,
       ebitda,
       amortization: monthlyAmort,

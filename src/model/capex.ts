@@ -18,6 +18,8 @@ export function computeCapex(
     }
     return { name: it.name ?? '', eur }
   })
+  // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
+  if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur })))
   const totalEur = out.reduce((s, i) => s + i.eur, 0)
   const adjustedEur = totalEur * (1 + capexAdj)
   const monthlyAmort =

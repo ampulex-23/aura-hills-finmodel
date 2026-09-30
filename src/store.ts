@@ -104,6 +104,15 @@ export const useModel = create<ModelState>()(
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>
         ({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }) as ModelState,
+      // Снапшоты старой структуры: добираем отсутствующие блоки (params.it и т.п.) из дефолтов
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<ModelState>
+        const merged = { ...current, ...p } as ModelState
+        if (merged.params && !merged.params.it) {
+          merged.params = { ...merged.params, it: defaults().params.it }
+        }
+        return merged
+      },
       partialize: (s) => ({
         params: s.params, matrix: s.matrix, items: s.items,
         services: s.services, labor: s.labor, scenario: s.scenario,

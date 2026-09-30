@@ -210,6 +210,28 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
       tip: 'Сумма постоянных статей с индексацией на инфляцию.',
       hint: (ci) => ({ title: 'Итого постоянные', calc: `Σ постоянных = ${e0(O[ci].fixedTotal)}` }),
     },
+    ...(params.it.enabled
+      ? [
+          { label: 'IT / АСУ (кастомный слой)', values: [], section: true },
+          ...params.it.opex.map((x, i) => ({
+            label: x.name,
+            values: O.map((m) => m.it[i]?.amount ?? 0),
+            hint: (ci: number): CellHint => ({
+              title: x.name,
+              text: 'Подписка/инфраструктура кастомного цифрового слоя — помесячно, с индексацией на инфляцию.',
+              calc: `${e0(x.base)}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(O[ci].it[i]?.amount ?? 0)}`,
+            }),
+          })),
+          {
+            label: 'Итого IT', values: O.map((m) => m.itTotal), bold: true,
+            hint: (ci: number): CellHint => ({
+              title: 'Итого IT',
+              text: `IT-куратор (${e0(params.it.curator)}/мес оклад) сидит в ФОТ, не здесь. Внедрение — в CAPEX.`,
+              calc: `Σ IT-статей = ${e0(O[ci].itTotal)}`,
+            }),
+          },
+        ]
+      : []),
     { label: 'ПЕРЕМЕННЫЕ (номенклатура)', values: [], section: true },
     ...O[0].variable.map((v) => ({
       label: v.article,
@@ -227,7 +249,7 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
       label: 'ИТОГО OPEX', values: O.map((m) => m.total), bold: true,
       hint: (ci) => ({
         title: 'Итого OPEX',
-        calc: `${e0(O[ci].fixedTotal)} пост. + ${e0(O[ci].variableTotal)} перем. + ${e0(O[ci].pctTotal)} % = ${e0(O[ci].total)}`,
+        calc: `${e0(O[ci].fixedTotal)} пост. + ${e0(O[ci].itTotal)} IT + ${e0(O[ci].variableTotal)} перем. + ${e0(O[ci].pctTotal)} % = ${e0(O[ci].total)}`,
       }),
     },
   ]
@@ -240,11 +262,12 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
   const R = r.revenue
   const inflAt = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
   const baseSalaries = params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0)
+    + (params.it.enabled ? params.it.curator : 0)
   const kpi = params.kpi
   const rows: RowDef[] = [
     {
       label: 'Оклады (фикс.)', values: F.map((m) => m.salaries),
-      tip: 'Фонд окладов штата, индексируется на инфляцию ежегодно.',
+      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}, индексируется на инфляцию ежегодно.`,
       hint: (ci) => ({
         title: 'Оклады',
         calc: `${e0(baseSalaries)}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
@@ -487,7 +510,7 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'Постоянные расходы', values: P.map((m) => m.fixedOpex),
-      hint: arith('Постоянные', 'Фиксированные месячные статьи с инфляцией.', (ci) => `Σ постоянных = ${e0(P[ci].fixedOpex)}`),
+      hint: arith('Постоянные', 'Фиксированные месячные статьи + IT/АСУ, с инфляцией.', (ci) => `Σ постоянных + IT = ${e0(P[ci].fixedOpex)}`),
     },
     {
       label: 'ФОТ + взносы', values: P.map((m) => m.fot),

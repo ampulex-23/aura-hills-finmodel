@@ -4,7 +4,8 @@ import type { FotMonth, Params, RevenueMonth } from './types'
 export function computeFotMonth(params: Params, rev: RevenueMonth, k: number): FotMonth {
   const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
   const salaries =
-    params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) * infl
+    (params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
+      (params.it.enabled ? params.it.curator : 0)) * infl
   const bonuses =
     rev.steamTotal * params.kpi.steamShare +
     rev.massageTotal * params.kpi.massageShare +

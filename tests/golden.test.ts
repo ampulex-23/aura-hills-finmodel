@@ -6,6 +6,9 @@ import type { NomenclatureItem, Params, ScenarioMatrix } from '../src/model/type
 import { runModel } from '../src/model/run'
 
 const params = paramsJson as Params
+// IT/АСУ-блок — новый слой модели, его нет в Excel-оракуле: выключаем,
+// чтобы golden-master продолжал сверять порт ядра 1:1.
+params.it.enabled = false
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 
