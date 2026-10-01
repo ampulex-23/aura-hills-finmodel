@@ -74,6 +74,18 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 }
 .month-table tr.spec-item td.spec-leaf.last::before { bottom: 50%; }
 .month-table tr.spec-item .num input { width: 64px; }
+/* Текстовые редактируемые ячейки — тот же вид, что у .num, но слева */
+.month-table .tcell input {
+  font-size: 12px; color: #e8ecf3; background: #101826;
+  border: 1px solid #2a3548; border-radius: 4px;
+  padding: 2px 6px; min-height: 24px; height: 24px;
+}
+.month-table .tcell input:hover { border-color: #3d4d68; }
+.month-table .tcell input:focus { border-color: #5b8dd9; background: #141e30; }
+/* Мелкие селекты/автокомплиты в гридах — компактная высота */
+.month-table .mantine-Select-input, .month-table .mantine-Autocomplete-input {
+  min-height: 24px; height: 24px; font-size: 12px;
+}
 /* Строка добавления в состав спецификации */
 .month-table tr.spec-add td { background: rgba(91,141,217,.05); border-top: 1px dashed #2a3548; }
 /* Формы CRUD в модалках */

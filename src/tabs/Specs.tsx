@@ -4,7 +4,7 @@ import {
   NumberInput, Select, TextInput, Tooltip,
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
-import { NumField, fmt } from '../components/ui'
+import { NumField, TextCell, fmt } from '../components/ui'
 import { costAllServices } from '../model/spec'
 import { landedCost } from '../model/opex'
 import type { SpecItem } from '../model/types'
@@ -13,7 +13,7 @@ import type { SpecItem } from '../model/types'
 export function Specs() {
   const {
     items, services, labor, setServicePrice, setSpecQty, setLaborRate,
-    addService, removeService, addSpecEntry, removeSpecEntry,
+    addService, removeService, updateService, addSpecEntry, removeSpecEntry,
     addLaborRole, removeLaborRole, renameLaborRole,
   } = useModel()
   const byCode = useMemo(() => new Map(items.map((i) => [i.code, i])), [items])
@@ -84,11 +84,7 @@ export function Specs() {
             {labor.map((l, li) => (
               <tr key={li}>
                 <td className="sticky">
-                  <TextInput
-                    size="xs" variant="unstyled" w={180}
-                    value={l.role}
-                    onChange={(e) => renameLaborRole(l.role, e.currentTarget.value)}
-                  />
+                  <TextCell w={180} value={l.role} onChange={(v) => renameLaborRole(l.role, v)} />
                 </td>
                 <td><NumField value={l.rateHour} onChange={(v) => setLaborRate(l.role, v)} step={0.5} /></td>
                 <td className="lft"><small>{l.note}</small></td>
@@ -128,8 +124,12 @@ export function Specs() {
                   <Fragment key={c.spec.code}>
                     <tr className="spec-head" onClick={() => toggle(c.spec.code)}>
                       <td className="sticky">
-                        <span className="spec-caret">{expanded.has(c.spec.code) ? '▾' : '▸'}</span>
-                        {c.spec.name}
+                        <Group gap={4} wrap="nowrap">
+                          <span className="spec-caret">{expanded.has(c.spec.code) ? '▾' : '▸'}</span>
+                          <span onClick={(e) => e.stopPropagation()} style={{ flex: 1 }}>
+                            <TextCell w="100%" value={c.spec.name} onChange={(v) => updateService(c.spec.code, { name: v })} />
+                          </span>
+                        </Group>
                       </td>
                       <td onClick={(e) => e.stopPropagation()}>
                         <NumField value={c.spec.price} onChange={(v) => setServicePrice(c.spec.code, v)} step={5} />

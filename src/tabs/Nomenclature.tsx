@@ -4,7 +4,7 @@ import {
   Select, TextInput, Tooltip,
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
-import { NumField, fmt } from '../components/ui'
+import { NumField, TextCell, fmt } from '../components/ui'
 import { landedCost } from '../model/opex'
 import type { NomenclatureItem } from '../model/types'
 
@@ -133,9 +133,23 @@ export function Nomenclature() {
                   ? arr.map(({ item: it, index: i }) => (
                       <tr key={it.code}>
                         <td className="sticky">{it.code}</td>
-                        <td className="lft">{it.name}</td>
-                        <td>{it.type}</td>
-                        <td>{it.unit}</td>
+                        <td className="lft">
+                          <TextCell w={260} value={it.name} onChange={(v) => setItem(i, { name: v })} />
+                        </td>
+                        <td>
+                          <Autocomplete
+                            size="xs" w={120} data={types}
+                            filter={({ options }) => options}
+                            value={it.type} onChange={(v) => setItem(i, { type: v })}
+                          />
+                        </td>
+                        <td>
+                          <Autocomplete
+                            size="xs" w={64} data={units}
+                            filter={({ options }) => options}
+                            value={it.unit} onChange={(v) => setItem(i, { unit: v || 'шт' })}
+                          />
+                        </td>
                         <td><NumField value={it.price} onChange={(v) => setItem(i, { price: v })} /></td>
                         <td><NumField value={it.deliveryFix} onChange={(v) => setItem(i, { deliveryFix: v })} /></td>
                         <td><NumField value={it.deliveryPct} onChange={(v) => setItem(i, { deliveryPct: v })} pct /></td>
@@ -149,9 +163,23 @@ export function Nomenclature() {
                             allowDeselect={false}
                           />
                         </td>
-                        <td className="lft">{it.opexArticle ?? '—'}</td>
+                        <td className="lft">
+                          <Autocomplete
+                            size="xs" w={170} data={articles}
+                            filter={({ options }) => options}
+                            placeholder="—"
+                            value={it.opexArticle ?? ''} onChange={(v) => setItem(i, { opexArticle: v || null })}
+                          />
+                        </td>
                         <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} /></td>
-                        <td>{it.normBase ?? '—'}</td>
+                        <td>
+                          <Select
+                            size="xs" w={76}
+                            data={['слот', 'гость', 'мес']}
+                            value={it.normBase} placeholder="—" clearable
+                            onChange={(v) => setItem(i, { normBase: v as NomenclatureItem['normBase'] })}
+                          />
+                        </td>
                         <td><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></td>
                         <td>
                           <Group gap={2} wrap="nowrap">

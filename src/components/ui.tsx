@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { HoverCard, NumberInput } from '@mantine/core'
+import { HoverCard, NumberInput, TextInput } from '@mantine/core'
 import katex from 'katex'
 import 'katex/dist/katex.min.css'
 
@@ -7,6 +7,28 @@ export const fmt = (v: number, digits = 0) =>
   isFinite(v) ? v.toLocaleString('ru-RU', { maximumFractionDigits: digits }) : '—'
 export const fmtEur = (v: number) => `€${fmt(v)}`
 export const fmtPct = (v: number, digits = 0) => `${(v * 100).toFixed(digits)}%`
+
+// Редактируемое текстовое поле в гриде: видимый бордер + hover/focus-подсветка
+// (класс .tcell в index.css) — сразу считывается как «кликни и правь».
+export function TextCell({
+  value, onChange, w, placeholder,
+}: {
+  value: string
+  onChange: (v: string) => void
+  w?: number | string
+  placeholder?: string
+}) {
+  return (
+    <TextInput
+      className="tcell"
+      size="xs"
+      w={w}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.currentTarget.value)}
+    />
+  )
+}
 
 // Редактируемое числовое поле: value — текущее, onChange получает число.
 export function NumField({
