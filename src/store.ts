@@ -57,6 +57,7 @@ interface ModelState {
   removeSpecEntry: (serviceCode: string, itemIdx: number) => void
   addLaborRole: (role: LaborRole) => void
   removeLaborRole: (role: string) => void
+  renameLaborRole: (oldRole: string, newRole: string) => void
   resetAll: () => void
   exportJson: () => string
   importJson: (json: string) => void
@@ -151,6 +152,15 @@ export const useModel = create<ModelState>()(
         }),
       addLaborRole: (role) => set({ labor: [...get().labor, role] }),
       removeLaborRole: (role) => set({ labor: get().labor.filter((l) => l.role !== role) }),
+      // Переименование роли протягиваем в составы спецификаций — там ссылки по имени
+      renameLaborRole: (oldRole, newRole) =>
+        set({
+          labor: get().labor.map((l) => (l.role === oldRole ? { ...l, role: newRole } : l)),
+          services: get().services.map((s) => ({
+            ...s,
+            items: s.items.map((e) => (e.kind === 'labor' && e.role === oldRole ? { ...e, role: newRole } : e)),
+          })),
+        }),
       resetAll: () => set({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }),
       exportJson: () =>
         JSON.stringify(

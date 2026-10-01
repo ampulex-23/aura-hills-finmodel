@@ -14,7 +14,7 @@ export function Specs() {
   const {
     items, services, labor, setServicePrice, setSpecQty, setLaborRate,
     addService, removeService, addSpecEntry, removeSpecEntry,
-    addLaborRole, removeLaborRole,
+    addLaborRole, removeLaborRole, renameLaborRole,
   } = useModel()
   const byCode = useMemo(() => new Map(items.map((i) => [i.code, i])), [items])
   const costs = useMemo(() => costAllServices(services, items, labor), [services, items, labor])
@@ -83,7 +83,13 @@ export function Specs() {
           <tbody>
             {labor.map((l) => (
               <tr key={l.role}>
-                <td className="sticky">{l.role}</td>
+                <td className="sticky">
+                  <TextInput
+                    size="xs" variant="unstyled" w={180}
+                    value={l.role}
+                    onChange={(e) => renameLaborRole(l.role, e.currentTarget.value)}
+                  />
+                </td>
                 <td><NumField value={l.rateHour} onChange={(v) => setLaborRate(l.role, v)} step={0.5} /></td>
                 <td className="lft"><small>{l.note}</small></td>
                 <td>
