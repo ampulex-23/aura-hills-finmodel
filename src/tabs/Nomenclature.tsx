@@ -156,7 +156,7 @@ export function Nomenclature() {
                         <td><b>{fmt(landedCost(it), 2)}</b></td>
                         <td>
                           <Select
-                            size="xs" w={96}
+                            size="xs" w={111}
                             data={['OPEX', 'CAPEX', 'Спецификация']}
                             value={it.use}
                             onChange={(v) => v && setItem(i, { use: v })}
