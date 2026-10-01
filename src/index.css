@@ -51,7 +51,8 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 }
 .month-table.sens td { text-align: center; }
 .month-table td.neg { color: #e07a7a; }
-.month-table.spec th { text-align: left; }
+.month-table.spec th { text-align: right; }
+.month-table.spec th.sticky { text-align: left; }
 .month-table.spec td.sticky, .month-table.spec th.sticky { min-width: 0; }
 .month-table tr.spec-head { cursor: pointer; }
 .month-table tr.spec-head:hover td { background: rgba(110,140,190,.08); }
