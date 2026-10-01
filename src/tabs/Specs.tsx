@@ -246,9 +246,10 @@ export function Specs() {
       <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Новая услуга" size="md" centered>
         <div className="crud-form">
           <Group grow>
-            <TextInput label="Код" value={draft.code} onChange={(e) => setDraft((d) => ({ ...d, code: e.currentTarget.value }))} />
+            <TextInput label="Код (авто)" value={draft.code} readOnly />
             <Autocomplete
               label="Направление" data={directions}
+              filter={({ options }) => options}
               value={draft.direction} onChange={(v) => setDraft((d) => ({ ...d, direction: v }))}
             />
           </Group>

@@ -70,18 +70,15 @@ const defaults = () => ({
   labor: servicesJson.labor as LaborRole[],
 })
 
-// Следующий свободный код вида «NC-123» / «SVC-07»: инкремент числового хвоста.
-export function nextCode(code: string, existing: string[]): string {
-  const m = code.match(/^(.*?)(\d+)$/)
-  const prefix = m ? m[1] : `${code}-`
-  let n = m ? Number(m[2]) : 0
-  const taken = new Set(existing)
-  let cand: string
-  do {
-    n += 1
-    cand = `${prefix}${String(n).padStart(m ? m[2].length : 3, '0')}`
-  } while (taken.has(cand))
-  return cand
+// Следующий свободный код: максимум числового хвоста среди кодов с тем же префиксом + 1.
+export function nextCode(prefix: string, existing: string[]): string {
+  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)$`)
+  let max = 0
+  for (const c of existing) {
+    const m = c.match(re)
+    if (m) max = Math.max(max, Number(m[1]))
+  }
+  return `${prefix}${String(max + 1).padStart(3, '0')}`
 }
 
 // setParam('general.wacc', 0.12) — точечное обновление по пути
@@ -131,7 +128,8 @@ export const useModel = create<ModelState>()(
       duplicateItem: (code) => {
         const src = get().items.find((i) => i.code === code)
         if (!src) return
-        set({ items: [...get().items, { ...src, code: nextCode(code, get().items.map((i) => i.code)), name: `${src.name} (копия)` }] })
+        const prefix = src.code.replace(/\d+$/, '') || 'NC-'
+        set({ items: [...get().items, { ...src, code: nextCode(prefix, get().items.map((i) => i.code)), name: `${src.name} (копия)` }] })
       },
       addService: (service) => set({ services: [...get().services, service] }),
       removeService: (code) => set({ services: get().services.filter((s) => s.code !== code) }),

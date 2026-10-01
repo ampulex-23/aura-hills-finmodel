@@ -182,13 +182,17 @@ export function Nomenclature() {
         {draft && (
           <div className="crud-form">
             <Group grow>
-              <TextInput label="Код" value={draft.code} onChange={(e) => setD({ code: e.currentTarget.value })} />
-              <Autocomplete label="Категория" data={categories} value={draft.category} onChange={(v) => setD({ category: v || 'Прочее' })} />
+              <TextInput label="Код (авто)" value={draft.code} readOnly />
+              <Autocomplete
+                label="Категория" data={categories}
+                filter={({ options }) => options}
+                value={draft.category} onChange={(v) => setD({ category: v || 'Прочее' })}
+              />
             </Group>
             <TextInput label="Наименование" required value={draft.name} onChange={(e) => setD({ name: e.currentTarget.value })} />
             <Group grow>
               <Select label="Тип" data={types} value={draft.type} onChange={(v) => v && setD({ type: v })} allowDeselect={false} />
-              <Autocomplete label="Единица" data={units} value={draft.unit} onChange={(v) => setD({ unit: v || 'шт' })} />
+              <Autocomplete label="Единица" data={units} filter={({ options }) => options} value={draft.unit} onChange={(v) => setD({ unit: v || 'шт' })} />
               <Select label="Учёт" data={['OPEX', 'CAPEX', 'Спецификация']} value={draft.use} onChange={(v) => v && setD({ use: v })} allowDeselect={false} />
             </Group>
             <Group grow>
@@ -197,7 +201,7 @@ export function Nomenclature() {
               <NumberInput label="Доставка %" value={draft.deliveryPct * 100} min={0} suffix="%" decimalScale={1} onChange={(v) => setD({ deliveryPct: (Number(v) || 0) / 100 })} />
             </Group>
             <Group grow>
-              <Autocomplete label="Статья OPEX" data={articles} value={draft.opexArticle ?? ''} onChange={(v) => setD({ opexArticle: v || null })} />
+              <Autocomplete label="Статья OPEX" data={articles} filter={({ options }) => options} value={draft.opexArticle ?? ''} onChange={(v) => setD({ opexArticle: v || null })} />
               <NumberInput label="Норма расхода" value={draft.norm} min={0} decimalScale={3} onChange={(v) => setD({ norm: Number(v) || 0 })} />
               <Select label="База нормы" data={['слот', 'гость', 'мес']} value={draft.normBase} onChange={(v) => setD({ normBase: (v as NomenclatureItem['normBase']) ?? null })} />
             </Group>
