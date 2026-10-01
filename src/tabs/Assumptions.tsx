@@ -103,7 +103,7 @@ export function Assumptions() {
             <thead>
               <tr>
                 <th>Модуль</th><th>Статус</th><th>Ввод с</th><th>Uptime</th>
-                <th>Слотов/д</th><th>Мест</th>
+                <th>Слотов/д</th><th>Мест</th><th>Коэфф. загр.</th>
                 <th>Утро €</th><th>День 1 €</th><th>День 2 €</th><th>Вечер €</th>
                 <th>Ср.-взв. €</th>
               </tr>
@@ -129,6 +129,7 @@ export function Assumptions() {
                     <td><NumField value={m.uptime} onChange={(v) => setParam(`modules.${i}.uptime`, v)} pct step={0.01} /></td>
                     <td><NumField value={m.slotsPerDay} onChange={(v) => setParam(`modules.${i}.slotsPerDay`, v)} step={1} /></td>
                     <td><NumField value={m.capacity} onChange={(v) => setParam(`modules.${i}.capacity`, v)} step={1} /></td>
+                    <td><NumField value={m.loadK} onChange={(v) => setParam(`modules.${i}.loadK`, v)} pct step={0.05} /></td>
                     {m.prices.map((p, j) => (
                       <td key={j}>
                         <NumField value={p} onChange={(v) => setParam(`modules.${i}.prices.${j}`, v)} step={25} />
@@ -154,9 +155,9 @@ export function Assumptions() {
           </small>
         </div>
         <p className="note" style={{ marginTop: 6 }}>
-          Эфф. слотов/мес = 30 × слотов/день × uptime × загрузка сценария.
+          Эфф. слотов/мес = 30 × слотов/день × uptime × коэфф. загр. модуля × загрузка сценария.
+          «Коэфф. загр.» — помодульный множитель заполняемости (1.0 = общая загрузка; опустите крупный модуль до 0.8–0.9, если он продаётся хуже).
           Доля доп.услуг задаётся сценарно (uptake) + глобально долей кошелька — помодульного % не было и в Excel.
-          Поле «loadK» в данных есть, но ни Excel, ни ядро его не используют — не показано.
         </p>
       </fieldset>
     </div>

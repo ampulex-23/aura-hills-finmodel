@@ -209,7 +209,7 @@
       "status": "Активен",
       "launchDate": "2028-01-01",
       "uptime": 1,
-      "loadK": 0.35,
+      "loadK": 1,
       "slotsPerDay": 4,
       "capacity": 4,
       "prices": [
@@ -225,7 +225,7 @@
       "status": "Активен",
       "launchDate": "2028-01-01",
       "uptime": 1,
-      "loadK": 0.35,
+      "loadK": 1,
       "slotsPerDay": 4,
       "capacity": 8,
       "prices": [
@@ -241,7 +241,7 @@
       "status": "Активен",
       "launchDate": "2028-01-01",
       "uptime": 1,
-      "loadK": 0.35,
+      "loadK": 1,
       "slotsPerDay": 4,
       "capacity": 12,
       "prices": [
@@ -257,7 +257,7 @@
       "status": "В резерве",
       "launchDate": "2029-01-01",
       "uptime": 1,
-      "loadK": 0,
+      "loadK": 1,
       "slotsPerDay": 4,
       "capacity": 6,
       "prices": [
@@ -273,7 +273,7 @@
       "status": "В резерве",
       "launchDate": "2029-01-01",
       "uptime": 1,
-      "loadK": 0,
+      "loadK": 1,
       "slotsPerDay": 4,
       "capacity": 6,
       "prices": [
@@ -289,7 +289,7 @@
       "status": "В резерве",
       "launchDate": "2029-01-01",
       "uptime": 1,
-      "loadK": 0,
+      "loadK": 1,
       "slotsPerDay": 4,
       "capacity": 6,
       "prices": [

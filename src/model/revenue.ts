@@ -36,7 +36,7 @@ export function computeRevenueMonth(
   const slotCounts = params.slotMix.map(() => 0)
   for (const m of params.modules) {
     if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) continue
-    const s = 30 * m.slotsPerDay * m.uptime * bathsLoad
+    const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad
     slots += s
     guests += s * m.capacity
     const avgPrice = m.prices.reduce((acc, p, j) => acc + p * params.slotMix[j], 0)
