@@ -51,6 +51,9 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 }
 .month-table.sens td { text-align: center; }
 .month-table td.neg { color: #e07a7a; }
+.month-table tr.spec-head { cursor: pointer; }
+.month-table tr.spec-head:hover td { background: rgba(110,140,190,.08); }
+.month-table .spec-caret { display: inline-block; width: 14px; color: #7f93b8; font-size: 11px; }
 .month-table tr.spec-item td { color: #7f93b8; border-bottom-style: dotted; }
 .month-table tr.spec-item .num input { width: 64px; }
 

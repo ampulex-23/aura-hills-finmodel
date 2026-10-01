@@ -1,4 +1,4 @@
-import { Fragment, useMemo } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { Badge } from '@mantine/core'
 import { useModel } from '../store'
 import { NumField, fmt } from '../components/ui'
@@ -10,6 +10,14 @@ export function Specs() {
   const { items, services, labor, setServicePrice, setSpecQty, setLaborRate } = useModel()
   const byCode = useMemo(() => new Map(items.map((i) => [i.code, i])), [items])
   const costs = useMemo(() => costAllServices(services, items, labor), [services, items, labor])
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggle = (code: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      if (next.has(code)) next.delete(code)
+      else next.add(code)
+      return next
+    })
 
   const directions = [...new Set(services.map((s) => s.direction))]
 
@@ -48,9 +56,12 @@ export function Specs() {
               <tbody>
                 {costs.filter((c) => c.spec.direction === dir).map((c) => (
                   <Fragment key={c.spec.code}>
-                    <tr>
-                      <td className="sticky">{c.spec.name}</td>
-                      <td>
+                    <tr className="spec-head" onClick={() => toggle(c.spec.code)}>
+                      <td className="sticky">
+                        <span className="spec-caret">{expanded.has(c.spec.code) ? '▾' : '▸'}</span>
+                        {c.spec.name}
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
                         <NumField value={c.spec.price} onChange={(v) => setServicePrice(c.spec.code, v)} step={5} />
                       </td>
                       <td>{fmt(c.materialsCost, 2)}</td>
@@ -66,7 +77,7 @@ export function Specs() {
                         </Badge>
                       </td>
                     </tr>
-                    {c.spec.items.map((it, ii) => (
+                    {expanded.has(c.spec.code) && c.spec.items.map((it, ii) => (
                       <tr key={`${c.spec.code}-${ii}`} className="spec-item">
                         <td className="sticky lft">
                           <small>
