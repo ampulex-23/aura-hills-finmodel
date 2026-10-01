@@ -8,6 +8,11 @@ import { fmt, fmtEur, fmtPct, Hint } from '../components/ui'
 import type { CellHint } from '../components/ui'
 
 const COLORS = ['#5b8dd9', '#9c6ade', '#4cc38a', '#f5a623', '#e5534b', '#50c8d8', '#d8b356']
+const tooltipStyle = {
+  contentStyle: { background: '#1b2432', border: '1px solid #32415c', borderRadius: 8, fontSize: 12.5 },
+  labelStyle: { color: '#aab6c8', fontWeight: 600 },
+  itemStyle: { color: '#e8ecf1', padding: 0 },
+} as const
 
 export function Dashboard({ r }: { r: ModelResult }) {
   const revenueByStream = useMemo(
@@ -101,7 +106,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a3548" />
             <XAxis dataKey="m" interval={5} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={(v: number) => fmt(v)} />
+            <Tooltip formatter={(v: number) => fmt(v)} {...tooltipStyle} />
             <Legend />
             {['Аренда', 'Парения', 'Массаж', 'Доп.услуги', 'Глэмпинг', 'Членства', 'F&B'].map(
               (s, i) => (
@@ -119,7 +124,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a3548" />
             <XAxis dataKey="m" interval={5} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1e6).toFixed(1)}M`} />
-            <Tooltip formatter={(v: number) => fmt(v)} />
+            <Tooltip formatter={(v: number) => fmt(v)} {...tooltipStyle} />
             <Legend />
             <Line dataKey="FCFF" stroke="#5b8dd9" dot={false} />
             <Line dataKey="Накопл. FCFF" stroke="#4cc38a" dot={false} strokeWidth={2} />
@@ -137,7 +142,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
             <CartesianGrid strokeDasharray="3 3" stroke="#2a3548" />
             <XAxis dataKey="m" interval={5} tick={{ fontSize: 11 }} />
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-            <Tooltip formatter={(v: number) => fmt(v)} />
+            <Tooltip formatter={(v: number) => fmt(v)} {...tooltipStyle} />
             <Legend />
             <Bar dataKey="EBITDA" fill="#5b8dd9" />
             <Bar dataKey="Чистая прибыль" fill="#4cc38a" />
