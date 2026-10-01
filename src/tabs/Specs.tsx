@@ -36,13 +36,19 @@ export function Specs() {
     })
 
   const directions = [...new Set(services.map((s) => s.direction))]
+  // Коды услуг разбиты по направлениям (SVC-P# парения, SVC-M# массаж…) —
+  // префикс новой услуги наследуем от первой услуги того же направления.
+  const dirPrefix = (dir: string) =>
+    services.find((x) => x.direction === dir)?.code.replace(/\d+$/, '') ?? 'SVC-'
+  const codeFor = (dir: string) => nextCode(dirPrefix(dir), services.map((s) => s.code))
   const materialOptions = items
     .filter((i) => i.use === 'Спецификация' || i.use === 'OPEX')
     .map((i) => ({ value: i.code, label: `${i.code} — ${i.name}` }))
   const roleOptions = labor.map((l) => ({ value: l.role, label: `${l.role} (€${fmt(l.rateHour)}/ч)` }))
 
   const openAdd = () => {
-    setDraft({ code: nextCode('SVC-', services.map((s) => s.code)), direction: 'Доп. услуги', name: '', price: 0 })
+    const direction = 'Доп. услуги'
+    setDraft({ code: codeFor(direction), direction, name: '', price: 0 })
     setAddOpen(true)
   }
   const saveService = () => {
@@ -250,7 +256,7 @@ export function Specs() {
             <Autocomplete
               label="Направление" data={directions}
               filter={({ options }) => options}
-              value={draft.direction} onChange={(v) => setDraft((d) => ({ ...d, direction: v }))}
+              value={draft.direction} onChange={(v) => setDraft((d) => ({ ...d, direction: v, code: codeFor(v || 'Доп. услуги') }))}
             />
           </Group>
           <TextInput
