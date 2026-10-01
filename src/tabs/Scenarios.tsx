@@ -46,10 +46,6 @@ export function Scenarios() {
               {(['y1','y2','y3','y4','y5'] as const).map((y, i) => (
                 <Row key={y} label={`Бани — Год ${i + 1}`} path={`baths.${y}`} pct />
               ))}
-              <Row label="Парения — Год 1" path="steam.y1" pct />
-              <Row label="Парения — Год 3+" path="steam.y3" pct />
-              <Row label="Массаж — Год 1" path="massage.y1" pct />
-              <Row label="Массаж — Год 3+" path="massage.y3" pct />
               <Row label="Глэмпинг — Год 1" path="glamping.y1" pct />
               <Row label="Глэмпинг — Год 3+" path="glamping.y3" pct />
               <Row label="Месячные членства — Год 1" path="membersMonth.y1" />
@@ -74,8 +70,11 @@ export function Scenarios() {
         </div>
       </div>
       <p className="note">
-        Промежуточные годы интерполируются: y2 = y1 + (y3 − y1) × 20/35 (банные услуги),
-        × 15/25 (глэмпинг), × 30/70 с округлением (членства). Доп.услуги = парения − 25 п.п.
+        Промежуточные годы интерполируются: y2 = y1 + (y3 − y1) × 20/35 (бани),
+        × 15/25 (глэмпинг), × 30/70 с округлением (членства).
+        Загрузки услуг намеренно не выведены: в пакетной модели услуги едут в депозит-кошельке
+        (€110 = парение €50 + массаж €60 + 20% допы) и масштабируются загрузкой бань —
+        отдельные ручки ничего не меняли бы.
         Текущий сценарий «{scenario}»: рост цен {fmtPct(matrix.priceGrowth[matrix.names.indexOf(scenario)])},
         буфер CAPEX {fmtPct(matrix.capexAdj[matrix.names.indexOf(scenario)])}.
       </p>
