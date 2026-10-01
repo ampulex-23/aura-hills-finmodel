@@ -1,12 +1,36 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import paramsJson from './data/params.json'
 import scenariosJson from './data/scenarios.json'
 import nomenclatureJson from './data/nomenclature.json'
 import servicesJson from './data/services.json'
 import type {
-  LaborRole, NomenclatureItem, Params, ScenarioMatrix, ServiceSpec,
+  LaborRole, NomenclatureItem, Params, ScenarioMatrix, ServiceSpec, SpecItem,
 } from './model/types'
+
+// Запись в localStorage с debounce: NumField дёргает set() на каждый ввод,
+// а сериализация всего стейта на keystroke даёт микролаги — пишем раз в 400мс.
+const debouncedLocalStorage = (() => {
+  let timer: ReturnType<typeof setTimeout> | null = null
+  const pending = new Map<string, string>()
+  const flush = () => {
+    pending.forEach((v, k) => localStorage.setItem(k, v))
+    pending.clear()
+    timer = null
+  }
+  return {
+    getItem: (k: string) => pending.get(k) ?? localStorage.getItem(k),
+    setItem: (k: string, v: string) => {
+      pending.set(k, v)
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(flush, 400)
+    },
+    removeItem: (k: string) => {
+      pending.delete(k)
+      localStorage.removeItem(k)
+    },
+  }
+})()
 
 interface ModelState {
   params: Params
@@ -22,6 +46,17 @@ interface ModelState {
   setServicePrice: (code: string, price: number) => void
   setSpecQty: (serviceCode: string, itemIdx: number, qty: number) => void
   setLaborRate: (role: string, rateHour: number) => void
+  // CRUD по справочникам
+  addItem: (item: NomenclatureItem) => void
+  removeItem: (code: string) => void
+  duplicateItem: (code: string) => void
+  addService: (service: ServiceSpec) => void
+  removeService: (code: string) => void
+  updateService: (code: string, patch: Partial<ServiceSpec>) => void
+  addSpecEntry: (serviceCode: string, entry: SpecItem) => void
+  removeSpecEntry: (serviceCode: string, itemIdx: number) => void
+  addLaborRole: (role: LaborRole) => void
+  removeLaborRole: (role: string) => void
   resetAll: () => void
   exportJson: () => string
   importJson: (json: string) => void
@@ -34,6 +69,20 @@ const defaults = () => ({
   services: servicesJson.services as ServiceSpec[],
   labor: servicesJson.labor as LaborRole[],
 })
+
+// Следующий свободный код вида «NC-123» / «SVC-07»: инкремент числового хвоста.
+export function nextCode(code: string, existing: string[]): string {
+  const m = code.match(/^(.*?)(\d+)$/)
+  const prefix = m ? m[1] : `${code}-`
+  let n = m ? Number(m[2]) : 0
+  const taken = new Set(existing)
+  let cand: string
+  do {
+    n += 1
+    cand = `${prefix}${String(n).padStart(m ? m[2].length : 3, '0')}`
+  } while (taken.has(cand))
+  return cand
+}
 
 // setParam('general.wacc', 0.12) — точечное обновление по пути
 function deepSet<T>(obj: T, path: string, value: unknown): T {
@@ -77,6 +126,33 @@ export const useModel = create<ModelState>()(
         }),
       setLaborRate: (role, rateHour) =>
         set({ labor: get().labor.map((l) => (l.role === role ? { ...l, rateHour } : l)) }),
+      addItem: (item) => set({ items: [...get().items, item] }),
+      removeItem: (code) => set({ items: get().items.filter((i) => i.code !== code) }),
+      duplicateItem: (code) => {
+        const src = get().items.find((i) => i.code === code)
+        if (!src) return
+        set({ items: [...get().items, { ...src, code: nextCode(code, get().items.map((i) => i.code)), name: `${src.name} (копия)` }] })
+      },
+      addService: (service) => set({ services: [...get().services, service] }),
+      removeService: (code) => set({ services: get().services.filter((s) => s.code !== code) }),
+      updateService: (code, patch) =>
+        set({ services: get().services.map((s) => (s.code === code ? { ...s, ...patch } : s)) }),
+      addSpecEntry: (serviceCode, entry) =>
+        set({
+          services: get().services.map((s) =>
+            s.code === serviceCode ? { ...s, items: [...s.items, entry] } : s,
+          ),
+        }),
+      removeSpecEntry: (serviceCode, itemIdx) =>
+        set({
+          services: get().services.map((s) =>
+            s.code === serviceCode
+              ? { ...s, items: s.items.filter((_, i) => i !== itemIdx) }
+              : s,
+          ),
+        }),
+      addLaborRole: (role) => set({ labor: [...get().labor, role] }),
+      removeLaborRole: (role) => set({ labor: get().labor.filter((l) => l.role !== role) }),
       resetAll: () => set({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }),
       exportJson: () =>
         JSON.stringify(
@@ -101,6 +177,7 @@ export const useModel = create<ModelState>()(
     {
       name: 'aura-hills-model',
       version: 1,
+      storage: createJSONStorage(() => debouncedLocalStorage),
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>
         ({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }) as ModelState,

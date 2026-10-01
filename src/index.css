@@ -74,6 +74,10 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 }
 .month-table tr.spec-item td.spec-leaf.last::before { bottom: 50%; }
 .month-table tr.spec-item .num input { width: 64px; }
+/* Строка добавления в состав спецификации */
+.month-table tr.spec-add td { background: rgba(91,141,217,.05); border-top: 1px dashed #2a3548; }
+/* Формы CRUD в модалках */
+.crud-form { display: flex; flex-direction: column; gap: 10px; }
 /* Номенклатура: узкий код, заголовки слева, сворачиваемые категории */
 .month-table.nom th { text-align: left; }
 .month-table.nom td.sticky, .month-table.nom th.sticky { min-width: 0; width: 74px; }
