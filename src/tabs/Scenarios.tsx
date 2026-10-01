@@ -37,7 +37,7 @@ export function Scenarios() {
       <p className="note">
         Активный сценарий выбирается в шапке — сейчас «{scenario}».
       </p>
-      <div className="scen-cols">
+      <div className="cols-2">
         <div className="table-wrap">
           <table className="month-table scen">
             <Head />

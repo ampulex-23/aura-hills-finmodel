@@ -75,9 +75,10 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .month-table.nom td.sticky, .month-table.nom th.sticky { min-width: 0; width: 74px; }
 .month-table.nom tr.section td { cursor: pointer; user-select: none; }
 .month-table.nom tr.section:hover td { background: #1c2940; }
-/* Сценарии: два блока рядом, таблицы по содержимому, заголовки слева */
-.scen-cols { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-.scen-cols .table-wrap { flex: 1 1 420px; }
+/* Сценарии/CAPEX: два блока рядом, таблицы по содержимому, заголовки слева */
+.cols-2 { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.cols-2 .table-wrap { flex: 1 1 420px; }
+.cols-2 .table-wrap.narrow { flex: 0 1 340px; }
 .month-table.scen { min-width: 0; width: 100%; }
 .month-table.scen th { text-align: left; }
 .month-table.scen td.sticky, .month-table.scen th.sticky { min-width: 0; }
