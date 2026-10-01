@@ -17,7 +17,7 @@ const emptyItem = (code: string): NomenclatureItem => ({
 // Справочник номенклатуры — редактируемый грид, сгруппированный по категориям.
 export function Nomenclature() {
   const {
-    items, services, setItem, addItem, removeItem, duplicateItem,
+    items, services, setItem, addItem, removeItem,
   } = useModel()
   const [q, setQ] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -182,14 +182,9 @@ export function Nomenclature() {
                         </td>
                         <td><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></td>
                         <td>
-                          <Group gap={2} wrap="nowrap">
-                            <Tooltip label="Дублировать" openDelay={300}>
-                              <ActionIcon size="sm" variant="subtle" color="gray" onClick={() => duplicateItem(it.code)}>⧉</ActionIcon>
-                            </Tooltip>
-                            <Tooltip label="Удалить" openDelay={300}>
-                              <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk(it)}>✕</ActionIcon>
-                            </Tooltip>
-                          </Group>
+                          <Tooltip label="Удалить" openDelay={300}>
+                            <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk(it)}>✕</ActionIcon>
+                          </Tooltip>
                         </td>
                       </tr>
                     ))
