@@ -74,6 +74,22 @@ export function Dashboard({ r }: { r: ModelResult }) {
       },
     },
     {
+      label: 'MOIC', value: `×${k.moic.toFixed(2)}`,
+      hint: {
+        title: 'Мультипликатор вложенного капитала',
+        text: 'Сколько евро вернул проект на каждый вложенный: Σ положительных FCFF ÷ Σ вложений (стройка + убытки разгона). Без дисконтирования.',
+        calc: `Σ притоков ${fmtEur(r.cashflow.reduce((s, m) => s + Math.max(0, m.fcff), 0))} ÷ Σ вложений ${fmtEur(k.investedTotal)} = ×${k.moic.toFixed(2)}`,
+      },
+    },
+    {
+      label: 'Cash-on-cash (г.3)', value: fmtPct(k.cashOnCash),
+      hint: {
+        title: 'Денежная доходность',
+        text: 'Годовой FCFF устаканенного 3-го года эксплуатации к сумме вложенного капитала — сколько «живых» процентов годовых генерирует проект.',
+        calc: `FCFF г.3 ${fmtEur(r.cashflow.slice(r.cashflow.findIndex(m=>m.isOps)+24, r.cashflow.findIndex(m=>m.isOps)+36).reduce((s,m)=>s+m.fcff,0))} ÷ вложено ${fmtEur(k.investedTotal)} = ${fmtPct(k.cashOnCash)}`,
+      },
+    },
+    {
       label: 'Пиковая потребность', value: fmtEur(k.peakFundingNeed),
       hint: {
         title: 'Пиковая потребность в финансировании',

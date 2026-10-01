@@ -267,6 +267,12 @@ export interface Kpis {
   paybackMonths: number
   discountedPaybackMonths: number
   peakFundingNeed: number
+  /** MOIC = Σ положительных FCFF / Σ вложенного (отрицательного) FCFF */
+  moic: number
+  /** Cash-on-cash: годовой FCFF 3-го операционного года / вложенный капитал */
+  cashOnCash: number
+  /** Всего вложено (Σ отрицательных FCFF) */
+  investedTotal: number
 }
 
 export interface ModelResult {

@@ -26,5 +26,14 @@ export function computeKpis(params: Params, cashflow: CashFlowMonth[]): Kpis {
   const paybackMonths = cashflow.findIndex((m) => m.cumFcff > 0) + 1 || 0
   const discountedPaybackMonths = cashflow.findIndex((m) => m.cumDcf > 0) + 1 || 0
   const peakFundingNeed = Math.min(...cashflow.map((m) => m.cumFcff))
-  return { npv, irrMonthly, irrAnnual, paybackMonths, discountedPaybackMonths, peakFundingNeed }
+
+  // Вложено = всё, что утекло (стройка + убытки, за вычетом пресейла в стройке — он внутри fcff).
+  const investedTotal = fcff.filter((f) => f < 0).reduce((s, f) => s - f, 0)
+  const returnedTotal = fcff.filter((f) => f > 0).reduce((s, f) => s + f, 0)
+  const moic = investedTotal > 0 ? returnedTotal / investedTotal : NaN
+  // Устаканенный год — 3-й операционный (месяцы capexMonths+24 … +35).
+  const y3 = fcff.slice(params.meta.capexMonths + 24, params.meta.capexMonths + 36)
+  const cashOnCash = investedTotal > 0 ? y3.reduce((s, f) => s + f, 0) / investedTotal : NaN
+
+  return { npv, irrMonthly, irrAnnual, paybackMonths, discountedPaybackMonths, peakFundingNeed, moic, cashOnCash, investedTotal }
 }
