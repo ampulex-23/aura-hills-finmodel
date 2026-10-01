@@ -299,53 +299,63 @@ export function Capex({ r }: { r: ModelResult }) {
   const { params } = useModel()
   const { capex } = r
   const amortTex = String.raw`\mathrm{аморт}=\sum_{групп}\frac{\mathrm{CAPEX}\cdot\mathrm{доля}_{группы}}{\mathrm{срок}_{лет}\cdot 12}`
+  const half = Math.ceil(capex.items.length / 2)
+  const ItemRows = ({ rows }: { rows: typeof capex.items }) => (
+    <>
+      {rows.map((i) => (
+        <tr key={i.name}><td className="sticky">{i.name}</td><td>{fmt(i.eur)}</td></tr>
+      ))}
+    </>
+  )
+  const summaryRows = (
+    <>
+      <tr className="bold">
+        <td className="sticky">ИТОГО CAPEX</td>
+        <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций, включая наполнение из справочника номенклатуры (landed-цена × кол-во).' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
+      </tr>
+      <tr className="bold">
+        <td className="sticky">С буфером сценария</td>
+        <td>
+          <Hint hint={{
+            title: 'CAPEX с буфером',
+            text: 'Сценарная надбавка к стоимости строительства (риск удорожания).',
+            calc: `${e0(capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${e0(capex.adjustedEur)}`,
+          }}>
+            <span className="cellval">{fmt(capex.adjustedEur)}</span>
+          </Hint>
+        </td>
+      </tr>
+      <tr>
+        <td className="sticky">Амортизация, €/мес</td>
+        <td>
+          <Hint hint={{
+            title: 'Амортизация',
+            text: 'Линейная: для каждой группы CAPEX — сумма × доля группы ÷ (срок службы × 12 мес).',
+            tex: amortTex,
+            calc: params.amort.groups
+              .map((g, i) => `${g}: ${pc(params.amort.shares[i])} / ${params.amort.years[i]} лет`)
+              .join(' · ') + ` → ${e0(capex.monthlyAmort)}/мес`,
+          }}>
+            <span className="cellval">{fmt(capex.monthlyAmort)}</span>
+          </Hint>
+        </td>
+      </tr>
+    </>
+  )
   return (
     <div className="cols-2">
       <div className="table-wrap">
         <table className="month-table scen">
           <thead><tr><th className="sticky">Позиция</th><th>Сумма, €</th></tr></thead>
-          <tbody>
-            {capex.items.map((i) => (
-              <tr key={i.name}><td className="sticky">{i.name}</td><td>{fmt(i.eur)}</td></tr>
-            ))}
-            <tr className="bold">
-              <td className="sticky">ИТОГО CAPEX</td>
-              <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций, включая наполнение из справочника номенклатуры (landed-цена × кол-во).' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
-            </tr>
-          </tbody>
+          <tbody><ItemRows rows={capex.items.slice(0, half)} /></tbody>
         </table>
       </div>
-      <div className="table-wrap narrow">
+      <div className="table-wrap">
         <table className="month-table scen">
-          <thead><tr><th className="sticky">Сводка</th><th>€</th></tr></thead>
+          <thead><tr><th className="sticky">Позиция</th><th>Сумма, €</th></tr></thead>
           <tbody>
-            <tr className="bold">
-              <td className="sticky">CAPEX с буфером сценария</td>
-              <td>
-                <Hint hint={{
-                  title: 'CAPEX с буфером',
-                  text: 'Сценарная надбавка к стоимости строительства (риск удорожания).',
-                  calc: `${e0(capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${e0(capex.adjustedEur)}`,
-                }}>
-                  <span className="cellval">{fmt(capex.adjustedEur)}</span>
-                </Hint>
-              </td>
-            </tr>
-            <tr>
-              <td className="sticky">Амортизация, €/мес</td>
-              <td>
-                <Hint hint={{
-                  title: 'Амортизация',
-                  text: 'Линейная: для каждой группы CAPEX — сумма × доля группы ÷ (срок службы × 12 мес).',
-                  tex: amortTex,
-                  calc: params.amort.groups
-                    .map((g, i) => `${g}: ${pc(params.amort.shares[i])} / ${params.amort.years[i]} лет`)
-                    .join(' · ') + ` → ${e0(capex.monthlyAmort)}/мес`,
-                }}>
-                  <span className="cellval">{fmt(capex.monthlyAmort)}</span>
-                </Hint>
-              </td>
-            </tr>
+            <ItemRows rows={capex.items.slice(half)} />
+            {summaryRows}
           </tbody>
         </table>
       </div>
