@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Group, Select, Tabs, Text, Title } from '@mantine/core'
 import { useModel } from './store'
 import { runModel } from './model/run'
@@ -19,11 +19,33 @@ const REPORT_TABS = [
   'Дашборд', 'Выручка', 'OPEX', 'ФОТ', 'CAPEX', 'Налоги', 'P&L', 'Cash-Flow', 'Sensitivity',
 ] as const
 const TABS = [...INPUT_TABS, ...REPORT_TABS] as const
+type Tab = (typeof TABS)[number]
+
+// Hash-роутинг: #/dashboard … #/sensitivity — вкладка переживает F5, ссылки шарятся.
+const TAB_SLUGS: Record<Tab, string> = {
+  'Дашборд': 'dashboard', 'Допущения': 'assumptions', 'Сценарии': 'scenarios',
+  'Номенклатура': 'nomenclature', 'Спецификации': 'specs', 'IT': 'it',
+  'Выручка': 'revenue', 'OPEX': 'opex', 'ФОТ': 'fot', 'CAPEX': 'capex',
+  'Налоги': 'taxes', 'P&L': 'pnl', 'Cash-Flow': 'cashflow', 'Sensitivity': 'sensitivity',
+}
+const SLUG_TABS = new Map(Object.entries(TAB_SLUGS).map(([t, s]) => [s, t as Tab]))
+const tabFromHash = (): Tab | null => SLUG_TABS.get(location.hash.replace(/^#\//, '')) ?? null
 
 export default function App() {
   const { params, matrix, items, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
-  const [tab, setTab] = useState<(typeof TABS)[number]>('Дашборд')
+  const [tab, setTabState] = useState<Tab>(() => tabFromHash() ?? 'Дашборд')
   const fileRef = useRef<HTMLInputElement>(null)
+
+  const setTab = (t: Tab) => {
+    setTabState(t)
+    const hash = `#/${TAB_SLUGS[t]}`
+    if (location.hash !== hash) location.hash = hash
+  }
+  useEffect(() => {
+    const onHash = () => { const t = tabFromHash(); if (t) setTabState(t) }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const result = useMemo(
     () => runModel(params, matrix, items, scenario),
@@ -82,7 +104,7 @@ export default function App() {
 
       <Tabs
         value={tab}
-        onChange={(v) => v && setTab(v as (typeof TABS)[number])}
+        onChange={(v) => v && setTab(v as Tab)}
         variant="outline"
         className="tabs"
       >
