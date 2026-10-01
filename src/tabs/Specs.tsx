@@ -25,7 +25,7 @@ export function Specs() {
     <div>
       <h3>Ставки труда (заглушки до листа ФОТ)</h3>
       <div className="table-wrap">
-        <table className="month-table">
+        <table className="month-table spec">
           <thead>
             <tr><th className="sticky">Роль</th><th>€/час с взносами</th><th>Комментарий</th></tr>
           </thead>
@@ -45,7 +45,7 @@ export function Specs() {
         <div key={dir}>
           <h3>{dir}</h3>
           <div className="table-wrap">
-            <table className="month-table">
+            <table className="month-table spec">
               <thead>
                 <tr>
                   <th className="sticky">Услуга</th>
