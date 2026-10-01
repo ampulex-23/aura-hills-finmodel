@@ -27,7 +27,7 @@ export function Specs() {
       <div className="table-wrap">
         <table className="month-table spec">
           <thead>
-            <tr><th className="sticky">Роль</th><th>€/час с взносами</th><th>Комментарий</th></tr>
+            <tr><th className="sticky">Роль</th><th className="lft">€/час с взносами</th><th className="lft">Комментарий</th></tr>
           </thead>
           <tbody>
             {labor.map((l) => (
@@ -49,7 +49,7 @@ export function Specs() {
               <thead>
                 <tr>
                   <th className="sticky">Услуга</th>
-                  <th>Цена €</th><th>Материалы €</th><th>Труд €</th>
+                  <th className="lft">Цена €</th><th>Материалы €</th><th>Труд €</th>
                   <th>Себес €</th><th>Маржа €</th><th>Марж. %</th>
                 </tr>
               </thead>
