@@ -1,6 +1,6 @@
 import { Select, SegmentedControl } from '@mantine/core'
 import { useModel } from '../store'
-import { NumField } from '../components/ui'
+import { NumField, TextCell, fmt } from '../components/ui'
 
 // Форма «Допущения» — все входы модели, сгруппированные.
 export function Assumptions() {
@@ -96,20 +96,68 @@ export function Assumptions() {
         ))}
       </fieldset>
 
-      <fieldset>
+      <fieldset className="wide">
         <legend>Модули бань</legend>
-        {P.modules.map((m, i) => (
-          <div className="field pair" key={m.id}>
-            <span>Модуль {m.id} ({m.capacity} гостей)</span>
-            <SegmentedControl
-              size="xs"
-              data={['Активен', 'В резерве']}
-              value={m.status}
-              onChange={(v) => setParam(`modules.${i}.status`, v)}
-            />
-            <NumField value={m.slotsPerDay} onChange={(v) => setParam(`modules.${i}.slotsPerDay`, v)} step={1} />
-          </div>
-        ))}
+        <div className="table-wrap">
+          <table className="month-table spec">
+            <thead>
+              <tr>
+                <th>Модуль</th><th>Статус</th><th>Ввод с</th><th>Uptime</th>
+                <th>Слотов/д</th><th>Мест</th>
+                <th>Утро €</th><th>День 1 €</th><th>День 2 €</th><th>Вечер €</th>
+                <th>Ср.-взв. €</th>
+              </tr>
+            </thead>
+            <tbody>
+              {P.modules.map((m, i) => {
+                const avg = m.prices.reduce((s, p, j) => s + p * P.slotMix[j], 0)
+                return (
+                  <tr key={m.id}>
+                    <td className="lft"><b>№{m.id}</b> <small>({m.capacity} гостей)</small></td>
+                    <td>
+                      <SegmentedControl
+                        size="xs"
+                        data={['Активен', 'В резерве']}
+                        value={m.status}
+                        onChange={(v) => setParam(`modules.${i}.status`, v)}
+                      />
+                    </td>
+                    <td>
+                      <TextCell w={84} value={m.launchDate.slice(0, 7)} placeholder="ГГГГ-ММ"
+                        onChange={(v) => setParam(`modules.${i}.launchDate`, `${v}-01`)} />
+                    </td>
+                    <td><NumField value={m.uptime} onChange={(v) => setParam(`modules.${i}.uptime`, v)} pct step={0.01} /></td>
+                    <td><NumField value={m.slotsPerDay} onChange={(v) => setParam(`modules.${i}.slotsPerDay`, v)} step={1} /></td>
+                    <td><NumField value={m.capacity} onChange={(v) => setParam(`modules.${i}.capacity`, v)} step={1} /></td>
+                    {m.prices.map((p, j) => (
+                      <td key={j}>
+                        <NumField value={p} onChange={(v) => setParam(`modules.${i}.prices.${j}`, v)} step={25} />
+                      </td>
+                    ))}
+                    <td><b>{fmt(avg)}</b></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="controls" style={{ marginTop: 8 }}>
+          <small className="note" style={{ marginRight: 8 }}>Доли спроса по слотам:</small>
+          {P.slotNames.map((n, j) => (
+            <label key={j} className="field" style={{ gap: 4 }}>
+              <small className="note">{n.replace('Доля спроса — ', '')}</small>
+              <NumField value={P.slotMix[j]} onChange={(v) => setParam(`slotMix.${j}`, v)} pct step={0.01} />
+            </label>
+          ))}
+          <small className="note" style={{ color: Math.abs(P.slotMix.reduce((s, v) => s + v, 0) - 1) < 0.001 ? '#9fd3b4' : '#e07a7a' }}>
+            Σ = {(P.slotMix.reduce((s, v) => s + v, 0) * 100).toFixed(0)}%
+          </small>
+        </div>
+        <p className="note" style={{ marginTop: 6 }}>
+          Эфф. слотов/мес = 30 × слотов/день × uptime × загрузка сценария.
+          Доля доп.услуг задаётся сценарно (uptake) + глобально долей кошелька — помодульного % не было и в Excel.
+          Поле «loadK» в данных есть, но ни Excel, ни ядро его не используют — не показано.
+        </p>
       </fieldset>
     </div>
   )

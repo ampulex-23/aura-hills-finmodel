@@ -105,6 +105,7 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 fieldset { border: 1px solid #26314a; border-radius: 10px; padding: 12px 16px 16px; }
+fieldset.wide { grid-column: 1 / -1; }
 legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
 .field { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 7px 0; font-size: 13px; }
 .field > span { color: #aab6c8; }
