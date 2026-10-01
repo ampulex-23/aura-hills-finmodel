@@ -50,6 +50,10 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
   background: #101826; border-color: #2a3548; padding: 2px 6px; min-height: 24px; height: 24px;
 }
 .month-table.sens td { text-align: center; }
+.month-table.sens th { text-align: center; }
+.month-table.sens th.sticky { text-align: left; }
+.month-table.sens td.sticky { min-width: 0; }
+.month-table.sens { min-width: 0; width: 100%; }
 .month-table td.neg { color: #e07a7a; }
 .month-table.spec th { text-align: right; }
 .month-table.spec th.sticky, .month-table.spec th.lft { text-align: left; }

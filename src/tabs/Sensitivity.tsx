@@ -24,45 +24,56 @@ export function Sensitivity() {
         Пересчёт модели по 57 точкам · сценарий «{scenario}» · {s.computedInMs.toFixed(0)} мс
       </p>
 
-      <h3>Спрос × WACC → NPV (диск. окупаемость, мес)</h3>
-      <table className="month-table sens">
-        <thead>
-          <tr><th className="sticky">Спрос \ WACC</th>{T1_WACC.map((w) => <th key={w}>{(w * 100).toFixed(0)}%</th>)}</tr>
-        </thead>
-        <tbody>
-          {s.t1.rows.map((row) => (
-            <tr key={row.demand}>
-              <td className="sticky">×{row.demand}</td>
-              {row.cells.map((c) => (
-                <td key={c.wacc} style={heat(c.npv, lo, hi)}>
-                  {fmt(c.npv / 1e6, 2)}M <small>({c.discPayback})</small>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="cols-2">
+        <div>
+          <h3>Спрос × WACC → NPV (диск. окупаемость, мес)</h3>
+          <div className="table-wrap">
+            <table className="month-table sens">
+              <thead>
+                <tr><th className="sticky">Спрос \ WACC</th>{T1_WACC.map((w) => <th key={w}>{(w * 100).toFixed(0)}%</th>)}</tr>
+              </thead>
+              <tbody>
+                {s.t1.rows.map((row) => (
+                  <tr key={row.demand}>
+                    <td className="sticky">×{row.demand}</td>
+                    {row.cells.map((c) => (
+                      <td key={c.wacc} style={heat(c.npv, lo, hi)}>
+                        {fmt(c.npv / 1e6, 2)}M <small>({c.discPayback})</small>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-      <h3>Рост цен × буфер CAPEX → NPV (IRR)</h3>
-      <table className="month-table sens">
-        <thead>
-          <tr><th className="sticky">Рост цен \ CAPEX</th>{T2_CAPEX.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
-        </thead>
-        <tbody>
-          {s.t2.rows.map((row) => (
-            <tr key={row.priceGrowth}>
-              <td className="sticky">{(row.priceGrowth * 100).toFixed(0)}%</td>
-              {row.cells.map((c) => (
-                <td key={c.capexAdj}>
-                  {fmt(c.npv / 1e6, 2)}M <small>({fmt(c.irr * 100)}%)</small>
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+        <div>
+          <h3>Рост цен × буфер CAPEX → NPV (IRR)</h3>
+          <div className="table-wrap">
+            <table className="month-table sens">
+              <thead>
+                <tr><th className="sticky">Рост цен \ CAPEX</th>{T2_CAPEX.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
+              </thead>
+              <tbody>
+                {s.t2.rows.map((row) => (
+                  <tr key={row.priceGrowth}>
+                    <td className="sticky">{(row.priceGrowth * 100).toFixed(0)}%</td>
+                    {row.cells.map((c) => (
+                      <td key={c.capexAdj}>
+                        {fmt(c.npv / 1e6, 2)}M <small>({fmt(c.irr * 100)}%)</small>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
 
       <h3>Уровень всех цен → NPV (IRR)</h3>
+      <div className="table-wrap" style={{ display: 'inline-block' }}>
       <table className="month-table sens">
         <thead><tr><th className="sticky">Цены</th>{s.t3.map((r) => <th key={r.priceMult}>×{r.priceMult}</th>)}</tr></thead>
         <tbody>
@@ -76,6 +87,7 @@ export function Sensitivity() {
           </tr>
         </tbody>
       </table>
+      </div>
     </div>
   )
 }
