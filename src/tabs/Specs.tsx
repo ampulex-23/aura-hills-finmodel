@@ -81,8 +81,8 @@ export function Specs() {
             <tr><th className="sticky">Роль</th><th className="lft">€/час с взносами</th><th className="lft">Комментарий</th><th></th></tr>
           </thead>
           <tbody>
-            {labor.map((l) => (
-              <tr key={l.role}>
+            {labor.map((l, li) => (
+              <tr key={li}>
                 <td className="sticky">
                   <TextInput
                     size="xs" variant="unstyled" w={180}
