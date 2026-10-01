@@ -196,7 +196,8 @@ export function Specs() {
                     ))}
                     {expanded.has(c.spec.code) && (
                       <tr className="spec-add">
-                        <td className="sticky lft">
+                        <td className="sticky lft spec-leaf last"><small>＋</small></td>
+                        <td colSpan={5} className="lft">
                           <Group gap={6} wrap="nowrap">
                             <Select
                               size="xs" w={110}
@@ -218,17 +219,13 @@ export function Specs() {
                               value={entryRef[c.spec.code] ?? null}
                               onChange={(v) => setEntryRef((p) => ({ ...p, [c.spec.code]: v ?? '' }))}
                             />
+                            <NumField
+                              value={entryQty[c.spec.code] ?? 0}
+                              onChange={(v) => setEntryQty((p) => ({ ...p, [c.spec.code]: v }))}
+                              step={(entryKind[c.spec.code] ?? 'material') === 'labor' ? 5 : 0.01}
+                            />
+                            <small>{(entryKind[c.spec.code] ?? 'material') === 'labor' ? 'минут' : 'единиц'}</small>
                           </Group>
-                        </td>
-                        <td>
-                          <NumField
-                            value={entryQty[c.spec.code] ?? 0}
-                            onChange={(v) => setEntryQty((p) => ({ ...p, [c.spec.code]: v }))}
-                            step={(entryKind[c.spec.code] ?? 'material') === 'labor' ? 5 : 0.01}
-                          />
-                        </td>
-                        <td colSpan={4} className="lft">
-                          <small>{(entryKind[c.spec.code] ?? 'material') === 'labor' ? 'минут' : 'единиц'}</small>
                         </td>
                         <td colSpan={2}>
                           <Button
