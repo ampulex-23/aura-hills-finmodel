@@ -134,18 +134,18 @@ export function Nomenclature() {
                       <tr key={it.code}>
                         <td className="sticky">{it.code}</td>
                         <td className="lft">
-                          <TextCell w={260} value={it.name} onChange={(v) => setItem(i, { name: v })} />
+                          <TextCell w={220} value={it.name} onChange={(v) => setItem(i, { name: v })} />
                         </td>
                         <td>
                           <Autocomplete
-                            size="xs" w={120} data={types}
+                            size="xs" w={100} data={types}
                             filter={({ options }) => options}
                             value={it.type} onChange={(v) => setItem(i, { type: v })}
                           />
                         </td>
                         <td>
                           <Autocomplete
-                            size="xs" w={64} data={units}
+                            size="xs" w={56} data={units}
                             filter={({ options }) => options}
                             value={it.unit} onChange={(v) => setItem(i, { unit: v || 'шт' })}
                           />
@@ -156,7 +156,7 @@ export function Nomenclature() {
                         <td><b>{fmt(landedCost(it), 2)}</b></td>
                         <td>
                           <Select
-                            size="xs" w={120}
+                            size="xs" w={104}
                             data={['OPEX', 'CAPEX', 'Спецификация']}
                             value={it.use}
                             onChange={(v) => v && setItem(i, { use: v })}
@@ -165,7 +165,7 @@ export function Nomenclature() {
                         </td>
                         <td className="lft">
                           <Autocomplete
-                            size="xs" w={170} data={articles}
+                            size="xs" w={140} data={articles}
                             filter={({ options }) => options}
                             placeholder="—"
                             value={it.opexArticle ?? ''} onChange={(v) => setItem(i, { opexArticle: v || null })}
@@ -174,7 +174,7 @@ export function Nomenclature() {
                         <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} /></td>
                         <td>
                           <Select
-                            size="xs" w={76}
+                            size="xs" w={66}
                             data={['слот', 'гость', 'мес']}
                             value={it.normBase} placeholder="—" clearable
                             onChange={(v) => setItem(i, { normBase: v as NomenclatureItem['normBase'] })}

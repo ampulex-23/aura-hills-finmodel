@@ -86,6 +86,9 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .month-table .mantine-Select-input, .month-table .mantine-Autocomplete-input {
   min-height: 24px; height: 24px; font-size: 12px;
 }
+/* Номенклатура — компактнее: узкие инпуты/селекты */
+.month-table.nom .num input { width: 58px; }
+.month-table.nom .mantine-Select-input, .month-table.nom .mantine-Autocomplete-input { padding-left: 6px; padding-right: 20px; }
 /* Строка добавления в состав спецификации */
 .month-table tr.spec-add td { background: rgba(91,141,217,.05); border-top: 1px dashed #2a3548; }
 /* Формы CRUD в модалках */
