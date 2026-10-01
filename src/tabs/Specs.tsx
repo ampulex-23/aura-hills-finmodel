@@ -79,11 +79,11 @@ export function Specs() {
                     </tr>
                     {expanded.has(c.spec.code) && c.spec.items.map((it, ii) => (
                       <tr key={`${c.spec.code}-${ii}`} className="spec-item">
-                        <td className="sticky lft">
+                        <td className={`sticky lft spec-leaf${ii === c.spec.items.length - 1 ? ' last' : ''}`}>
                           <small>
                             {it.kind === 'material'
-                              ? `└ ${byCode.get(it.code ?? '')?.name ?? it.code}`
-                              : `└ ${it.role} (${it.minutes} мин)`}
+                              ? byCode.get(it.code ?? '')?.name ?? it.code
+                              : `${it.role} (${it.minutes} мин)`}
                           </small>
                         </td>
                         <td>
