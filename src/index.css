@@ -119,10 +119,8 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .month-table.sens td.sticky { min-width: 0; }
 .month-table.sens { min-width: 0; width: 100%; }
 .month-table td.neg { color: #e07a7a; }
-/* .spec-таблицы — по ширине контента: иначе min-width:100% растягивает
-   колонки и заголовки «уплывают» относительно ячеек */
-.month-table.spec { min-width: 0; width: auto; }
-.month-table.spec th { text-align: right; }
+/* .spec-таблицы: заголовки колонок слева — совпадают с контентом ячеек */
+.month-table.spec th { text-align: left; }
 /* первая колонка в .spec-таблицах всегда текстовая (имя) — заголовок влево */
 .month-table.spec th:first-child { text-align: left; }
 .month-table.spec th.sticky, .month-table.spec th.lft { text-align: left; }
