@@ -82,6 +82,26 @@ export function nextCode(prefix: string, existing: string[]): string {
   return `${prefix}${String(max + 1).padStart(3, '0')}`
 }
 
+// Рекурсивно добирает недостающие ключи из дефолтов. Массивы: элементы сверх
+// дефолтной длины мёржатся с последним элементом-шаблоном (новые поля внутри
+// пользовательских объектов тоже заполняются — modules[i].status и т.п.).
+function fillDefaults<T>(cur: unknown, def: T): T {
+  if (cur === undefined || cur === null) return def
+  if (Array.isArray(def)) {
+    if (!Array.isArray(cur)) return def
+    const tpl = def[def.length - 1]
+    return cur.map((v, i) => fillDefaults(v, i < def.length ? def[i] : tpl)) as T
+  }
+  if (def !== null && typeof def === 'object') {
+    if (typeof cur !== 'object') return def
+    const out: Record<string, unknown> = { ...(cur as Record<string, unknown>) }
+    for (const k of Object.keys(def as Record<string, unknown>))
+      out[k] = fillDefaults((cur as Record<string, unknown>)[k], (def as Record<string, unknown>)[k])
+    return out as T
+  }
+  return cur as T
+}
+
 // setParam('general.wacc', 0.12) — точечное обновление по пути
 function deepSet<T>(obj: T, path: string, value: unknown): T {
   const copy: any = JSON.parse(JSON.stringify(obj))
@@ -192,37 +212,16 @@ export const useModel = create<ModelState>()(
       // Снапшоты старой структуры: добираем отсутствующие блоки (params.it и т.п.) из дефолтов
       merge: (persisted, current) => {
         const p = (persisted ?? {}) as Partial<ModelState>
-        const merged = { ...current, ...p } as ModelState
-        if (merged.params && !merged.params.it) {
-          merged.params = { ...merged.params, it: defaults().params.it }
-        }
-        if (merged.params && !merged.params.fb) {
-          merged.params = { ...merged.params, fb: defaults().params.fb }
-        }
-        if (merged.params && !merged.params.land) {
-          merged.params = { ...merged.params, land: defaults().params.land }
-        }
-        if (merged.params && !merged.params.preopen) {
-          merged.params = { ...merged.params, preopen: defaults().params.preopen }
-        }
-        if (merged.params && !merged.params.members) {
-          merged.params = { ...merged.params, members: defaults().params.members }
-        }
-        if (merged.params && !merged.params.taxDepr) {
-          merged.params = { ...merged.params, taxDepr: defaults().params.taxDepr }
-        }
-        if (merged.params && !merged.params.glampOta) {
-          merged.params = { ...merged.params, glampOta: defaults().params.glampOta }
-        }
-        if (merged.params && !merged.params.tv) {
-          merged.params = { ...merged.params, tv: defaults().params.tv }
-        }
-        if (merged.params?.taxes && merged.params.taxes.gesy === undefined) {
-          merged.params.taxes = { ...merged.params.taxes, gesy: defaults().params.taxes.gesy }
-        }
-        if (merged.params?.units && !merged.params.units.presaleMode) {
-          merged.params = { ...merged.params, units: { ...defaults().params.units, ...merged.params.units } }
-        }
+        const d = defaults()
+        const merged = {
+          ...current,
+          ...p,
+          params: fillDefaults(p.params, d.params),
+          matrix: fillDefaults(p.matrix, d.matrix),
+          items: fillDefaults(p.items, d.items),
+          services: fillDefaults(p.services, d.services),
+          labor: fillDefaults(p.labor, d.labor),
+        } as ModelState
         return merged
       },
       partialize: (s) => ({
