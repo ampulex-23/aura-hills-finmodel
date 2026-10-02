@@ -59,7 +59,7 @@ export function Assumptions() {
         <Row label="GESY (здравоохранение)" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
       </fieldset>
 
-      <fieldset className="wide">
+      <fieldset>
         <legend>Распределение прибыли</legend>
         <div className="table-wrap">
           <table className="month-table spec">
@@ -69,11 +69,11 @@ export function Assumptions() {
             <tbody>
               {P.partners.names.map((n, i) => (
                 <tr key={i}>
-                  <td className="lft"><TextCell w={150} value={n} onChange={(v) => setParam(`partners.names.${i}`, v)} /></td>
+                  <td className="lft"><TextCell w={120} value={n} onChange={(v) => setParam(`partners.names.${i}`, v)} /></td>
                   <td><NumField value={P.partners.shares[i]} onChange={(v) => setParam(`partners.shares.${i}`, v)} pct step={0.005} /></td>
                   <td>
                     <Select
-                      size="xs" w={210}
+                      size="xs" w={190}
                       data={['Резидент Кипра (17%)', 'Нерезидент / Non-Dom (0%)']}
                       value={P.partners.statuses[i]}
                       onChange={(v) => v && setParam(`partners.statuses.${i}`, v)}
@@ -103,6 +103,19 @@ export function Assumptions() {
           </b>
           . SDC 17% и GESY 2.65% взвешиваются по долям резидентов; Non-Dom освобождён от обоих.
         </small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Амортизация (доля / срок, лет)</legend>
+        {P.amort.groups.map((g, i) => (
+          <div className="field pair" key={g}>
+            <span>{g}</span>
+            <NumField value={P.amort.shares[i]} onChange={(v) => setParam(`amort.shares.${i}`, v)} pct />
+            <NumField value={P.amort.years[i]} onChange={(v) => setParam(`amort.years.${i}`, v)} step={1} />
+            <NumField value={P.taxDepr.years[i]} onChange={(v) => setParam(`taxDepr.years.${i}`, v)} step={1} />
+          </div>
+        ))}
+        <small className="note">Третье число — налоговый срок (capital allowances для CIT): конструкции 25 лет (~4%), оборудование 7 лет (~14%), IT/прочее 5 лет (20%). Бухгалтерская амортизация в P&L — по второму числу.</small>
       </fieldset>
 
       <fieldset>
@@ -203,19 +216,6 @@ export function Assumptions() {
         />
         <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1} />
         <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
-      </fieldset>
-
-      <fieldset>
-        <legend>Амортизация (доля / срок, лет)</legend>
-        {P.amort.groups.map((g, i) => (
-          <div className="field pair" key={g}>
-            <span>{g}</span>
-            <NumField value={P.amort.shares[i]} onChange={(v) => setParam(`amort.shares.${i}`, v)} pct />
-            <NumField value={P.amort.years[i]} onChange={(v) => setParam(`amort.years.${i}`, v)} step={1} />
-            <NumField value={P.taxDepr.years[i]} onChange={(v) => setParam(`taxDepr.years.${i}`, v)} step={1} />
-          </div>
-        ))}
-        <small className="note">Третье число — налоговый срок (capital allowances для CIT): конструкции 25 лет (~4%), оборудование 7 лет (~14%), IT/прочее 5 лет (20%). Бухгалтерская амортизация в P&L — по второму числу.</small>
       </fieldset>
 
       <fieldset className="wide">
