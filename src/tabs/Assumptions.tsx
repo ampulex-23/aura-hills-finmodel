@@ -83,6 +83,23 @@ export function Assumptions() {
         <Row label="Глэмпинг больших" path="units.glampBig" value={P.units.glampBig} step={1} />
         <Row label="Сертификатов/мес" path="units.certsPerMonth" value={P.units.certsPerMonth} step={1} />
         <Row label="Пре-сейл, мес до открытия" path="units.presaleMonths" value={P.units.presaleMonths} step={1} />
+        <label className="field">
+          <span>Режим пре-сейла</span>
+          <Select
+            size="xs" w={210}
+            data={[
+              { value: 'deferred', label: 'Предоплата (без двойного счёта)' },
+              { value: 'incremental', label: 'Доп. канал сверх плана' },
+            ]}
+            value={P.units.presaleMode}
+            onChange={(v) => v && setParam('units.presaleMode', v)}
+            allowDeselect={false}
+          />
+        </label>
+        <Row
+          label="Признание пре-сейла, мес" path="units.presaleRecognizeMonths"
+          value={P.units.presaleRecognizeMonths} step={1}
+        />
       </fieldset>
 
       <fieldset>

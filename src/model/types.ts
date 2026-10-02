@@ -97,6 +97,10 @@ export interface Params {
   units: {
     glampSmall: number; glampBig: number
     annualMembersPlan: number[]; certsPerMonth: number; presaleMonths: number
+    // deferred: пресейл-члены прогорают без нового кэша в первые месяцы операционки;
+    // incremental: пресейл — дополнительный канал сверх плана (поведение Excel).
+    presaleMode: 'deferred' | 'incremental'
+    presaleRecognizeMonths: number // окно признания prepaid-пула в CF (deferred)
   }
   amort: { shares: number[]; years: number[]; groups: string[] }
   opexPct: { acquiring: number; maintenance: number }
@@ -249,6 +253,7 @@ export interface CashFlowMonth {
   operatingCf: number
   capex: number
   presale: number
+  presaleUnwind: number // отток «деньги уже получены» в deferred-режиме (≤0)
   fcff: number
   dividends: number
   sdc: number

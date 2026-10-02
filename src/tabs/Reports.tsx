@@ -606,9 +606,14 @@ export function CashFlow({ r }: { r: ModelResult }) {
       hint: (ci) => ({ title: 'Пре-сейл', calc: C[ci].presale ? `${e0(sc.presaleMonthly)}/мес` : '—' }),
     },
     {
+      label: '− Прогорание пре-сейла', values: C.map((m) => m.presaleUnwind),
+      tip: 'Deferred-режим: членства, проданные в пресейле, доходят в первые месяцы операционки без нового кэша.',
+      hint: (ci) => ({ title: 'Прогорание пре-сейла', calc: C[ci].presaleUnwind ? e0(C[ci].presaleUnwind) : '—' }),
+    },
+    {
       label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
-      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}`,
-      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} = ${e0(C[ci].fcff)}` }),
+      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}`,
+      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) = ${e0(C[ci].fcff)}` }),
     },
     {
       label: 'Дивиденды и УК', values: C.map((m) => m.dividends),

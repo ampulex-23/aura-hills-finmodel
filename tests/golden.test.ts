@@ -9,6 +9,9 @@ const params = paramsJson as Params
 // IT/АСУ-блок — новый слой модели, его нет в Excel-оракуле: выключаем,
 // чтобы golden-master продолжал сверять порт ядра 1:1.
 params.it.enabled = false
+// Deferred-пресейл — расширение сверх Excel-оракула (в книге только incremental):
+// golden сверяет порт ядра 1:1, поэтому в тесте остаёмся на поведении оракула.
+params.units.presaleMode = 'incremental'
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

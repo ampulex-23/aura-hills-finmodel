@@ -196,6 +196,9 @@ export const useModel = create<ModelState>()(
         if (merged.params && !merged.params.it) {
           merged.params = { ...merged.params, it: defaults().params.it }
         }
+        if (merged.params?.units && !merged.params.units.presaleMode) {
+          merged.params = { ...merged.params, units: { ...defaults().params.units, ...merged.params.units } }
+        }
         return merged
       },
       partialize: (s) => ({

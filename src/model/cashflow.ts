@@ -10,6 +10,9 @@ function addMonthsIso(isoDate: string, months: number): string {
 
 // Cash-Flow на 72 месяца: 12 стройки + 60 операционных.
 // FCFF = операционный CF + CAPEX-отток + пре-сейл; пре-сейл — последние presaleMonths стройки.
+// Deferred-режим: пресейл — это предоплата тех же членств. P&L их доходит при потреблении
+// (выручка не трогается), а в CF пул прогорает равномерно за presaleRecognizeMonths —
+// иначе одни и те же членства приносят кэш дважды (и в стройке, и в операционке).
 export function computeCashFlow(
   params: Params,
   pnl: PnlMonth[],
@@ -20,6 +23,9 @@ export function computeCashFlow(
   const capexPerMonth = -capexAdjustedEur / params.meta.capexMonths
   const presaleEnd = params.meta.capexMonths // последние N месяцев стройки
   const presaleStart = presaleEnd - params.units.presaleMonths + 1 // 1-based
+  const deferred = params.units.presaleMode === 'deferred'
+  const recogMonths = Math.max(1, params.units.presaleRecognizeMonths)
+  const unwindMonthly = deferred ? (presaleMonthly * params.units.presaleMonths) / recogMonths : 0
 
   let cumCash = 0
   let cumFcff = 0
@@ -39,7 +45,8 @@ export function computeCashFlow(
     const capex = m1 <= params.meta.capexMonths ? capexPerMonth : 0
     const presale =
       m1 <= presaleEnd && m1 >= presaleStart ? presaleMonthly : 0
-    const fcff = operatingCf + capex + presale
+    const presaleUnwind = isOps && opsIdx < recogMonths ? -unwindMonthly : 0
+    const fcff = operatingCf + capex + presale + presaleUnwind
     const dividends = isOps ? -pnl[opsIdx].dividends : 0
     const sdc = isOps ? -pnl[opsIdx].sdc : 0
     const totalCf = fcff + dividends + sdc
@@ -51,7 +58,7 @@ export function computeCashFlow(
     cumDcf += discountedFcff
 
     out.push({
-      label, isOps, netProfit, amortization, operatingCf, capex, presale,
+      label, isOps, netProfit, amortization, operatingCf, capex, presale, presaleUnwind,
       fcff, dividends, sdc, totalCf, cumCash, cumFcff,
       discountFactor, discountedFcff, cumDcf,
     })

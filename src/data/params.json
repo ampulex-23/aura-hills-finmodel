@@ -42,7 +42,9 @@
       120
     ],
     "certsPerMonth": 65,
-    "presaleMonths": 3
+    "presaleMonths": 3,
+    "presaleMode": "deferred",
+    "presaleRecognizeMonths": 12
   },
   "amort": {
     "shares": [
