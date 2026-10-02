@@ -31,10 +31,10 @@ export function Staff() {
   const CondRow = ({ name, count, salary, src, on }: { name: string; count: number; salary: number; src: string; on: boolean }) => (
     <tr style={{ opacity: on ? 1 : 0.45 }}>
       <td className="lft">{name} <small className="note">· {src}</small></td>
-      <td>{on ? fmt(count) : 'выкл.'}</td>
-      <td>{on ? fmt(salary) : '—'}</td>
-      <td>{on ? fmt(count * salary) : '—'}</td>
-      <td>{on ? fmt(count * salary * er) : '—'}</td>
+      <td className="lft">{on ? fmt(count) : 'выкл.'}</td>
+      <td className="lft">{on ? fmt(salary) : '—'}</td>
+      <td className="lft">{on ? fmt(count * salary) : '—'}</td>
+      <td className="lft">{on ? fmt(count * salary * er) : '—'}</td>
       <td />
     </tr>
   )
@@ -47,7 +47,8 @@ export function Staff() {
         Почасовые ставки для себестоимости услуг — во вкладке «Спецификации» (это не оклады).
       </p>
 
-      <fieldset className="wide">
+      <div className="form-row">
+      <fieldset className="f2">
         <legend>Штатное расписание</legend>
         <div className="table-wrap">
           <table className="month-table spec">
@@ -65,8 +66,8 @@ export function Staff() {
                     <td className="lft"><TextCell w={190} value={role} onChange={(v) => setParam(`fot.roles.${i}`, v)} /></td>
                     <td><NumField value={P.fot.count[i]} onChange={(v) => setParam(`fot.count.${i}`, v)} step={0.5} /></td>
                     <td><NumField value={P.fot.salary[i]} onChange={(v) => setParam(`fot.salary.${i}`, v)} step={50} /></td>
-                    <td>{fmt(monthly)}</td>
-                    <td>{fmt(monthly * er)}</td>
+                    <td className="lft">{fmt(monthly)}</td>
+                    <td className="lft">{fmt(monthly * er)}</td>
                     <td>
                       <ActionIcon size="sm" variant="subtle" color="red" onClick={() => removeRole(i)}>✕</ActionIcon>
                     </td>
@@ -77,10 +78,10 @@ export function Staff() {
               <CondRow name="IT-куратор" count={1} salary={P.it.curator} src="вкладка IT" on={P.it.enabled} />
               <tr style={{ borderTop: '1px solid var(--bd, #333)' }}>
                 <td className="lft"><b>Итого фонд окладов</b></td>
-                <td><b>{fmt(P.fot.count.reduce((a, b) => a + b, 0) + (P.fb.enabled ? P.fb.cookCount : 0))}</b></td>
+                <td className="lft"><b>{fmt(P.fot.count.reduce((a, b) => a + b, 0) + (P.fb.enabled ? P.fb.cookCount : 0))}</b></td>
                 <td />
-                <td><b>{fmt(totalBase)}</b></td>
-                <td><b>{fmt(totalBase * er)}</b></td>
+                <td className="lft"><b>{fmt(totalBase)}</b></td>
+                <td className="lft"><b>{fmt(totalBase * er)}</b></td>
                 <td />
               </tr>
             </tbody>
@@ -91,7 +92,7 @@ export function Staff() {
         </Group>
       </fieldset>
 
-      <div className="form-grid">
+      <div className="side-col">
         <fieldset>
           <legend>Бонусы и взносы</legend>
           <label className="field">
@@ -127,6 +128,7 @@ export function Staff() {
             инфляцией. Помесячную динамику ФОТ см. в отчёте «ФОТ».
           </small>
         </fieldset>
+      </div>
       </div>
     </div>
   )

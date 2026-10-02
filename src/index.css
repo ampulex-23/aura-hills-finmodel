@@ -181,8 +181,13 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .form-row { display: flex; gap: 16px; align-items: stretch; }
 .form-row > fieldset { flex: 1 1 0; min-width: 0; }
 .form-row > fieldset.f2 { flex-grow: 2; }
+/* Правая колонка в строке (Штат: Бонусы + Итоги) — тянется на ту же
+   высоту, что и соседний блок; поля делят её поровну */
+.form-row > .side-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.form-row > .side-col > fieldset { flex: 1 1 0; min-width: 0; }
 @media (max-width: 900px) {
   .form-row { flex-direction: column; }
+  .form-row > .side-col > fieldset { flex: none; }
 }
 .form-grid {
   display: grid;
