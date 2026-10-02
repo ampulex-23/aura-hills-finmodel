@@ -45,7 +45,7 @@ interface ModelState {
   setMatrixCell: (path: string, col: number, value: number) => void
   setServicePrice: (code: string, price: number) => void
   setSpecQty: (serviceCode: string, itemIdx: number, qty: number) => void
-  setLaborRate: (role: string, rateHour: number) => void
+  setLaborRate: (role: string, rateHour: number | null) => void
   // CRUD по справочникам
   addItem: (item: NomenclatureItem) => void
   removeItem: (code: string) => void

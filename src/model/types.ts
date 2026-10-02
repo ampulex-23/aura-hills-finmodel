@@ -49,7 +49,8 @@ export interface NomenclatureItem {
 // Спецификация услуги: материалы по кодам номенклатуры + труд по ролям.
 export interface LaborRole {
   role: string
-  rateHour: number // €/час с учётом взносов работодателя (заглушка до листа ФОТ)
+  /** €/час с учётом взносов; null = авто из штата: оклад × (1 + взносы) / часы в месяце */
+  rateHour: number | null
   note?: string
 }
 export interface SpecItem {
