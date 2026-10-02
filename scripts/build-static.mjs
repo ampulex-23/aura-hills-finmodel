@@ -16,9 +16,14 @@ const dataOut = join(root, 'public/data')
 mkdirSync(docsOut, { recursive: true })
 mkdirSync(dataOut, { recursive: true })
 
-// 1. Документы и данные — прямые копии
+// 1. Документы, данные и слайды презентации — прямые копии
 const docs = readdirSync(join(root, 'src/docs')).filter((f) => f.endsWith('.md'))
 for (const f of docs) cpSync(join(root, 'src/docs', f), join(docsOut, f))
+const deckSrc = join(root, 'src/docs/deck')
+const deckOut = join(docsOut, 'deck')
+mkdirSync(deckOut, { recursive: true })
+for (const f of readdirSync(deckSrc).filter((f) => f.endsWith('.jpg')))
+  cpSync(join(deckSrc, f), join(deckOut, f))
 for (const f of readdirSync(join(root, 'src/data')).filter((f) => f.endsWith('.json')))
   cpSync(join(root, 'src/data', f), join(dataOut, f))
 
@@ -55,6 +60,7 @@ writeFileSync(
 ## Документы
 
 ${docLinks}
+- [Презентация](docs/deck/slide-01.jpg) — инвестиционный питч-дек, 16 слайдов (docs/deck/slide-01.jpg … slide-16.jpg)
 
 ## Данные
 

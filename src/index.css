@@ -310,3 +310,34 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   border-radius: 8px; overflow-x: auto; display: flex; justify-content: center;
 }
 .doc-mermaid svg { max-width: 100%; height: auto; }
+
+/* Просмотрщик презентации (Data Room → Презентация) */
+.deck { display: flex; flex-direction: column; gap: 12px; }
+.deck-stage {
+  position: relative; background: #0c1119; border: 1px solid #223048;
+  border-radius: 10px; overflow: hidden; display: flex; justify-content: center;
+}
+.deck-slide { display: block; width: 100%; max-height: calc(100vh - 260px); object-fit: contain; }
+.deck-hit {
+  position: absolute; top: 0; bottom: 46px; width: 22%; cursor: pointer;
+}
+.deck-hit.left { left: 0; }
+.deck-hit.right { right: 0; }
+.deck-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 46px;
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  background: linear-gradient(transparent, rgba(12, 17, 25, .85));
+}
+.deck-counter { font-size: 12px; color: #9fb0c8; font-variant-numeric: tabular-nums; }
+.deck-thumbs {
+  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+  scrollbar-width: thin; scrollbar-color: #2a3548 transparent;
+}
+.deck-thumbs::-webkit-scrollbar { height: 4px; }
+.deck-thumbs::-webkit-scrollbar-thumb { background: #2a3548; border-radius: 2px; }
+.deck-thumb {
+  height: 56px; border-radius: 4px; border: 1px solid #26314a; cursor: pointer;
+  opacity: .55; transition: opacity .15s, border-color .15s;
+}
+.deck-thumb:hover { opacity: .85; }
+.deck-thumb.active { opacity: 1; border-color: #5b8dd9; }

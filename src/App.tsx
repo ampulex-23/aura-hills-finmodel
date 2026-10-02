@@ -21,6 +21,7 @@ import { It } from './tabs/It'
 import { Staff } from './tabs/Staff'
 import { Sensitivity } from './tabs/Sensitivity'
 import { DocView } from './components/DocView'
+import { DeckView } from './components/DeckView'
 import { DOCS, getDoc } from './docs'
 
 type Tab =
@@ -268,7 +269,8 @@ export default function App() {
           {tab === 'Sensitivity' && <Sensitivity r={result} />}
           {tab.startsWith('doc:') && (() => {
             const d = getDoc(tab.slice(4))
-            return d ? <DocView key={d.id} doc={d} /> : null
+            if (!d) return null
+            return d.kind === 'deck' ? <DeckView key={d.id} /> : <DocView key={d.id} doc={d} />
           })()}
         </main>
       </div>
