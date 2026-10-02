@@ -172,9 +172,17 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .month-table.scen th { text-align: left; }
 .month-table.scen td.sticky, .month-table.scen th.sticky { min-width: 0; }
 
-/* Форма допущений: широкие колонки ~400px (3 на десктопе, 2 на ноутбуке,
-   1 на узком). Блоки выравниваются по верху; min-width:0 у fieldset —
-   иначе таблица внутри распирает трек грида и ломает всю сетку. */
+/* Форма допущений: явные flex-строки. Ширины блоков — в заданных
+   пропорциях (f2 = двойная доля), высоты внутри строки выравниваются
+   по максимальной (align-items: stretch), все строки одной ширины.
+   min-width:0 — таблица внутри скроллится, а не распирает блок. */
+.form-rows { display: flex; flex-direction: column; gap: 16px; }
+.form-row { display: flex; gap: 16px; align-items: stretch; }
+.form-row > fieldset { flex: 1 1 0; min-width: 0; }
+.form-row > fieldset.f2 { flex-grow: 2; }
+@media (max-width: 900px) {
+  .form-row { flex-direction: column; }
+}
 .form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));

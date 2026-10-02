@@ -15,7 +15,15 @@ export function Assumptions() {
   )
 
   return (
-    <div className="form-grid">
+    <div className="form-rows">
+      <div className="form-row">
+      <fieldset>
+        <legend>Общие</legend>
+        <Row label="Курс RUB/EUR" path="general.rubEurRate" value={P.general.rubEurRate} />
+        <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
+        <Row label="WACC" path="general.wacc" value={P.general.wacc} pct />
+      </fieldset>
+
       <fieldset>
         <legend>Режимы</legend>
         <label className="field">
@@ -41,13 +49,6 @@ export function Assumptions() {
       </fieldset>
 
       <fieldset>
-        <legend>Общие</legend>
-        <Row label="Курс RUB/EUR" path="general.rubEurRate" value={P.general.rubEurRate} />
-        <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
-        <Row label="WACC" path="general.wacc" value={P.general.wacc} pct />
-      </fieldset>
-
-      <fieldset>
         <legend>Налоги и взносы</legend>
         <Row label="CIT" path="taxes.cit" value={P.taxes.cit} pct />
         <Row label="НДС стандартный" path="taxes.vatStd" value={P.taxes.vatStd} pct />
@@ -58,8 +59,10 @@ export function Assumptions() {
         <Row label="SDC (Defence Tax)" path="taxes.sdc" value={P.taxes.sdc} pct />
         <Row label="GESY (здравоохранение)" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
       </fieldset>
+      </div>
 
-      <fieldset>
+      <div className="form-row">
+      <fieldset className="f2">
         <legend>Распределение прибыли</legend>
         <div className="table-wrap">
           <table className="month-table spec">
@@ -117,7 +120,9 @@ export function Assumptions() {
         ))}
         <small className="note">Третье число — налоговый срок (capital allowances для CIT): конструкции 25 лет (~4%), оборудование 7 лет (~14%), IT/прочее 5 лет (20%). Бухгалтерская амортизация в P&L — по второму числу.</small>
       </fieldset>
+      </div>
 
+      <div className="form-row">
       <fieldset>
         <legend>Прочие OPEX</legend>
         <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct />
@@ -160,7 +165,9 @@ export function Assumptions() {
         <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5} />
         <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%). Ставка повара отображается во вкладке «Штат».</small>
       </fieldset>
+      </div>
 
+      <div className="form-row">
       <fieldset>
         <legend>Земля</legend>
         <label className="field">
@@ -217,8 +224,10 @@ export function Assumptions() {
         <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1} />
         <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
       </fieldset>
+      </div>
 
-      <fieldset className="wide">
+      <div className="form-row">
+      <fieldset>
         <legend>Модули бань</legend>
         <div className="table-wrap">
           <table className="month-table spec">
@@ -283,6 +292,7 @@ export function Assumptions() {
           Доля доп.услуг задаётся сценарно (uptake) + глобально долей кошелька — помодульного % не было и в Excel.
         </p>
       </fieldset>
+      </div>
     </div>
   )
 }
