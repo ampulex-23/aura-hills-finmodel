@@ -633,14 +633,14 @@ export function CashFlow({ r }: { r: ModelResult }) {
       ? [{
           label: '− Pre-opening (ФОТ + фикс)', values: C.map((m) => m.preopen),
           tip: `Последние ${params.preopen.months} мес стройки: штат нанят, объект работает вхолостую — оклады с взносами + постоянные/IT расходы.`,
-          hint: (ci) => ({ title: 'Pre-opening', calc: C[ci].preopen ? e0(C[ci].preopen) + '/мес' : '—' }),
+          hint: (ci: number): CellHint => ({ title: 'Pre-opening', calc: C[ci].preopen ? e0(C[ci].preopen) + '/мес' : '—' }),
         }]
       : []),
     ...(params.land.mode === 'lease'
       ? [{
           label: '− Аренда земли (стройка)', values: C.map((m) => m.landLease),
           tip: 'Участок арендуется до открытия: платежи в период стройки идут отдельным оттоком, в операционке — в OPEX.',
-          hint: (ci) => ({ title: 'Аренда земли', calc: C[ci].landLease ? `${e0(params.land.rentMonthly)}/мес` : '—' }),
+          hint: (ci: number): CellHint => ({ title: 'Аренда земли', calc: C[ci].landLease ? `${e0(params.land.rentMonthly)}/мес` : '—' }),
         }]
       : []),
     {
