@@ -13,11 +13,15 @@ export interface DocEntry {
   source: string
 }
 
+const NAV_TITLES: Record<string, string> = {
+  'model-guide': 'Руководство',
+}
+
 export const DOCS: DocEntry[] = Object.entries(raw)
   .map(([path, source]) => {
     const id = path.replace('./docs/', '').replace(/\.md$/, '')
     const title = source.match(/^#\s+(.+)/m)?.[1]?.trim() ?? id
-    return { id, title, navTitle: title.replace(/^AURA HILLS\s*—\s*/, ''), source }
+    return { id, title, navTitle: NAV_TITLES[id] ?? title, source }
   })
   .sort((a, b) => a.id.localeCompare(b.id))
 

@@ -1,12 +1,15 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import type { DocEntry } from '../docs'
 
-// Рендер markdown-документа Data Room: GFM-таблицы + KaTeX-формулы
-// + правая колонка-индекс по заголовкам h2/h3.
+// Рендер markdown-документа Data Room: GFM-таблицы + KaTeX-формулы +
+// Mermaid-диаграммы + правая колонка-индекс по заголовкам h2/h3.
+// Mermaid подгружается лениво — не раздувает основной бандл.
+let mmdSeq = 0
+
 const slugify = (t: string) =>
   t
     .toLowerCase()
@@ -20,6 +23,26 @@ const textOf = (node: unknown): string => {
   if (node && typeof node === 'object' && 'props' in (node as any))
     return textOf((node as any).props.children)
   return ''
+}
+
+function MermaidBlock({ chart }: { chart: string }) {
+  const [svg, setSvg] = useState('')
+  const failed = useRef(false)
+  useEffect(() => {
+    let live = true
+    import('mermaid')
+      .then(({ default: mermaid }) => {
+        mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' })
+        return mermaid.render(`doc-mmd-${++mmdSeq}`, chart.trim())
+      })
+      .then(({ svg }) => live && setSvg(svg))
+      .catch(() => live && (failed.current = true))
+    return () => {
+      live = false
+    }
+  }, [chart])
+  if (failed.current) return <pre>{chart}</pre>
+  return <div className="doc-mermaid" dangerouslySetInnerHTML={{ __html: svg }} />
 }
 
 export function DocView({ doc }: { doc: DocEntry }) {
@@ -52,7 +75,17 @@ export function DocView({ doc }: { doc: DocEntry }) {
         <Markdown
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeKatex]}
-          components={{ h2: heading('h2'), h3: heading('h3') }}
+          components={{
+            h2: heading('h2'),
+            h3: heading('h3'),
+            pre({ children }) {
+              const child = children as any
+              const cls: string = child?.props?.className ?? ''
+              if (cls.includes('language-mermaid'))
+                return <MermaidBlock chart={textOf(child.props.children)} />
+              return <pre>{children}</pre>
+            },
+          }}
         >
           {doc.source}
         </Markdown>

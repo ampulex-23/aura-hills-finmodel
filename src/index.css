@@ -294,3 +294,9 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   .doc-toc-title { width: 100%; }
   .doc-body { max-width: 100%; }
 }
+
+.doc-mermaid {
+  margin: 14px 0; padding: 16px; background: #141d2b; border: 1px solid #26314a;
+  border-radius: 8px; overflow-x: auto; display: flex; justify-content: center;
+}
+.doc-mermaid svg { max-width: 100%; height: auto; }
