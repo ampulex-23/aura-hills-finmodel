@@ -22,9 +22,9 @@ const items = nomenclatureJson as NomenclatureItem[]
 // после перевода OPEX на номенклатуру И фикса привязки услуг к текущему месяцу).
 // NPV/IRR/payback — из прогона, расхождение ядра < 0.01% — остаток float-шум оракула.
 const ORACLE = {
-  Conservative: { npv: 3978258, irr: 0.7459, payback: 33, discPayback: 37, peak: -1657360 },
-  Base: { npv: 6515454, irr: 1.2148, payback: 26, discPayback: 27, peak: -1384064 },
-  Aggressive: { npv: 9376028, irr: 1.7006, payback: 22, discPayback: 23, peak: -1346680 },
+  Conservative: { npv: 3673038, irr: 0.7082, payback: 34, discPayback: 37, peak: -1661270 },
+  Base: { npv: 6110665, irr: 1.1606, payback: 26, discPayback: 27, peak: -1385403 },
+  Aggressive: { npv: 8851893, irr: 1.6271, payback: 23, discPayback: 23, peak: -1346680 },
 }
 
 describe('golden-master: TS-ядро vs formulas-оракул', () => {
