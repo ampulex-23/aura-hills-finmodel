@@ -9,6 +9,9 @@ import type { DocEntry } from '../docs'
 // Mermaid-диаграммы + правая колонка-индекс по заголовкам h2/h3.
 // Mermaid подгружается лениво — не раздувает основной бандл.
 let mmdSeq = 0
+// Кэш готовых SVG по тексту диаграммы: перемонтирование блока (например, при
+// смене активного пункта содержания) не мигает и не рендерит диаграмму заново.
+const svgCache = new Map<string, string>()
 
 const slugify = (t: string) =>
   t
@@ -26,16 +29,24 @@ const textOf = (node: unknown): string => {
 }
 
 function MermaidBlock({ chart }: { chart: string }) {
-  const [svg, setSvg] = useState('')
+  const [svg, setSvg] = useState(() => svgCache.get(chart) ?? '')
   const failed = useRef(false)
   useEffect(() => {
+    const cached = svgCache.get(chart)
+    if (cached) {
+      setSvg(cached)
+      return
+    }
     let live = true
     import('mermaid')
       .then(({ default: mermaid }) => {
         mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' })
         return mermaid.render(`doc-mmd-${++mmdSeq}`, chart.trim())
       })
-      .then(({ svg }) => live && setSvg(svg))
+      .then(({ svg }) => {
+        svgCache.set(chart, svg)
+        if (live) setSvg(svg)
+      })
       .catch(() => live && (failed.current = true))
     return () => {
       live = false
@@ -43,6 +54,26 @@ function MermaidBlock({ chart }: { chart: string }) {
   }, [chart])
   if (failed.current) return <pre>{chart}</pre>
   return <div className="doc-mermaid" dangerouslySetInnerHTML={{ __html: svg }} />
+}
+
+// Стабильные рендереры компонентов markdown: новые функции на каждый рендер
+// DocView перемонтируют дерево и сбрасывают состояние MermaidBlock.
+const heading = (Tag: 'h2' | 'h3') =>
+  function Heading({ children }: { children?: ReactNode }) {
+    const id = slugify(textOf(children))
+    return <Tag id={id}>{children}</Tag>
+  }
+
+const mdComponents = {
+  h2: heading('h2'),
+  h3: heading('h3'),
+  pre({ children }: { children?: ReactNode }) {
+    const child = children as any
+    const cls: string = child?.props?.className ?? ''
+    if (cls.includes('language-mermaid'))
+      return <MermaidBlock chart={textOf(child.props.children)} />
+    return <pre>{children}</pre>
+  },
 }
 
 export function DocView({ doc }: { doc: DocEntry }) {
@@ -76,12 +107,6 @@ export function DocView({ doc }: { doc: DocEntry }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [toc])
 
-  const heading = (Tag: 'h2' | 'h3') =>
-    function Heading({ children }: { children?: ReactNode }) {
-      const id = slugify(textOf(children))
-      return <Tag id={id}>{children}</Tag>
-    }
-
   const jump = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -91,17 +116,7 @@ export function DocView({ doc }: { doc: DocEntry }) {
         <Markdown
           remarkPlugins={[remarkGfm, remarkMath]}
           rehypePlugins={[rehypeKatex]}
-          components={{
-            h2: heading('h2'),
-            h3: heading('h3'),
-            pre({ children }) {
-              const child = children as any
-              const cls: string = child?.props?.className ?? ''
-              if (cls.includes('language-mermaid'))
-                return <MermaidBlock chart={textOf(child.props.children)} />
-              return <pre>{children}</pre>
-            },
-          }}
+          components={mdComponents}
         >
           {doc.source}
         </Markdown>
