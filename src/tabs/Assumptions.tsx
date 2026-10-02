@@ -69,11 +69,11 @@ export function Assumptions() {
             <tbody>
               {P.partners.names.map((n, i) => (
                 <tr key={i}>
-                  <td className="lft"><TextCell w={120} value={n} onChange={(v) => setParam(`partners.names.${i}`, v)} /></td>
+                  <td className="lft"><TextCell w={104} value={n} onChange={(v) => setParam(`partners.names.${i}`, v)} /></td>
                   <td><NumField value={P.partners.shares[i]} onChange={(v) => setParam(`partners.shares.${i}`, v)} pct step={0.005} /></td>
                   <td>
                     <Select
-                      size="xs" w={190}
+                      size="xs" w={170}
                       data={['Резидент Кипра (17%)', 'Нерезидент / Non-Dom (0%)']}
                       value={P.partners.statuses[i]}
                       onChange={(v) => v && setParam(`partners.statuses.${i}`, v)}
