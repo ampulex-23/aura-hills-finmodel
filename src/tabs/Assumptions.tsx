@@ -97,7 +97,7 @@ export function Assumptions() {
         <Row label="Себестоимость F&B, % выручки" path="fb.foodCostPct" value={P.fb.foodCostPct} pct />
         <Row label="Оклад повара, €/мес gross" path="fb.cookSalary" value={P.fb.cookSalary} step={50} />
         <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5} />
-        <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%).</small>
+        <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%). Ставка повара отображается во вкладке «Штат».</small>
       </fieldset>
 
       <fieldset>

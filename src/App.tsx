@@ -5,7 +5,7 @@ import {
   IconAdjustmentsHorizontal, IconArrowsExchange, IconChartLine,
   IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCpu,
   IconFlask2, IconLayoutDashboard, IconListDetails, IconMenu2,
-  IconPercentage, IconReceipt2, IconReportMoney, IconUsers, IconVersions,
+  IconPercentage, IconReceipt2, IconReportMoney, IconUserCog, IconUsers, IconVersions,
 } from '@tabler/icons-react'
 import { useModel } from './store'
 import { runModel } from './model/run'
@@ -18,15 +18,17 @@ import { CashFlow, Capex, Fot, Opex, Pnl, Revenue, Taxes } from './tabs/Reports'
 import { Nomenclature } from './tabs/Nomenclature'
 import { Specs } from './tabs/Specs'
 import { It } from './tabs/It'
+import { Staff } from './tabs/Staff'
 import { Sensitivity } from './tabs/Sensitivity'
 
 type Tab =
-  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Номенклатура' | 'Спецификации' | 'IT'
+  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Спецификации' | 'IT'
   | 'Выручка' | 'OPEX' | 'ФОТ' | 'CAPEX' | 'Налоги' | 'P&L' | 'Cash-Flow' | 'Sensitivity'
 
 // Hash-роутинг: #/dashboard … #/sensitivity — вкладка переживает F5, ссылки шарятся.
 const TAB_SLUGS: Record<Tab, string> = {
   'Дашборд': 'dashboard', 'Допущения': 'assumptions', 'Сценарии': 'scenarios',
+  'Штат': 'staff',
   'Номенклатура': 'nomenclature', 'Спецификации': 'specs', 'IT': 'it',
   'Выручка': 'revenue', 'OPEX': 'opex', 'ФОТ': 'fot', 'CAPEX': 'capex',
   'Налоги': 'taxes', 'P&L': 'pnl', 'Cash-Flow': 'cashflow', 'Sensitivity': 'sensitivity',
@@ -54,6 +56,7 @@ const NAV: { group: string; items: { tab: Tab; icon: typeof IconCpu }[] }[] = [
     items: [
       { tab: 'Допущения', icon: IconAdjustmentsHorizontal },
       { tab: 'Сценарии', icon: IconVersions },
+      { tab: 'Штат', icon: IconUserCog },
       { tab: 'Номенклатура', icon: IconListDetails },
       { tab: 'Спецификации', icon: IconClipboardList },
       { tab: 'IT', icon: IconCpu },
@@ -213,6 +216,7 @@ export default function App() {
           {tab === 'Дашборд' && <Dashboard r={result} />}
           {tab === 'Допущения' && <Assumptions />}
           {tab === 'Сценарии' && <Scenarios />}
+          {tab === 'Штат' && <Staff />}
           {tab === 'Выручка' && <Revenue r={result} labels={opsLabels} />}
           {tab === 'OPEX' && <Opex r={result} labels={opsLabels} />}
           {tab === 'ФОТ' && <Fot r={result} labels={opsLabels} />}

@@ -31,6 +31,7 @@ export function It() {
             <span>IT-куратор, оклад €/мес</span>
             <NumField value={it.curator} onChange={(v) => setParam('it.curator', v)} step={100} disabled={!it.enabled} />
           </label>
+          <small className="note">Оклад задаётся здесь и добавляется в ФОТ; во вкладке «Штат» куратор виден read-only строкой.</small>
         </fieldset>
 
         <fieldset>
