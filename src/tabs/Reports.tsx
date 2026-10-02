@@ -645,6 +645,13 @@ export function CashFlow({ r }: { r: ModelResult }) {
         calc: C[ci].capex ? `−${e0(r.capex.adjustedEur)} / ${params.meta.capexMonths} мес = ${e0(C[ci].capex)}` : '—',
       }),
     },
+    ...(r.capex.deferred.length
+      ? [{
+          label: 'CAPEX модулей (отложенный)', values: C.map((m) => m.deferredCapex),
+          tip: 'Real option: модуль со статусом «Активен» и вводом после открытия платит свою долю помодульного CAPEX в месяц запуска, а не в стройке.',
+          hint: (ci: number): CellHint => ({ title: 'Отложенный CAPEX', calc: C[ci].deferredCapex ? e0(C[ci].deferredCapex) : '—' }),
+        }]
+      : []),
     {
       label: 'Пре-сейл', values: C.map((m) => m.presale),
       tip: `Продажа депозитов до открытия — месяцы ${presaleStart}–${params.meta.capexMonths} стройки.`,
@@ -654,6 +661,11 @@ export function CashFlow({ r }: { r: ModelResult }) {
       label: '− Прогорание пре-сейла', values: C.map((m) => m.presaleUnwind),
       tip: 'Deferred-режим: членства, проданные в пресейле, доходят в первые месяцы операционки без нового кэша.',
       hint: (ci) => ({ title: 'Прогорание пре-сейла', calc: C[ci].presaleUnwind ? e0(C[ci].presaleUnwind) : '—' }),
+    },
+    {
+      label: 'Пул предоплат (обязат.)', values: C.map((m) => m.prepaidPool),
+      tip: 'Deferred revenue: остаток обязательств перед гостями — принятый пресейл минус прогоревший. Депозиты гостей сгорают в день визита и пула не создают.',
+      hint: (ci) => ({ title: 'Пул предоплат', text: 'Балансовое обязательство: деньги получены, услуга ещё не оказана.', calc: e0(C[ci].prepaidPool) }),
     },
     ...(params.preopen.enabled
       ? [{
@@ -672,7 +684,7 @@ export function CashFlow({ r }: { r: ModelResult }) {
     {
       label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
       tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}+\mathrm{preopen}`,
-      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) + (${e0(C[ci].preopen)}) = ${e0(C[ci].fcff)}` }),
+      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + (${e0(C[ci].deferredCapex)}) + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) + (${e0(C[ci].preopen)}) = ${e0(C[ci].fcff)}` }),
     },
     {
       label: 'Дивиденды и УК', values: C.map((m) => m.dividends),

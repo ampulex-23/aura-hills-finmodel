@@ -208,6 +208,18 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   background: #101826; border-color: #2a3548;
 }
 
+/* Tornado-чарт: бары от центральной оси = базовый NPV */
+.tornado { display: flex; flex-direction: column; gap: 5px; margin: 10px 0; }
+.tor-row { display: grid; grid-template-columns: 170px 1fr 210px; gap: 10px; align-items: center; font-size: 12.5px; }
+.tor-label { color: #aab6c8; text-align: right; }
+.tor-track { position: relative; height: 18px; }
+.tor-axis { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: #4a5a76; }
+.tor-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; }
+.tor-bar.neg { background: rgba(229, 83, 75, 0.75); }
+.tor-bar.pos { background: rgba(76, 195, 138, 0.75); }
+.tor-vals small.neg { color: #e07a7a; }
+.tor-vals small.pos { color: #9fd3b4; }
+
 .formula { color: #5b8dd9; cursor: help; font-size: 11px; margin-left: 4px; }
 .mantine-HoverCard-dropdown .katex { color: #d7e3f4; font-size: 14px; }
 

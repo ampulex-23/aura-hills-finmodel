@@ -20,9 +20,13 @@ export function computeCashFlow(
   pnl: PnlMonth[],
   capexAdjustedEur: number,
   presaleMonthly: number,
+  deferredCapex: { month: number; eur: number }[] = [],
 ): CashFlowMonth[] {
   const total = params.meta.capexMonths + params.meta.opsMonths
-  const capexPerMonth = -capexAdjustedEur / params.meta.capexMonths
+  // Отложенный CAPEX (модули, запускаемые после открытия) исключён из стройки —
+  // платится в месяц ввода модуля; остаток делится равномерно по capexMonths.
+  const deferredTotal = deferredCapex.reduce((s, d) => s + d.eur, 0)
+  const capexPerMonth = -(capexAdjustedEur - deferredTotal) / params.meta.capexMonths
   const presaleEnd = params.meta.capexMonths // последние N месяцев стройки
   const presaleStart = presaleEnd - params.units.presaleMonths + 1 // 1-based
   const deferred = params.units.presaleMode === 'deferred'
@@ -44,6 +48,7 @@ export function computeCashFlow(
   let cumCash = 0
   let cumFcff = 0
   let cumDcf = 0
+  let pool = 0 // остаток обязательств по предоплатам (deferred revenue)
   const out: CashFlowMonth[] = []
 
   for (let i = 0; i < total; i++) {
@@ -56,15 +61,21 @@ export function computeCashFlow(
     const netProfit = isOps ? pnl[opsIdx].netProfit : 0
     const amortization = isOps ? pnl[opsIdx].amortization : 0
     const operatingCf = netProfit + amortization
+    const defCapex = deferredCapex
+      .filter((d) => d.month === m1)
+      .reduce((s, d) => s - d.eur, 0)
     const capex = m1 <= params.meta.capexMonths ? capexPerMonth : 0
     const presale =
       m1 <= presaleEnd && m1 >= presaleStart ? presaleMonthly : 0
     const presaleUnwind = isOps && opsIdx < recogMonths ? -unwindMonthly : 0
+    // Пул предоплат: растёт на приток пресейла, прогорает на unwind — это
+    // обязательство компании перед гостями (deferred revenue на балансе).
+    pool += presale + presaleUnwind
     // Аренда земли в стройке: площадку арендуют до открытия (после — в OPEX с инфляцией)
     const landLease =
       !isOps && params.land.mode === 'lease' ? -params.land.rentMonthly : 0
     const preopen = !isOps && m1 >= preopenStart ? preopenMonthly : 0
-    const fcff = operatingCf + capex + presale + presaleUnwind + landLease + preopen
+    const fcff = operatingCf + capex + defCapex + presale + presaleUnwind + landLease + preopen
     const dividends = isOps ? -pnl[opsIdx].dividends : 0
     const sdc = isOps ? -pnl[opsIdx].sdc : 0
     const gesy = isOps ? -pnl[opsIdx].gesy : 0
@@ -77,7 +88,8 @@ export function computeCashFlow(
     cumDcf += discountedFcff
 
     out.push({
-      label, isOps, netProfit, amortization, operatingCf, capex, presale, presaleUnwind,
+      label, isOps, netProfit, amortization, operatingCf, capex, deferredCapex: defCapex,
+      presale, presaleUnwind, prepaidPool: pool,
       landLease, preopen, fcff, dividends, sdc, gesy, totalCf, cumCash, cumFcff,
       discountFactor, discountedFcff, cumDcf,
     })

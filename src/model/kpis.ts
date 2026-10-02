@@ -35,5 +35,16 @@ export function computeKpis(params: Params, cashflow: CashFlowMonth[]): Kpis {
   const y3 = fcff.slice(params.meta.capexMonths + 24, params.meta.capexMonths + 36)
   const cashOnCash = investedTotal > 0 ? y3.reduce((s, f) => s + f, 0) / investedTotal : NaN
 
-  return { npv, irrMonthly, irrAnnual, paybackMonths, discountedPaybackMonths, peakFundingNeed, moic, cashOnCash, investedTotal }
+  // Terminal value (Gordon growth): TV = FCF_год5 × (1+g) / (WACC − g),
+  // дисконтируется фактором последнего месяца. Отдельная метрика — база без TV.
+  const g = params.tv?.growth ?? 0
+  let tvValue = 0
+  if (params.tv?.enabled && params.general.wacc > g) {
+    const lastYearFcff = fcff.slice(-12).reduce((s, f) => s + f, 0)
+    const tvUndisc = (lastYearFcff * (1 + g)) / (params.general.wacc - g)
+    tvValue = tvUndisc * cashflow[cashflow.length - 1].discountFactor
+  }
+  const npvWithTv = npv + tvValue
+
+  return { npv, irrMonthly, irrAnnual, paybackMonths, discountedPaybackMonths, peakFundingNeed, moic, cashOnCash, investedTotal, tvValue, npvWithTv }
 }

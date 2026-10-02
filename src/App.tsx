@@ -227,7 +227,7 @@ export default function App() {
           {tab === 'Номенклатура' && <Nomenclature />}
           {tab === 'Спецификации' && <Specs />}
           {tab === 'IT' && <It />}
-          {tab === 'Sensitivity' && <Sensitivity />}
+          {tab === 'Sensitivity' && <Sensitivity r={result} />}
         </main>
       </div>
     </div>

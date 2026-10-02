@@ -4,6 +4,8 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import type { ModelResult } from '../model/types'
+import { useModel } from '../store'
+import { computeBreakEven } from '../model/sensitivity'
 import { fmt, fmtEur, fmtPct, Hint } from '../components/ui'
 import type { CellHint } from '../components/ui'
 
@@ -15,6 +17,11 @@ const tooltipStyle = {
 } as const
 
 export function Dashboard({ r }: { r: ModelResult }) {
+  const { params, matrix, items } = useModel()
+  const be = useMemo(
+    () => computeBreakEven(params, matrix, items),
+    [params, matrix, items],
+  )
   const revenueByStream = useMemo(
     () =>
       r.revenue.map((m, i) => ({
@@ -96,6 +103,28 @@ export function Dashboard({ r }: { r: ModelResult }) {
         text: 'Максимальный отрицательный накопленный CF — сколько денег нужно в проект в самой глубокой точке.',
       },
     },
+    {
+      label: 'Break-even загрузка',
+      value: Number.isFinite(be.loadMult) ? `~${(be.loadMult * 100).toFixed(0)}% плана` : '—',
+      hint: {
+        title: 'Точка безубыточности',
+        text: 'Доля планового спроса (все загрузки и членства × один коэффициент), при которой среднемесячная EBITDA 3-го года = 0. Бинарный поиск, реальный пересчёт модели.',
+        calc: Number.isFinite(be.loadMult)
+          ? `EBITDA мес г.3: план ${fmtEur(be.ebitdaBase)}/мес → 0 при ×${be.loadMult.toFixed(3)}`
+          : 'EBITDA года 3 уже отрицательна либо покрывается даже при нулевом спросе',
+      },
+    },
+    ...(params.tv?.enabled
+      ? [{
+          label: 'NPV с TV', value: fmtEur(k.npvWithTv),
+          hint: {
+            title: 'NPV + терминальная стоимость',
+            text: 'Gordon growth: TV = FCFF 5-го года × (1+g) / (WACC − g), дисконтированная на конец горизонта. Показывается отдельно — база консервативна без TV.',
+            tex: String.raw`\mathrm{TV}=\frac{\mathrm{FCFF}_5\cdot(1+g)}{\mathrm{WACC}-g},\quad g=${(params.tv.growth * 100).toFixed(1)}\%`,
+            calc: `TV диск. = ${fmtEur(k.tvValue)} → NPV ${fmtEur(k.npv)} + TV = ${fmtEur(k.npvWithTv)}`,
+          },
+        }]
+      : []),
     {
       label: 'CAPEX (с буфером)', value: fmtEur(r.capex.adjustedEur),
       hint: {

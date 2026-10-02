@@ -22,6 +22,21 @@ export function Assumptions() {
         <Row label="Курс RUB/EUR" path="general.rubEurRate" value={P.general.rubEurRate} />
         <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
         <Row label="WACC" path="general.wacc" value={P.general.wacc} pct />
+        <div className="field">
+          <span>Terminal value</span>
+          <Select
+            size="xs" w={190}
+            data={[
+              { value: 'false', label: 'Выкл — консервативно' },
+              { value: 'true', label: 'Вкл — Gordon growth' },
+            ]}
+            value={String(P.tv.enabled)}
+            onChange={(v) => setParam('tv.enabled', v === 'true')}
+            allowDeselect={false}
+          />
+        </div>
+        <Row label="Рост после горизонта (g)" path="tv.growth" value={P.tv.growth} pct step={0.005} />
+        <small className="note">TV = FCFF 5-го года × (1+g) / (WACC−g). Показывается отдельной метрикой «NPV с TV» — база остаётся без TV.</small>
       </fieldset>
 
       <fieldset>

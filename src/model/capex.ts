@@ -13,6 +13,7 @@ export function computeCapex(
   monthlyAmort: number
   amortizableEur: number
   monthlyTaxDepr: number
+  deferred: { month: number; eur: number }[]
 } {
   const rate = params.general.rubEurRate
   const out = params.capexItems.map((it) => {
@@ -46,5 +47,22 @@ export function computeCapex(
         0,
       )
     : monthlyAmort
-  return { items: out, totalEur, adjustedEur, monthlyAmort, amortizableEur, monthlyTaxDepr }
+  // Real option: активный модуль с запуском после открытия платит свою долю
+  // помодульного CAPEX (строки qty=MODULES_COUNT) в месяц ввода, а не в стройке.
+  // Амортизация упрощённо идёт с общей даты открытия — отмечено в аудите.
+  const unitEur = params.capexItems
+    .filter((it) => it.qty === 'MODULES_COUNT')
+    .reduce((s, it) => s + Number(it.priceRub ?? 0) / rate, 0)
+  const ym = (iso: string) => {
+    const [y, m] = iso.slice(0, 7).split('-').map(Number)
+    return y * 12 + m
+  }
+  const openYm = ym(params.meta.openingDate)
+  const deferred = params.modules
+    .filter((m) => m.status === 'Активен' && ym(m.launchDate) > openYm)
+    .map((m) => ({
+      month: ym(m.launchDate) - ym(params.meta.constructionStart) + 1, // 1-based месяц CF
+      eur: unitEur * (1 + capexAdj),
+    }))
+  return { items: out, totalEur, adjustedEur, monthlyAmort, amortizableEur, monthlyTaxDepr, deferred }
 }

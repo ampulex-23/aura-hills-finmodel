@@ -1,14 +1,24 @@
 import { useMemo } from 'react'
 import { useModel } from '../store'
-import { computeSensitivity, T1_WACC, T2_CAPEX } from '../model/sensitivity'
+import type { ModelResult } from '../model/types'
+import { computeSensitivity, computeTornado, T1_WACC, T2_CAPEX } from '../model/sensitivity'
 import { fmt } from '../components/ui'
 
 // Три таблицы чувствительности — реальный пересчёт (57 точек, ~0.3с).
-export function Sensitivity() {
+export function Sensitivity({ r }: { r: ModelResult }) {
   const { params, matrix, items, scenario } = useModel()
   const s = useMemo(
     () => computeSensitivity(params, matrix, items),
     [params, matrix, items],
+  )
+  const baseNpv = r.kpis.npv
+  const tornado = useMemo(
+    () => computeTornado(params, matrix, items, baseNpv),
+    [params, matrix, items, baseNpv],
+  )
+  const torMax = Math.max(
+    ...tornado.flatMap((d) => [Math.abs(d.npvHi - baseNpv), Math.abs(d.npvLo - baseNpv)]),
+    1,
   )
   const heat = (v: number, min: number, max: number) => {
     const t = max === min ? 0.5 : (v - min) / (max - min)
@@ -23,6 +33,43 @@ export function Sensitivity() {
       <p className="note">
         Пересчёт модели по 57 точкам · сценарий «{scenario}» · {s.computedInMs.toFixed(0)} мс
       </p>
+
+      <div className="chart-card">
+        <h3>Tornado — топ-драйверы NPV (реальный пересчёт)</h3>
+        <div className="tornado">
+          {tornado.map((d) => {
+            const loW = (Math.abs(d.npvLo - baseNpv) / torMax) * 50
+            const hiW = (Math.abs(d.npvHi - baseNpv) / torMax) * 50
+            return (
+              <div className="tor-row" key={d.label}>
+                <span className="tor-label">{d.label}</span>
+                <div className="tor-track">
+                  <div className="tor-axis" />
+                  <div
+                    className="tor-bar neg"
+                    style={{ right: '50%', width: `${loW}%` }}
+                    title={`${d.loLabel}: NPV ${fmt(d.npvLo / 1e6, 2)}M`}
+                  />
+                  <div
+                    className="tor-bar pos"
+                    style={{ left: '50%', width: `${hiW}%` }}
+                    title={`${d.hiLabel}: NPV ${fmt(d.npvHi / 1e6, 2)}M`}
+                  />
+                </div>
+                <span className="tor-vals">
+                  <small className="neg">{d.loLabel} {fmt((d.npvLo - baseNpv) / 1e3, 0)}k</small>
+                  {' · '}
+                  <small className="pos">{d.hiLabel} +{fmt((d.npvHi - baseNpv) / 1e3, 0)}k</small>
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        <small className="note">
+          Однофакторный анализ: каждый драйвер двигается отдельно, остальные — на базе.
+          Ось — базовый NPV {fmt(baseNpv / 1e6, 2)}M; в скобках — изменение NPV, €k.
+        </small>
+      </div>
 
       <div className="cols-2">
         <div>

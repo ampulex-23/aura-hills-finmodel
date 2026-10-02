@@ -23,8 +23,10 @@ export function runModel(
     priceGrowth: number
     capexAdj: number
     priceMult: number
+    loadMult: number
     mode: 'Да' | 'Нет'
     vatMode: 'Гросс' | 'С возмещением'
+    mutate: (p: Params) => void
   }> = {},
 ): ModelResult {
   const p: Params = JSON.parse(JSON.stringify(params))
@@ -33,10 +35,19 @@ export function runModel(
   if (overrides.priceMult !== undefined) applyPriceMult(p, overrides.priceMult)
   if (overrides.mode !== undefined) p.meta.mode = overrides.mode
   if (overrides.vatMode !== undefined) p.meta.vatMode = overrides.vatMode
+  if (overrides.mutate) overrides.mutate(p)
 
   const sc = resolveScenario(p, matrix, scenario)
   if (overrides.priceGrowth !== undefined) sc.priceGrowth = overrides.priceGrowth
   if (overrides.capexAdj !== undefined) sc.capexAdj = overrides.capexAdj
+  // loadMult — общий масштаб спроса/загрузки (break-even, tornado): все
+  // векторы загрузки и планы членства умножаются на один коэффициент.
+  if (overrides.loadMult !== undefined) {
+    const L = overrides.loadMult
+    for (const key of ['bathsLoad', 'steamLoad', 'massageLoad', 'extraLoad', 'glampLoad'] as const)
+      sc[key] = sc[key].map((v) => v * L)
+    sc.membersMonth = sc.membersMonth.map((v) => v * L)
+  }
 
   const capex = computeCapex(p, items, sc.capexAdj)
   const revenue = computeRevenue(p, sc)
@@ -59,7 +70,7 @@ export function runModel(
   const { taxes, citByYear } = computeProfitTaxes(p, revenue, citEbit, netPreDiv, vat)
 
   const pnl = computePnl(p, revenue, opex, fot, taxes, capex.monthlyAmort)
-  const cashflow = computeCashFlow(p, pnl, capex.adjustedEur, sc.presaleMonthly)
+  const cashflow = computeCashFlow(p, pnl, capex.adjustedEur, sc.presaleMonthly, capex.deferred)
   const kpis = computeKpis(p, cashflow)
 
   return {

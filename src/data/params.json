@@ -97,6 +97,10 @@
     "share": 0.3,
     "commissionPct": 0.17
   },
+  "tv": {
+    "enabled": false,
+    "growth": 0.025
+  },
   "deposit": {
     "base": 110,
     "steamBase": 50,

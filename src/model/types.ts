@@ -123,6 +123,9 @@ export interface Params {
   // OTA-канал глэмпинга: доля ночей через Booking/Airbnb × комиссия.
   // Комиссия — расход от выручки глэмпинга (pct-блок OPEX). В Excel-оракуле нет.
   glampOta: { enabled: boolean; share: number; commissionPct: number }
+  // Terminal value: опциональный «хвост» стоимости после горизонта (Gordon growth).
+  // enabled=false — база консервативна, TV только как sensitivity-кейс. В Excel нет.
+  tv: { enabled: boolean; growth: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi: { steamShare: number; massageShare: number; revenueShare: number }
   service: { upgradeShare: number; walletExtraShare: number; demandMult: number }
@@ -276,8 +279,10 @@ export interface CashFlowMonth {
   amortization: number
   operatingCf: number
   capex: number
+  deferredCapex: number // CAPEX модулей, запускаемых после открытия (real option)
   presale: number
   presaleUnwind: number // отток «деньги уже получены» в deferred-режиме (≤0)
+  prepaidPool: number // остаток обязательств по предоплатам (deferred revenue)
   landLease: number // аренда земли в период стройки (≤0)
   preopen: number // pre-opening burn в конце стройки (≤0)
   fcff: number
@@ -305,6 +310,10 @@ export interface Kpis {
   cashOnCash: number
   /** Всего вложено (Σ отрицательных FCFF) */
   investedTotal: number
+  /** Дисконтированная терминальная стоимость (0, если tv.enabled=false) */
+  tvValue: number
+  /** NPV + TV — показывается отдельно, база остаётся консервативной */
+  npvWithTv: number
 }
 
 export interface ModelResult {
@@ -315,7 +324,16 @@ export interface ModelResult {
   taxes: TaxMonth[]
   pnl: PnlMonth[]
   cashflow: CashFlowMonth[]
-  capex: { items: { name: string; eur: number }[]; totalEur: number; adjustedEur: number; monthlyAmort: number; amortizableEur: number; monthlyTaxDepr: number }
+  capex: {
+    items: { name: string; eur: number }[]
+    totalEur: number
+    adjustedEur: number
+    monthlyAmort: number
+    amortizableEur: number
+    monthlyTaxDepr: number
+    /** Отложенный CAPEX резервных модулей: {month — 1-based месяц CF, eur} */
+    deferred: { month: number; eur: number }[]
+  }
   citByYear: number[]
   kpis: Kpis
 }
