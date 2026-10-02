@@ -312,7 +312,8 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
 .doc-mermaid svg { max-width: 100%; height: auto; }
 
 /* Просмотрщик презентации (Data Room → Презентация) */
-.deck { display: flex; flex-direction: column; gap: 8px; max-width: 1100px; }
+.deck { display: flex; gap: 24px; max-width: 1100px; align-items: flex-start; }
+.deck-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 .deck-stage {
   position: relative; background: #0c1119; border: 1px solid #223048;
   border-radius: 10px; overflow: hidden;
@@ -336,15 +337,31 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   padding: 2px 0;
 }
 .deck-counter { font-size: 12px; color: #9fb0c8; font-variant-numeric: tabular-nums; }
-.deck-thumbs {
-  display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px;
+/* правая колонка-превью — в стиле индекса документа (.doc-toc) */
+.deck-toc {
+  width: 210px; flex-shrink: 0; position: sticky; top: 72px;
+  max-height: calc(100vh - 80px); overflow-y: auto;
+  border-left: 1px solid #223048; padding-left: 12px;
+  display: flex; flex-direction: column; gap: 4px;
   scrollbar-width: thin; scrollbar-color: #2a3548 transparent;
 }
-.deck-thumbs::-webkit-scrollbar { height: 4px; }
-.deck-thumbs::-webkit-scrollbar-thumb { background: #2a3548; border-radius: 2px; }
-.deck-thumb {
-  height: 56px; border-radius: 4px; border: 1px solid #26314a; cursor: pointer;
+.deck-toc::-webkit-scrollbar { width: 4px; }
+.deck-toc::-webkit-scrollbar-thumb { background: #2a3548; border-radius: 2px; }
+.deck-toc-item { display: flex; align-items: center; gap: 8px; padding: 3px 8px; }
+.deck-toc-item img {
+  width: 100%; max-width: 140px; border-radius: 3px; border: 1px solid #26314a;
   opacity: .55; transition: opacity .15s, border-color .15s;
 }
-.deck-thumb:hover { opacity: .85; }
-.deck-thumb.active { opacity: 1; border-color: #5b8dd9; }
+.deck-toc-item span { font-size: 11px; color: #7f93b8; font-variant-numeric: tabular-nums; }
+.deck-toc-item:hover img { opacity: .85; }
+.deck-toc-item.active img { opacity: 1; border-color: #5b8dd9; }
+
+@media (max-width: 1100px) {
+  .deck { flex-direction: column; }
+  .deck-toc {
+    position: static; width: 100%; border-left: none;
+    border-top: 1px solid #223048; padding: 12px 0 0;
+    flex-direction: row; flex-wrap: wrap; gap: 6px; max-height: none;
+  }
+  .deck-toc-item img { max-width: 100px; }
+}

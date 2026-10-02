@@ -45,12 +45,13 @@ export function DeckView() {
 
   return (
     <div className="deck">
-      <div className="deck-stage" ref={stageRef}>
-        <img className="deck-slide" src={DECK_SLIDES[idx]} alt={`Слайд ${idx + 1}`} />
-        <div className="deck-hit left" onClick={() => go(-1)} />
-        <div className="deck-hit right" onClick={() => go(1)} />
-      </div>
-      <div className="deck-bar">
+      <div className="deck-main">
+        <div className="deck-stage" ref={stageRef}>
+          <img className="deck-slide" src={DECK_SLIDES[idx]} alt={`Слайд ${idx + 1}`} />
+          <div className="deck-hit left" onClick={() => go(-1)} />
+          <div className="deck-hit right" onClick={() => go(1)} />
+        </div>
+        <div className="deck-bar">
         <Tooltip label="Назад (←)" openDelay={300}>
           <ActionIcon
             variant="subtle" color="gray" size="lg"
@@ -73,19 +74,21 @@ export function DeckView() {
             {fs ? <IconMinimize size={20} /> : <IconMaximize size={20} />}
           </ActionIcon>
         </Tooltip>
+        </div>
       </div>
-      <div className="deck-thumbs">
+      <aside className="deck-toc">
+        <div className="doc-toc-title">Слайды</div>
         {DECK_SLIDES.map((s, i) => (
-          <img
+          <button
             key={s}
-            src={s}
-            alt={`Слайд ${i + 1}`}
-            className={`deck-thumb${i === idx ? ' active' : ''}`}
+            className={`doc-toc-item deck-toc-item${i === idx ? ' active' : ''}`}
             onClick={() => setIdx(i)}
-            loading="lazy"
-          />
+          >
+            <img src={s} alt={`Слайд ${i + 1}`} loading="lazy" />
+            <span>{i + 1}</span>
+          </button>
         ))}
-      </div>
+      </aside>
     </div>
   )
 }
