@@ -5,7 +5,7 @@ import scenariosJson from './data/scenarios.json'
 import nomenclatureJson from './data/nomenclature.json'
 import servicesJson from './data/services.json'
 import type {
-  LaborRole, NomenclatureItem, Params, ScenarioMatrix, ServiceSpec, SpecItem,
+  NomenclatureItem, Params, ScenarioMatrix, ServiceSpec, SpecItem,
 } from './model/types'
 
 // Запись в localStorage с debounce: NumField дёргает set() на каждый ввод,
@@ -37,7 +37,6 @@ interface ModelState {
   matrix: ScenarioMatrix
   items: NomenclatureItem[]
   services: ServiceSpec[]
-  labor: LaborRole[]
   scenario: string
   setScenario: (s: string) => void
   setParam: (path: string, value: unknown) => void
@@ -45,7 +44,6 @@ interface ModelState {
   setMatrixCell: (path: string, col: number, value: number) => void
   setServicePrice: (code: string, price: number) => void
   setSpecQty: (serviceCode: string, itemIdx: number, qty: number) => void
-  setLaborRate: (role: string, rateHour: number | null) => void
   // CRUD по справочникам
   addItem: (item: NomenclatureItem) => void
   removeItem: (code: string) => void
@@ -55,9 +53,6 @@ interface ModelState {
   updateService: (code: string, patch: Partial<ServiceSpec>) => void
   addSpecEntry: (serviceCode: string, entry: SpecItem) => void
   removeSpecEntry: (serviceCode: string, itemIdx: number) => void
-  addLaborRole: (role: LaborRole) => void
-  removeLaborRole: (role: string) => void
-  renameLaborRole: (oldRole: string, newRole: string) => void
   resetAll: () => void
   exportJson: () => string
   importJson: (json: string) => void
@@ -68,7 +63,6 @@ const defaults = () => ({
   matrix: scenariosJson as ScenarioMatrix,
   items: nomenclatureJson as NomenclatureItem[],
   services: servicesJson.services as ServiceSpec[],
-  labor: servicesJson.labor as LaborRole[],
 })
 
 // Следующий свободный код: максимум числового хвоста среди кодов с тем же префиксом + 1.
@@ -142,8 +136,6 @@ export const useModel = create<ModelState>()(
               : s,
           ),
         }),
-      setLaborRate: (role, rateHour) =>
-        set({ labor: get().labor.map((l) => (l.role === role ? { ...l, rateHour } : l)) }),
       addItem: (item) => set({ items: [...get().items, item] }),
       removeItem: (code) => set({ items: get().items.filter((i) => i.code !== code) }),
       duplicateItem: (code) => {
@@ -170,23 +162,12 @@ export const useModel = create<ModelState>()(
               : s,
           ),
         }),
-      addLaborRole: (role) => set({ labor: [...get().labor, role] }),
-      removeLaborRole: (role) => set({ labor: get().labor.filter((l) => l.role !== role) }),
-      // Переименование роли протягиваем в составы спецификаций — там ссылки по имени
-      renameLaborRole: (oldRole, newRole) =>
-        set({
-          labor: get().labor.map((l) => (l.role === oldRole ? { ...l, role: newRole } : l)),
-          services: get().services.map((s) => ({
-            ...s,
-            items: s.items.map((e) => (e.kind === 'labor' && e.role === oldRole ? { ...e, role: newRole } : e)),
-          })),
-        }),
       resetAll: () => set({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }),
       exportJson: () =>
         JSON.stringify(
           {
             params: get().params, matrix: get().matrix, items: get().items,
-            services: get().services, labor: get().labor, scenario: get().scenario,
+            services: get().services, scenario: get().scenario,
           },
           null, 2,
         ),
@@ -197,7 +178,6 @@ export const useModel = create<ModelState>()(
           matrix: d.matrix ?? get().matrix,
           items: d.items ?? get().items,
           services: d.services ?? get().services,
-          labor: d.labor ?? get().labor,
           scenario: d.scenario ?? get().scenario,
         })
       },
@@ -220,13 +200,12 @@ export const useModel = create<ModelState>()(
           matrix: fillDefaults(p.matrix, d.matrix),
           items: fillDefaults(p.items, d.items),
           services: fillDefaults(p.services, d.services),
-          labor: fillDefaults(p.labor, d.labor),
         } as ModelState
         return merged
       },
       partialize: (s) => ({
         params: s.params, matrix: s.matrix, items: s.items,
-        services: s.services, labor: s.labor, scenario: s.scenario,
+        services: s.services, scenario: s.scenario,
       }),
     },
   ),

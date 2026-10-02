@@ -46,17 +46,11 @@ export interface NomenclatureItem {
   note: string | null
 }
 
-// Спецификация услуги: материалы по кодам номенклатуры + труд по ролям.
-export interface LaborRole {
-  role: string
-  /** €/час с учётом взносов; null = авто из штата: оклад × (1 + взносы) / часы в месяце */
-  rateHour: number | null
-  note?: string
-}
+// Спецификация услуги: материалы по кодам номенклатуры + труд по ролям штата.
 export interface SpecItem {
   kind: 'material' | 'labor'
   code?: string   // для material — код номенклатуры
-  role?: string   // для labor — роль из LaborRole
+  role?: string   // для labor — роль из штатного расписания (params.fot.roles)
   qty?: number    // для material — кол-во единиц
   minutes?: number // для labor — минуты работы
 }
