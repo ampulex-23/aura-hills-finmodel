@@ -60,6 +60,22 @@ export function DocView({ doc }: { doc: DocEntry }) {
     [doc.source],
   )
 
+  // Scroll-spy: подсветка текущего раздела в содержании.
+  const [activeId, setActiveId] = useState<string | null>(null)
+  useEffect(() => {
+    const onScroll = () => {
+      let current: string | null = null
+      for (const h of toc) {
+        const el = document.getElementById(h.id)
+        if (el && el.getBoundingClientRect().top <= 90) current = h.id
+      }
+      setActiveId(current ?? toc[0]?.id ?? null)
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [toc])
+
   const heading = (Tag: 'h2' | 'h3') =>
     function Heading({ children }: { children?: ReactNode }) {
       const id = slugify(textOf(children))
@@ -96,7 +112,7 @@ export function DocView({ doc }: { doc: DocEntry }) {
           {toc.map((h) => (
             <button
               key={h.id}
-              className={`doc-toc-item${h.depth === 3 ? ' sub' : ''}`}
+              className={`doc-toc-item${h.depth === 3 ? ' sub' : ''}${h.id === activeId ? ' active' : ''}`}
               onClick={() => jump(h.id)}
             >
               {h.text}

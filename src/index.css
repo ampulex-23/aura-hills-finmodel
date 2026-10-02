@@ -293,7 +293,9 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   color: #9fb0c8; padding: 3px 0 3px 8px; border-left: 2px solid transparent;
 }
 .doc-toc-item:hover { color: #e8eefb; border-left-color: #5b8dd9; }
+.doc-toc-item.active { color: #e8eefb; border-left-color: #5b8dd9; font-weight: 600; }
 .doc-toc-item.sub { padding-left: 20px; font-size: 12px; color: #8b98ad; }
+.doc-toc-item.sub.active { color: #dbe6f5; }
 
 @media (max-width: 1100px) {
   .doc-layout { flex-direction: column; }
