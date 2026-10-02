@@ -59,6 +59,52 @@ export function Assumptions() {
         <Row label="GESY (здравоохранение)" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
       </fieldset>
 
+      <fieldset className="wide">
+        <legend>Распределение прибыли</legend>
+        <div className="table-wrap">
+          <table className="month-table spec">
+            <thead>
+              <tr><th>Партнёр</th><th>Доля</th><th>Налоговый статус</th></tr>
+            </thead>
+            <tbody>
+              {P.partners.names.map((n, i) => (
+                <tr key={i}>
+                  <td className="lft"><TextCell w={150} value={n} onChange={(v) => setParam(`partners.names.${i}`, v)} /></td>
+                  <td><NumField value={P.partners.shares[i]} onChange={(v) => setParam(`partners.shares.${i}`, v)} pct step={0.005} /></td>
+                  <td>
+                    <Select
+                      size="xs" w={210}
+                      data={['Резидент Кипра (17%)', 'Нерезидент / Non-Dom (0%)']}
+                      value={P.partners.statuses[i]}
+                      onChange={(v) => v && setParam(`partners.statuses.${i}`, v)}
+                      allowDeselect={false}
+                    />
+                  </td>
+                </tr>
+              ))}
+              <tr>
+                <td className="lft">Управляющая компания</td>
+                <td><NumField value={P.partners.corporate.mgmt} onChange={(v) => setParam('partners.corporate.mgmt', v)} pct step={0.005} /></td>
+                <td><small className="note">получает дивиденды, без SDC/GESY</small></td>
+              </tr>
+              <tr>
+                <td className="lft">Резервный фонд</td>
+                <td><NumField value={P.partners.corporate.reserve} onChange={(v) => setParam('partners.corporate.reserve', v)} pct step={0.005} /></td>
+                <td><small className="note">остаётся в компании — не распределяется</small></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <small className="note" style={{ marginTop: 6, display: 'block' }}>
+          Дивиденды = ЧП × (Σдолей партнёров + УК); резерв остаётся в компании.
+          Контроль баланса:{' '}
+          <b style={{ color: Math.abs(P.partners.shares.reduce((a, b) => a + b, 0) + P.partners.corporate.mgmt + P.partners.corporate.reserve - 1) < 0.001 ? '#9fd3b4' : '#e07a7a' }}>
+            Σ = {((P.partners.shares.reduce((a, b) => a + b, 0) + P.partners.corporate.mgmt + P.partners.corporate.reserve) * 100).toFixed(1)}%
+          </b>
+          . SDC 17% и GESY 2.65% взвешиваются по долям резидентов; Non-Dom освобождён от обоих.
+        </small>
+      </fieldset>
+
       <fieldset>
         <legend>Прочие OPEX</legend>
         <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct />
