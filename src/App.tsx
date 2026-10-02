@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Group, Select, Text, Tooltip } from '@mantine/core'
 import { useHotkeys, useMediaQuery } from '@mantine/hooks'
 import {
-  IconAdjustmentsHorizontal, IconArrowsExchange, IconChartLine,
+  IconAdjustmentsHorizontal, IconArrowsExchange, IconBook2, IconChartLine,
   IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCpu,
   IconFlask2, IconLayoutDashboard, IconListDetails, IconMenu2,
   IconPercentage, IconReceipt2, IconReportMoney, IconUserCog, IconUsers, IconVersions,
@@ -20,6 +20,8 @@ import { Specs } from './tabs/Specs'
 import { It } from './tabs/It'
 import { Staff } from './tabs/Staff'
 import { Sensitivity } from './tabs/Sensitivity'
+import { DocView } from './components/DocView'
+import { DOCS, getDoc } from './docs'
 
 type Tab =
   | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Спецификации' | 'IT'
@@ -34,39 +36,51 @@ const TAB_SLUGS: Record<Tab, string> = {
   'Налоги': 'taxes', 'P&L': 'pnl', 'Cash-Flow': 'cashflow', 'Sensitivity': 'sensitivity',
 }
 const SLUG_TABS = new Map(Object.entries(TAB_SLUGS).map(([t, s]) => [s, t as Tab]))
-const tabFromHash = (): Tab | null => SLUG_TABS.get(location.hash.replace(/^#\//, '')) ?? null
+const DOC_IDS = new Set(DOCS.map((d) => d.id))
+type Route = Tab | `doc:${string}`
+const routeFromHash = (): Route | null => {
+  const h = location.hash.replace(/^#\//, '')
+  if (h.startsWith('doc/') && DOC_IDS.has(h.slice(4))) return `doc:${h.slice(4)}`
+  return SLUG_TABS.get(h) ?? null
+}
+const slugOf = (r: Route) => (r.startsWith('doc:') ? `doc/${r.slice(4)}` : TAB_SLUGS[r as Tab])
 
-const NAV: { group: string; items: { tab: Tab; icon: typeof IconCpu }[] }[] = [
+type NavItem = { id: Route; label: string; icon: typeof IconCpu }
+const NAV: { group: string; items: NavItem[] }[] = [
+  {
+    group: 'Data Room',
+    items: DOCS.map((d) => ({ id: `doc:${d.id}` as Route, label: d.navTitle, icon: IconBook2 })),
+  },
   {
     group: 'Параметры',
     items: [
-      { tab: 'Допущения', icon: IconAdjustmentsHorizontal },
-      { tab: 'Сценарии', icon: IconVersions },
-      { tab: 'Штат', icon: IconUserCog },
-      { tab: 'Номенклатура', icon: IconListDetails },
-      { tab: 'Спецификации', icon: IconClipboardList },
-      { tab: 'IT', icon: IconCpu },
+      { id: 'Допущения', label: 'Допущения', icon: IconAdjustmentsHorizontal },
+      { id: 'Сценарии', label: 'Сценарии', icon: IconVersions },
+      { id: 'Штат', label: 'Штат', icon: IconUserCog },
+      { id: 'Номенклатура', label: 'Номенклатура', icon: IconListDetails },
+      { id: 'Спецификации', label: 'Спецификации', icon: IconClipboardList },
+      { id: 'IT', label: 'IT', icon: IconCpu },
     ],
   },
   {
     group: 'Отчёты',
     items: [
-      { tab: 'Дашборд', icon: IconLayoutDashboard },
-      { tab: 'Выручка', icon: IconChartLine },
-      { tab: 'OPEX', icon: IconReceipt2 },
-      { tab: 'ФОТ', icon: IconUsers },
-      { tab: 'CAPEX', icon: IconCoins },
-      { tab: 'Налоги', icon: IconPercentage },
-      { tab: 'P&L', icon: IconReportMoney },
-      { tab: 'Cash-Flow', icon: IconArrowsExchange },
-      { tab: 'Sensitivity', icon: IconFlask2 },
+      { id: 'Дашборд', label: 'Дашборд', icon: IconLayoutDashboard },
+      { id: 'Выручка', label: 'Выручка', icon: IconChartLine },
+      { id: 'OPEX', label: 'OPEX', icon: IconReceipt2 },
+      { id: 'ФОТ', label: 'ФОТ', icon: IconUsers },
+      { id: 'CAPEX', label: 'CAPEX', icon: IconCoins },
+      { id: 'Налоги', label: 'Налоги', icon: IconPercentage },
+      { id: 'P&L', label: 'P&L', icon: IconReportMoney },
+      { id: 'Cash-Flow', label: 'Cash-Flow', icon: IconArrowsExchange },
+      { id: 'Sensitivity', label: 'Sensitivity', icon: IconFlask2 },
     ],
   },
 ]
 
 export default function App() {
   const { params, matrix, items, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
-  const [tab, setTabState] = useState<Tab>(() => tabFromHash() ?? 'Дашборд')
+  const [tab, setTabState] = useState<Route>(() => routeFromHash() ?? 'Дашборд')
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ah-side') === '1')
   const [closedGroups, setClosedGroups] = useState<Set<string>>(
     () => new Set(JSON.parse(localStorage.getItem('ah-nav-groups') ?? '[]')),
@@ -75,14 +89,14 @@ export default function App() {
   const isMobile = useMediaQuery('(max-width: 900px)')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const setTab = (t: Tab) => {
+  const setTab = (t: Route) => {
     setTabState(t)
     setMobileOpen(false)
-    const hash = `#/${TAB_SLUGS[t]}`
+    const hash = `#/${slugOf(t)}`
     if (location.hash !== hash) location.hash = hash
   }
   useEffect(() => {
-    const onHash = () => { const t = tabFromHash(); if (t) setTabState(t) }
+    const onHash = () => { const t = routeFromHash(); if (t) setTabState(t) }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -160,19 +174,19 @@ export default function App() {
                   <IconChevronLeft size={13} stroke={2} className={`nav-caret${closed ? ' closed' : ''}`} />
                 </button>
               )}
-              {!closed && g.items.map(({ tab: t, icon: Icon }) => {
+              {!closed && g.items.map(({ id, label, icon: Icon }) => {
                 const btn = (
                   <button
-                    key={t}
-                    className={`nav-item${tab === t ? ' active' : ''}`}
-                    onClick={() => setTab(t)}
+                    key={id}
+                    className={`nav-item${tab === id ? ' active' : ''}`}
+                    onClick={() => setTab(id)}
                   >
                     <Icon size={17} stroke={1.7} />
-                    {!rail && <span>{t}</span>}
+                    {!rail && <span>{label}</span>}
                   </button>
                 )
                 return rail ? (
-                  <Tooltip key={t} label={t} position="right" withArrow offset={8}>
+                  <Tooltip key={id} label={label} position="right" withArrow offset={8}>
                     {btn}
                   </Tooltip>
                 ) : (
@@ -207,7 +221,9 @@ export default function App() {
                 <IconMenu2 size={20} stroke={1.7} />
               </button>
             )}
-            <Text fw={600} size="sm" className="page-title">{tab}</Text>
+            <Text fw={600} size="sm" className="page-title">
+              {tab.startsWith('doc:') ? (getDoc(tab.slice(4))?.navTitle ?? tab) : tab}
+            </Text>
           </Group>
           <Group gap="xs" wrap="wrap" align="center" justify="flex-end">
             <Text size="xs" c="dimmed">Сценарий</Text>
@@ -250,6 +266,10 @@ export default function App() {
           {tab === 'Спецификации' && <Specs />}
           {tab === 'IT' && <It />}
           {tab === 'Sensitivity' && <Sensitivity r={result} />}
+          {tab.startsWith('doc:') && (() => {
+            const d = getDoc(tab.slice(4))
+            return d ? <DocView key={d.id} doc={d} /> : null
+          })()}
         </main>
       </div>
     </div>
