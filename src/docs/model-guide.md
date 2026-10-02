@@ -87,11 +87,15 @@ flowchart TD
 
 Годы между явно заданными интерполируются по фиксированным весам:
 
-$$L_{y2} = L_{y1} + (L_{y3} - L_{y1}) \times \tfrac{20}{35}
-\qquad \text{(парения, массаж)}$$
+$$
+L_{y2} = L_{y1} + (L_{y3} - L_{y1}) \times \tfrac{20}{35}
+\qquad \text{(парения, массаж)}
+$$
 
-$$L_{y2} = L_{y1} + (L_{y3} - L_{y1}) \times \tfrac{15}{25}
-\qquad \text{(глэмпинг)}$$
+$$
+L_{y2} = L_{y1} + (L_{y3} - L_{y1}) \times \tfrac{15}{25}
+\qquad \text{(глэмпинг)}
+$$
 
 Годы 4–5 продолжают траекторию: парения и глэмпинг прибавляют
 +5 п.п. к году 3, массаж +5/+10 п.п., члены клуба ×1.25 и ×1.42 —
@@ -196,9 +200,11 @@ $$Rev_{rent} = \sum_m s_m \cdot \bar{p}_m \cdot g_k$$
 Парения продаются гостям занятых слотов: доля гостей, берущих услугу —
 uptake сценария (в пакетном режиме uptake = 100% — услуга включена).
 
-$$Rev_{steam} = slots \times \bar{C} \times up \times
+$$
+Rev_{steam} = slots \times \bar{C} \times up \times
 \left[(1 - w) \cdot d_{steam} \cdot \frac{w_j p_j}{\sum w_j p_j}
-+ u \cdot w_j (p_j - d_{steam})\right] \times g_k$$
++ u \cdot w_j (p_j - d_{steam})\right] \times g_k
+$$
 
 - $\bar{C}$ — средняя вместимость слота;
 - $up$ — effectiveUptake сценария;
@@ -217,8 +223,10 @@ $$Rev_{steam} = slots \times \bar{C} \times up \times
 
 Купели, чаны, ванны — берутся из кошелька депозита:
 
-$$Rev_{extra} = slots \times \bar{C} \times up \times
-w_{wallet} \times d_{base} \times \frac{w_j p_j}{\sum w_j p_j} \times g_k$$
+$$
+Rev_{extra} = slots \times \bar{C} \times up \times
+w_{wallet} \times d_{base} \times \frac{w_j p_j}{\sum w_j p_j} \times g_k
+$$
 
 20% депозита €110 распределяется по семи позициям прайса пропорционально
 «вес × цена». За пределы кошелька продажи не выходят — консервативно.
@@ -228,7 +236,7 @@ w_{wallet} \times d_{base} \times \frac{w_j p_j}{\sum w_j p_j} \times g_k$$
 3 юнита: 2 малых по €165/ночь, 1 большой по €235. Загрузка — отдельный
 сценарный вектор с летней сезонностью:
 
-$$Rev_{glamp} = 30 \times \sum_{units} u \cdot L_{glamp} \cdot \text{seas}_{glamp} \cdot \text{ramp} \cdot price \cdot g_k$$
+$$Rev_{glamp} = 30 \times \sum_{u} u \cdot L_{glamp} \cdot \text{seas}_{glamp} \cdot \text{ramp} \cdot price \cdot g_k$$
 
 **OTA-канал.** 30% ночей продаётся через Booking/Airbnb с комиссией 17% —
 комиссия учитывается в OPEX, а не уменьшает цену:

@@ -10,5 +10,7 @@ it('all docs render without throwing', () => {
     expect(html).toContain('katex')
     expect(html).toContain('<table')
     expect(html).toContain('doc-toc-item')
+    expect(html).not.toContain('katex-error')
+    expect(html).not.toContain('##')
   }
 })

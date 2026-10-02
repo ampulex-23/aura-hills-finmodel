@@ -280,9 +280,13 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
 
 .doc-toc {
   width: 210px; flex: none; position: sticky; top: 64px;
+  max-height: calc(100vh - 80px); overflow-y: auto;
   border-left: 1px solid #223048; padding-left: 12px;
   display: flex; flex-direction: column; gap: 2px;
+  scrollbar-width: thin; scrollbar-color: #2a3548 transparent;
 }
+.doc-toc::-webkit-scrollbar { width: 4px; }
+.doc-toc::-webkit-scrollbar-thumb { background: #2a3548; border-radius: 2px; }
 .doc-toc-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #7f93b8; margin-bottom: 6px; }
 .doc-toc-item {
   all: unset; cursor: pointer; font-size: 12.5px; line-height: 1.4;
