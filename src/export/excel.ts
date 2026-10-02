@@ -106,6 +106,7 @@ export async function exportWorkbook(
   sheetOfMonths(wb, 'OPEX', labels, [
     { label: 'Постоянные', values: r.opex.map((m) => m.fixedTotal) },
     { label: 'IT / АСУ', values: r.opex.map((m) => m.itTotal) },
+    { label: 'Аренда земли', values: r.opex.map((m) => m.landRent) },
     { label: 'Переменные (номенклатура)', values: r.opex.map((m) => m.variableTotal) },
     { label: '% от выручки', values: r.opex.map((m) => m.pctTotal) },
     { label: 'ИТОГО OPEX', values: r.opex.map((m) => m.total), bold: true },

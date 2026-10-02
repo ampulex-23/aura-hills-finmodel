@@ -107,6 +107,9 @@ export interface Params {
   // F&B-экономика: себестоимость продуктов (% выручки F&B) + повар в ФОТ.
   // В Excel-оракуле этого слоя нет — тесты выключают enabled для паритета.
   fb: { enabled: boolean; foodCostPct: number; cookSalary: number; cookCount: number }
+  // Земля: owned — допущение «у основателей» (€0); lease — аренда с 1-го мес стройки;
+  // purchase — участок в CAPEX без амортизации. В Excel-оракуле нет → дефолт owned.
+  land: { mode: 'owned' | 'lease' | 'purchase'; purchaseCost: number; rentMonthly: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi: { steamShare: number; massageShare: number; revenueShare: number }
   service: { upgradeShare: number; walletExtraShare: number; demandMult: number }
@@ -203,6 +206,7 @@ export interface OpexMonth {
   fixedTotal: number
   it: { name: string; amount: number }[]
   itTotal: number
+  landRent: number // аренда земли в операционке (mode='lease'), с инфляцией
   variable: { article: string; amount: number }[]
   variableTotal: number
   pct: { acquiring: number; maintenance: number; fbCost: number }
@@ -257,6 +261,7 @@ export interface CashFlowMonth {
   capex: number
   presale: number
   presaleUnwind: number // отток «деньги уже получены» в deferred-режиме (≤0)
+  landLease: number // аренда земли в период стройки (≤0)
   fcff: number
   dividends: number
   sdc: number

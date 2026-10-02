@@ -73,6 +73,11 @@
     "cookSalary": 1500,
     "cookCount": 1
   },
+  "land": {
+    "mode": "owned",
+    "purchaseCost": 80000,
+    "rentMonthly": 800
+  },
   "deposit": {
     "base": 110,
     "steamBase": 50,

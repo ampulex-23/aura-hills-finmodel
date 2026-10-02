@@ -202,10 +202,20 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
     ...params.opexFixed.map((f, i) => ({
       label: f.name, values: O.map((m) => m.fixed[i]), hint: fixedHint(i),
     })),
+    ...(params.land.mode === 'lease'
+      ? [{
+          label: 'Аренда земли', values: O.map((m) => m.landRent),
+          tip: 'Аренда участка: в операционке — здесь; в период стройки — строкой в Cash-Flow.',
+          hint: (ci: number): CellHint => ({
+            title: 'Аренда земли',
+            calc: `${e0(params.land.rentMonthly)}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(O[ci].landRent)}`,
+          }),
+        }]
+      : []),
     {
-      label: 'Итого постоянные', values: O.map((m) => m.fixedTotal), bold: true,
+      label: 'Итого постоянные', values: O.map((m) => m.fixedTotal + m.landRent), bold: true,
       tip: 'Сумма постоянных статей с индексацией на инфляцию.',
-      hint: (ci) => ({ title: 'Итого постоянные', calc: `Σ постоянных = ${e0(O[ci].fixedTotal)}` }),
+      hint: (ci) => ({ title: 'Итого постоянные', calc: `Σ постоянных ${e0(O[ci].fixedTotal)} + аренда земли ${e0(O[ci].landRent)} = ${e0(O[ci].fixedTotal + O[ci].landRent)}` }),
     },
     ...(params.it.enabled
       ? [
@@ -254,7 +264,7 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
       label: 'ИТОГО OPEX', values: O.map((m) => m.total), bold: true,
       hint: (ci) => ({
         title: 'Итого OPEX',
-        calc: `${e0(O[ci].fixedTotal)} пост. + ${e0(O[ci].itTotal)} IT + ${e0(O[ci].variableTotal)} перем. + ${e0(O[ci].pctTotal)} % = ${e0(O[ci].total)}`,
+        calc: `${e0(O[ci].fixedTotal)} пост. + ${e0(O[ci].itTotal)} IT + ${e0(O[ci].landRent)} земля + ${e0(O[ci].variableTotal)} перем. + ${e0(O[ci].pctTotal)} % = ${e0(O[ci].total)}`,
       }),
     },
   ]
@@ -534,7 +544,7 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'Постоянные расходы', values: P.map((m) => m.fixedOpex),
-      hint: arith('Постоянные', 'Фиксированные месячные статьи + IT/АСУ, с инфляцией.', (ci) => `Σ постоянных + IT = ${e0(P[ci].fixedOpex)}`),
+      hint: arith('Постоянные', 'Фиксированные месячные статьи + IT/АСУ + аренда земли, с инфляцией.', (ci) => `Σ постоянных + IT + земля = ${e0(P[ci].fixedOpex)}`),
     },
     {
       label: 'ФОТ + взносы', values: P.map((m) => m.fot),
@@ -619,10 +629,17 @@ export function CashFlow({ r }: { r: ModelResult }) {
       tip: 'Deferred-режим: членства, проданные в пресейле, доходят в первые месяцы операционки без нового кэша.',
       hint: (ci) => ({ title: 'Прогорание пре-сейла', calc: C[ci].presaleUnwind ? e0(C[ci].presaleUnwind) : '—' }),
     },
+    ...(params.land.mode === 'lease'
+      ? [{
+          label: '− Аренда земли (стройка)', values: C.map((m) => m.landLease),
+          tip: 'Участок арендуется до открытия: платежи в период стройки идут отдельным оттоком, в операционке — в OPEX.',
+          hint: (ci) => ({ title: 'Аренда земли', calc: C[ci].landLease ? `${e0(params.land.rentMonthly)}/мес` : '—' }),
+        }]
+      : []),
     {
       label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
-      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}`,
-      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) = ${e0(C[ci].fcff)}` }),
+      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}`,
+      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) = ${e0(C[ci].fcff)}` }),
     },
     {
       label: 'Дивиденды и УК', values: C.map((m) => m.dividends),

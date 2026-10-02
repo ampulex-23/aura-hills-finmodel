@@ -12,7 +12,7 @@ export function computePnl(
   return revenue.map((rev, k) => {
     const revenueNet = rev.total - taxes[k].vatPayable
     const marginalProfit = revenueNet - opex[k].variableTotal - opex[k].pctTotal
-    const ebitda = marginalProfit - opex[k].fixedTotal - fot[k].total
+    const ebitda = marginalProfit - opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total
     const ebit = ebitda - monthlyAmort
     const netProfit = ebit - taxes[k].cit
     return {
@@ -21,7 +21,7 @@ export function computePnl(
       variableOpex: opex[k].variableTotal,
       pctOpex: opex[k].pctTotal,
       marginalProfit,
-      fixedOpex: opex[k].fixedTotal + opex[k].itTotal,
+      fixedOpex: opex[k].fixedTotal + opex[k].itTotal + opex[k].landRent,
       fot: fot[k].total,
       ebitda,
       amortization: monthlyAmort,

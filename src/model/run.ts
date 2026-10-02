@@ -47,7 +47,7 @@ export function runModel(
   const ebit = revenue.map(
     (r, k) =>
       r.total - vat[k].vatPayable - opex[k].variableTotal - opex[k].pctTotal -
-      opex[k].fixedTotal - fot[k].total - capex.monthlyAmort,
+      opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total - capex.monthlyAmort,
   )
   // CIT не зависит от чистой прибыли → первый проход даёт корректный CIT.
   // Дивиденды берут ЧП с лагом 12 мес → второй проход с реальной базой.

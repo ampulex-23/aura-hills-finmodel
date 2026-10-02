@@ -20,11 +20,15 @@ export function computeCapex(
   })
   // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
   if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur })))
+  // Земля (режим purchase): входит в CAPEX, но НЕ амортизируется — земля не изнашивается
+  const landEur = params.land.mode === 'purchase' ? params.land.purchaseCost : 0
+  if (landEur) out.push({ name: 'Земля / участок', eur: landEur })
   const totalEur = out.reduce((s, i) => s + i.eur, 0)
   const adjustedEur = totalEur * (1 + capexAdj)
+  const amortizableEur = adjustedEur - landEur * (1 + capexAdj)
   const monthlyAmort =
     params.amort.shares.reduce(
-      (s, sh, i) => s + (adjustedEur * sh) / (params.amort.years[i] * 12),
+      (s, sh, i) => s + (amortizableEur * sh) / (params.amort.years[i] * 12),
       0,
     )
   return { items: out, totalEur, adjustedEur, monthlyAmort }

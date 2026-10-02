@@ -77,6 +77,27 @@ export function Assumptions() {
       </fieldset>
 
       <fieldset>
+        <legend>Земля</legend>
+        <label className="field">
+          <span>Режим владения участком</span>
+          <Select
+            size="xs" w={210}
+            data={[
+              { value: 'owned', label: 'Своя (у основателей)' },
+              { value: 'lease', label: 'Аренда' },
+              { value: 'purchase', label: 'Покупка в CAPEX' },
+            ]}
+            value={P.land.mode}
+            onChange={(v) => v && setParam('land.mode', v)}
+            allowDeselect={false}
+          />
+        </label>
+        <Row label="Стоимость участка, €" path="land.purchaseCost" value={P.land.purchaseCost} step={5000} />
+        <Row label="Аренда земли, €/мес" path="land.rentMonthly" value={P.land.rentMonthly} step={50} />
+        <small className="note">Своя — явное допущение, €0 в модели. Аренда платится с 1-го мес стройки (в CF) и в операционке (в OPEX, с инфляцией). Покупка — в CAPEX, без амортизации. Рынок: сельхоз €330–650/мес, «под глэмпинг» до €2,000/мес; покупка €40–200k.</small>
+      </fieldset>
+
+      <fieldset>
         <legend>Депозит и кошелёк услуг</legend>
         <Row label="Депозит на гостя, €" path="deposit.base" value={P.deposit.base} />
         <Row label="База парения, €" path="deposit.steamBase" value={P.deposit.steamBase} />

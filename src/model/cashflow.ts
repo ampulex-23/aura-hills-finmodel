@@ -46,7 +46,10 @@ export function computeCashFlow(
     const presale =
       m1 <= presaleEnd && m1 >= presaleStart ? presaleMonthly : 0
     const presaleUnwind = isOps && opsIdx < recogMonths ? -unwindMonthly : 0
-    const fcff = operatingCf + capex + presale + presaleUnwind
+    // Аренда земли в стройке: площадку арендуют до открытия (после — в OPEX с инфляцией)
+    const landLease =
+      !isOps && params.land.mode === 'lease' ? -params.land.rentMonthly : 0
+    const fcff = operatingCf + capex + presale + presaleUnwind + landLease
     const dividends = isOps ? -pnl[opsIdx].dividends : 0
     const sdc = isOps ? -pnl[opsIdx].sdc : 0
     const totalCf = fcff + dividends + sdc
@@ -59,7 +62,7 @@ export function computeCashFlow(
 
     out.push({
       label, isOps, netProfit, amortization, operatingCf, capex, presale, presaleUnwind,
-      fcff, dividends, sdc, totalCf, cumCash, cumFcff,
+      landLease, fcff, dividends, sdc, totalCf, cumCash, cumFcff,
       discountFactor, discountedFcff, cumDcf,
     })
   }
