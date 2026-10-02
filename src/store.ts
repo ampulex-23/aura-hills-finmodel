@@ -211,6 +211,9 @@ export const useModel = create<ModelState>()(
         if (merged.params && !merged.params.taxDepr) {
           merged.params = { ...merged.params, taxDepr: defaults().params.taxDepr }
         }
+        if (merged.params && !merged.params.glampOta) {
+          merged.params = { ...merged.params, glampOta: defaults().params.glampOta }
+        }
         if (merged.params?.taxes && merged.params.taxes.gesy === undefined) {
           merged.params.taxes = { ...merged.params.taxes, gesy: defaults().params.taxes.gesy }
         }

@@ -120,6 +120,9 @@ export interface Params {
   // конструкции ~4%/год (25 лет), оборудование ~14% (7 лет), прочее/IT ~20% (5 лет).
   // Доли берутся из amort.shares, здесь только сроки. В Excel-оракуле нет.
   taxDepr: { enabled: boolean; years: number[] }
+  // OTA-канал глэмпинга: доля ночей через Booking/Airbnb × комиссия.
+  // Комиссия — расход от выручки глэмпинга (pct-блок OPEX). В Excel-оракуле нет.
+  glampOta: { enabled: boolean; share: number; commissionPct: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi: { steamShare: number; massageShare: number; revenueShare: number }
   service: { upgradeShare: number; walletExtraShare: number; demandMult: number }
@@ -221,7 +224,7 @@ export interface OpexMonth {
   landRent: number // аренда земли в операционке (mode='lease'), с инфляцией
   variable: { article: string; amount: number }[]
   variableTotal: number
-  pct: { acquiring: number; maintenance: number; fbCost: number }
+  pct: { acquiring: number; maintenance: number; fbCost: number; ota: number }
   pctTotal: number
   total: number
 }

@@ -110,7 +110,9 @@ export function Assumptions() {
         <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct />
         <Row label="Ремонт/обслуживание, %" path="opexPct.maintenance" value={P.opexPct.maintenance} pct />
         <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50} />
-        <small className="note">FF&E-норма отрасли 3–4% выручки на ремонт/обслуживание; страхование публичного банно-водного объекта €800–2,000/мес.</small>
+        <Row label="Доля глэмпинга через OTA" path="glampOta.share" value={P.glampOta.share} pct step={0.05} />
+        <Row label="Комиссия OTA" path="glampOta.commissionPct" value={P.glampOta.commissionPct} pct step={0.01} />
+        <small className="note">FF&E-норма отрасли 3–4% выручки на ремонт/обслуживание; страхование публичного банно-водного объекта €800–2,000/мес. OTA: Booking/Airbnb ~15–18% с продажи; доля 0% = «только прямые продажи».</small>
       </fieldset>
 
       <fieldset>

@@ -13,6 +13,7 @@ params.preopen.enabled = false // pre-opening вне оракула
 params.members.consumeSlots = false // ёмкость членов вне оракула
 params.taxes.gesy = 0 // GESY вне оракула
 params.taxDepr.enabled = false // налоговый график CIT вне оракула
+params.glampOta.enabled = false // OTA-комиссия вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

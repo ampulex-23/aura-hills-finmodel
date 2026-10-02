@@ -109,6 +109,7 @@ export async function exportWorkbook(
     { label: 'Аренда земли', values: r.opex.map((m) => m.landRent) },
     { label: 'Переменные (номенклатура)', values: r.opex.map((m) => m.variableTotal) },
     { label: '% от выручки', values: r.opex.map((m) => m.pctTotal) },
+    { label: '— в т.ч. OTA-комиссия', values: r.opex.map((m) => m.pct.ota) },
     { label: 'ИТОГО OPEX', values: r.opex.map((m) => m.total), bold: true },
   ])
 

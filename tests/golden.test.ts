@@ -19,6 +19,7 @@ params.preopen.enabled = false // pre-opening вне оракула
 params.members.consumeSlots = false
 params.taxes.gesy = 0
 params.taxDepr.enabled = false
+params.glampOta.enabled = false // OTA-комиссия вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

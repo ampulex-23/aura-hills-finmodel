@@ -58,6 +58,10 @@ export function computeOpexMonth(
   const maintenance = params.opexPct.maintenance * rev.total
   // Себестоимость F&B — % от выручки F&B (не от общей), продукты/расходники кухни
   const fbCost = params.fb.enabled ? params.fb.foodCostPct * rev.fb : 0
+  // OTA-комиссия глэмпинга: доля ночей через Booking/Airbnb × ставка комиссии
+  const ota = params.glampOta.enabled
+    ? rev.glamping * params.glampOta.share * params.glampOta.commissionPct
+    : 0
   // Аренда земли (режим lease): фиксированный платёж, индексируется инфляцией.
   // В период стройки аренда уходит в CF отдельно (cashflow.ts), здесь — только операционка.
   const landRent = params.land.mode === 'lease' ? params.land.rentMonthly * infl : 0
@@ -69,9 +73,9 @@ export function computeOpexMonth(
     landRent,
     variable,
     variableTotal,
-    pct: { acquiring, maintenance, fbCost },
-    pctTotal: acquiring + maintenance + fbCost,
-    total: fixedTotal + itTotal + landRent + variableTotal + acquiring + maintenance + fbCost,
+    pct: { acquiring, maintenance, fbCost, ota },
+    pctTotal: acquiring + maintenance + fbCost + ota,
+    total: fixedTotal + itTotal + landRent + variableTotal + acquiring + maintenance + fbCost + ota,
   }
 }
 

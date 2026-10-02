@@ -92,6 +92,11 @@
     "enabled": true,
     "years": [25, 7, 5]
   },
+  "glampOta": {
+    "enabled": true,
+    "share": 0.3,
+    "commissionPct": 0.17
+  },
   "deposit": {
     "base": 110,
     "steamBase": 50,

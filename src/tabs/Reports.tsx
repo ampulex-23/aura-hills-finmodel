@@ -271,6 +271,14 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
       }),
     },
     {
+      label: 'OTA-комиссия глэмпинга', values: O.map((m) => m.pct.ota),
+      tip: 'Доля ночей через Booking/Airbnb × комиссия канала — от выручки глэмпинга.',
+      hint: (ci) => ({
+        title: 'OTA-комиссия',
+        calc: `${e0(R[ci].glamping)} × доля OTA ${pc(params.glampOta.share, 0)} × комиссия ${pc(params.glampOta.commissionPct, 0)} = ${e0(O[ci].pct.ota)}`,
+      }),
+    },
+    {
       label: 'ИТОГО OPEX', values: O.map((m) => m.total), bold: true,
       hint: (ci) => ({
         title: 'Итого OPEX',
@@ -553,7 +561,7 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     {
       label: '% от выручки', values: P.map((m) => m.pctOpex),
       tip: 'Эквайринг и ремонт — % от брутто-выручки; себестоимость F&B — % от выручки F&B.',
-      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. + ${e0(r.opex[ci].pct.fbCost)} F&B = ${e0(P[ci].pctOpex)}`),
+      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. + ${e0(r.opex[ci].pct.fbCost)} F&B + ${e0(r.opex[ci].pct.ota)} OTA = ${e0(P[ci].pctOpex)}`),
     },
     {
       label: 'Маржинальная прибыль', values: P.map((m) => m.marginalProfit), bold: true,
