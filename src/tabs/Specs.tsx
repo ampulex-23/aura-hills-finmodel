@@ -134,11 +134,11 @@ export function Specs() {
                       <td onClick={(e) => e.stopPropagation()}>
                         <NumField value={c.spec.price} onChange={(v) => setServicePrice(c.spec.code, v)} step={5} />
                       </td>
-                      <td>{fmt(c.materialsCost, 2)}</td>
-                      <td>{fmt(c.laborCost, 2)}</td>
-                      <td><b>{fmt(c.cost, 2)}</b></td>
-                      <td className={c.margin < 0 ? 'neg' : ''}>{fmt(c.margin, 2)}</td>
-                      <td>
+                      <td className="lft">{fmt(c.materialsCost, 2)}</td>
+                      <td className="lft">{fmt(c.laborCost, 2)}</td>
+                      <td className="lft"><b>{fmt(c.cost, 2)}</b></td>
+                      <td className={`lft${c.margin < 0 ? ' neg' : ''}`}>{fmt(c.margin, 2)}</td>
+                      <td className="lft">
                         <Badge
                           size="sm" variant="light"
                           color={c.marginPct >= 0.6 ? 'green' : c.marginPct >= 0.3 ? 'yellow' : 'red'}
@@ -177,7 +177,7 @@ export function Specs() {
                                 : ''}
                           </small>
                         </td>
-                        <td>
+                        <td className="lft">
                           <small>
                             {it.kind === 'material' && byCode.get(it.code ?? '')
                               ? fmt(landedCost(byCode.get(it.code ?? '')!) * (it.qty ?? 0), 2)
