@@ -68,6 +68,12 @@ export function computeRevenueMonth(
 
   const cap = sc.avgCapacity
   const up = sc.effectiveUptake
+  // Векторы загрузки услуг из матрицы сценариев — множители доли реализации.
+  // Отключаемы флагом service.serviceLoads (golden-master держит паритет с оракулом).
+  const ld = params.service.serviceLoads
+  const upSteam = up * (ld ? Math.min(1, sc.steamLoad[yearIdx]) : 1)
+  const upMassage = up * (ld ? Math.min(1, sc.massageLoad[yearIdx]) : 1)
+  const upExtra = up * (ld ? Math.min(1, sc.extraLoad[yearIdx]) : 1)
   // Услуги привязаны к слотам ТЕКУЩЕГО месяца (slots), а не первого:
   // исходный Excel баг — ссылка на C13 как константа — исправлен и здесь, и в книге.
   const svc = slots
@@ -78,7 +84,7 @@ export function computeRevenueMonth(
   const steam = params.procedures.steam.prices.map((p, j) => {
     const w = params.procedures.steam.weights[j]
     return (
-      svc * cap * up *
+      svc * cap * upSteam *
       ((1 - params.service.walletExtraShare) * params.deposit.steamBase * w * p / swp(params.procedures.steam) +
         params.service.upgradeShare * w * (p - params.deposit.steamBase)) * growth
     )
@@ -86,7 +92,7 @@ export function computeRevenueMonth(
   const massage = params.procedures.massage.prices.map((p, j) => {
     const w = params.procedures.massage.weights[j]
     return (
-      svc * cap * up *
+      svc * cap * upMassage *
       ((1 - params.service.walletExtraShare) * params.deposit.massageBase * w * p / swp(params.procedures.massage) +
         params.service.upgradeShare * w * (p - params.deposit.massageBase)) * growth
     )
@@ -95,7 +101,7 @@ export function computeRevenueMonth(
   const extra = params.procedures.extra.prices.map((p, j) => {
     const w = params.procedures.extra.weights[j]
     return (
-      svc * cap * up * params.service.walletExtraShare * params.deposit.base *
+      svc * cap * upExtra * params.service.walletExtraShare * params.deposit.base *
       (w * p) / swp(params.procedures.extra) * growth
     )
   })

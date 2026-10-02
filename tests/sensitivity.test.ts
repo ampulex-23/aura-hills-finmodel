@@ -14,6 +14,7 @@ params.members.consumeSlots = false // ёмкость членов вне ора
 params.taxes.gesy = 0 // GESY вне оракула
 params.taxDepr.enabled = false // налоговый график CIT вне оракула
 params.glampOta.enabled = false // OTA-комиссия вне оракула
+params.service.serviceLoads = false // векторы загрузки услуг вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

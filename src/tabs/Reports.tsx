@@ -28,6 +28,9 @@ function revenueHints(params: Params, r: ModelResult) {
   const dm = params.service.demandMult
   const cap = sc.avgCapacity
   const up = sc.effectiveUptake
+  const ld = params.service.serviceLoads
+  const upLdTxt = (v: number, _i: number) =>
+    ld ? `${pc(up)} × ${pc(Math.min(1, v))} (загрузка)` : pc(up)
   const wExtra = params.service.walletExtraShare
   const season = (m: (typeof R)[0]) => params.seasonality.baths[m.monthOfYear - 1]
   const gAt = (k: number) => growthAt(sc.priceGrowth, k)
@@ -74,7 +77,7 @@ function revenueHints(params: Params, r: ModelResult) {
         title: 'Парения',
         text: `Процедуры из депозитного кошелька по базе ${e0(params.deposit.steamBase)} + доплаты за апгрейд (${pc(params.service.upgradeShare)} гостей).`,
         tex: String.raw`\mathrm{слоты}\cdot\mathrm{гостей/слот}\cdot\mathrm{доля}\cdot\big[(1-w_{доп})\,P_{база}+u_{апгр}\,\overline{(P-P_{база})}\big]\cdot\mathrm{рост}`,
-        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
+        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${upLdTxt(sc.steamLoad[m.yearIdx], i)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
       }
     },
     massage: (i: number): CellHint => {
@@ -82,7 +85,7 @@ function revenueHints(params: Params, r: ModelResult) {
       return {
         title: 'Массаж',
         text: `Та же схема, что у парений: база в кошельке ${e0(params.deposit.massageBase)} + доплаты за апгрейд.`,
-        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${pc(up)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
+        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${upLdTxt(sc.massageLoad[m.yearIdx], i)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
       }
     },
     extra: (i: number): CellHint => {
@@ -90,7 +93,7 @@ function revenueHints(params: Params, r: ModelResult) {
       return {
         title: 'Доп.услуги',
         text: `Доля кошелька на доп.услуги (${pc(wExtra)}) × депозит ${e0(params.deposit.base)} × распределение по услугам.`,
-        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} × ${pc(up)} × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
+        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} × ${upLdTxt(sc.extraLoad[m.yearIdx], i)} × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
       }
     },
     glamping: (i: number): CellHint => {

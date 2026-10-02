@@ -115,7 +115,8 @@
   "service": {
     "upgradeShare": 0,
     "walletExtraShare": 0.2,
-    "demandMult": 1
+    "demandMult": 1,
+    "serviceLoads": true
   },
   "seasonality": {
     "baths": [

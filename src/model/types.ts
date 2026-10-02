@@ -123,7 +123,13 @@ export interface Params {
   tv: { enabled: boolean; growth: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi: { steamShare: number; massageShare: number; revenueShare: number }
-  service: { upgradeShare: number; walletExtraShare: number; demandMult: number }
+  service: {
+    upgradeShare: number
+    walletExtraShare: number
+    demandMult: number
+    /** Векторы загрузки услуг из матрицы сценариев как множители uptake */
+    serviceLoads: boolean
+  }
   seasonality: { baths: number[]; glamping: number[] }
   procedures: {
     steam: ProcedureSet; massage: ProcedureSet; extra: ProcedureSet

@@ -20,6 +20,9 @@ params.members.consumeSlots = false
 params.taxes.gesy = 0
 params.taxDepr.enabled = false
 params.glampOta.enabled = false // OTA-комиссия вне оракула
+// Векторы загрузки услуг (парения/массаж/допы) — расширение сверх оракула:
+// в Excel-книге строки присутствовали, но не участвовали в расчёте.
+params.service.serviceLoads = false
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

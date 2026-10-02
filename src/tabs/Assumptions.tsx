@@ -61,6 +61,15 @@ export function Assumptions() {
           />
         </label>
         <Row label="Мультипликатор спроса" path="service.demandMult" value={P.service.demandMult} step={0.05} />
+        <label className="field">
+          <span>Загрузка услуг по сценариям</span>
+          <SegmentedControl
+            size="xs"
+            data={['Да', 'Нет']}
+            value={P.service.serviceLoads ? 'Да' : 'Нет'}
+            onChange={(v) => setParam('service.serviceLoads', v === 'Да')}
+          />
+        </label>
       </fieldset>
 
       <fieldset>
