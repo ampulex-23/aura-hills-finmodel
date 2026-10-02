@@ -38,6 +38,17 @@ const tabFromHash = (): Tab | null => SLUG_TABS.get(location.hash.replace(/^#\//
 
 const NAV: { group: string; items: { tab: Tab; icon: typeof IconCpu }[] }[] = [
   {
+    group: 'Параметры',
+    items: [
+      { tab: 'Допущения', icon: IconAdjustmentsHorizontal },
+      { tab: 'Сценарии', icon: IconVersions },
+      { tab: 'Штат', icon: IconUserCog },
+      { tab: 'Номенклатура', icon: IconListDetails },
+      { tab: 'Спецификации', icon: IconClipboardList },
+      { tab: 'IT', icon: IconCpu },
+    ],
+  },
+  {
     group: 'Отчёты',
     items: [
       { tab: 'Дашборд', icon: IconLayoutDashboard },
@@ -51,23 +62,15 @@ const NAV: { group: string; items: { tab: Tab; icon: typeof IconCpu }[] }[] = [
       { tab: 'Sensitivity', icon: IconFlask2 },
     ],
   },
-  {
-    group: 'Параметры',
-    items: [
-      { tab: 'Допущения', icon: IconAdjustmentsHorizontal },
-      { tab: 'Сценарии', icon: IconVersions },
-      { tab: 'Штат', icon: IconUserCog },
-      { tab: 'Номенклатура', icon: IconListDetails },
-      { tab: 'Спецификации', icon: IconClipboardList },
-      { tab: 'IT', icon: IconCpu },
-    ],
-  },
 ]
 
 export default function App() {
   const { params, matrix, items, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
   const [tab, setTabState] = useState<Tab>(() => tabFromHash() ?? 'Дашборд')
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ah-side') === '1')
+  const [closedGroups, setClosedGroups] = useState<Set<string>>(
+    () => new Set(JSON.parse(localStorage.getItem('ah-nav-groups') ?? '[]')),
+  )
   const [mobileOpen, setMobileOpen] = useState(false)
   const isMobile = useMediaQuery('(max-width: 900px)')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -91,6 +94,15 @@ export default function App() {
     })
   }
   useHotkeys([['mod+B', () => (isMobile ? setMobileOpen((o) => !o) : toggleCollapsed())]])
+
+  const toggleGroup = (g: string) =>
+    setClosedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(g)) next.delete(g)
+      else next.add(g)
+      localStorage.setItem('ah-nav-groups', JSON.stringify([...next]))
+      return next
+    })
 
   const result = useMemo(
     () => runModel(params, matrix, items, scenario),
@@ -136,10 +148,19 @@ export default function App() {
         </div>
 
         <nav className="side-nav">
-          {NAV.map((g) => (
+          {NAV.map((g) => {
+            const closed = !rail && closedGroups.has(g.group)
+            return (
             <div key={g.group} className="nav-group">
-              {rail ? <div className="nav-sep" /> : <div className="nav-label">{g.group}</div>}
-              {g.items.map(({ tab: t, icon: Icon }) => {
+              {rail ? (
+                <div className="nav-sep" />
+              ) : (
+                <button className="nav-label" onClick={() => toggleGroup(g.group)}>
+                  <span>{g.group}</span>
+                  <IconChevronLeft size={13} stroke={2} className={`nav-caret${closed ? ' closed' : ''}`} />
+                </button>
+              )}
+              {!closed && g.items.map(({ tab: t, icon: Icon }) => {
                 const btn = (
                   <button
                     key={t}
@@ -159,7 +180,8 @@ export default function App() {
                 )
               })}
             </div>
-          ))}
+            )
+          })}
         </nav>
 
         {!isMobile && (
