@@ -12,6 +12,8 @@ params.it.enabled = false
 // Deferred-пресейл — расширение сверх Excel-оракула (в книге только incremental):
 // golden сверяет порт ядра 1:1, поэтому в тесте остаёмся на поведении оракула.
 params.units.presaleMode = 'incremental'
+// F&B-слой (food-cost + повар) — расширение сверх Excel-оракула.
+params.fb.enabled = false
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

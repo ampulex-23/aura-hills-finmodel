@@ -69,6 +69,14 @@ export function Assumptions() {
       </fieldset>
 
       <fieldset>
+        <legend>F&B</legend>
+        <Row label="Себестоимость F&B, % выручки" path="fb.foodCostPct" value={P.fb.foodCostPct} pct />
+        <Row label="Оклад повара, €/мес gross" path="fb.cookSalary" value={P.fb.cookSalary} step={50} />
+        <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5} />
+        <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%).</small>
+      </fieldset>
+
+      <fieldset>
         <legend>Депозит и кошелёк услуг</legend>
         <Row label="Депозит на гостя, €" path="deposit.base" value={P.deposit.base} />
         <Row label="База парения, €" path="deposit.steamBase" value={P.deposit.steamBase} />

@@ -67,6 +67,12 @@
     "acquiring": 0.02,
     "maintenance": 0.02
   },
+  "fb": {
+    "enabled": true,
+    "foodCostPct": 0.35,
+    "cookSalary": 1500,
+    "cookCount": 1
+  },
   "deposit": {
     "base": 110,
     "steamBase": 50,

@@ -104,6 +104,9 @@ export interface Params {
   }
   amort: { shares: number[]; years: number[]; groups: string[] }
   opexPct: { acquiring: number; maintenance: number }
+  // F&B-экономика: себестоимость продуктов (% выручки F&B) + повар в ФОТ.
+  // В Excel-оракуле этого слоя нет — тесты выключают enabled для паритета.
+  fb: { enabled: boolean; foodCostPct: number; cookSalary: number; cookCount: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi: { steamShare: number; massageShare: number; revenueShare: number }
   service: { upgradeShare: number; walletExtraShare: number; demandMult: number }
@@ -202,7 +205,7 @@ export interface OpexMonth {
   itTotal: number
   variable: { article: string; amount: number }[]
   variableTotal: number
-  pct: { acquiring: number; maintenance: number }
+  pct: { acquiring: number; maintenance: number; fbCost: number }
   pctTotal: number
   total: number
 }

@@ -46,6 +46,8 @@ export function computeOpexMonth(
 
   const acquiring = params.opexPct.acquiring * rev.total
   const maintenance = params.opexPct.maintenance * rev.total
+  // Себестоимость F&B — % от выручки F&B (не от общей), продукты/расходники кухни
+  const fbCost = params.fb.enabled ? params.fb.foodCostPct * rev.fb : 0
   return {
     fixed,
     fixedTotal,
@@ -53,9 +55,9 @@ export function computeOpexMonth(
     itTotal,
     variable,
     variableTotal,
-    pct: { acquiring, maintenance },
-    pctTotal: acquiring + maintenance,
-    total: fixedTotal + itTotal + variableTotal + acquiring + maintenance,
+    pct: { acquiring, maintenance, fbCost },
+    pctTotal: acquiring + maintenance + fbCost,
+    total: fixedTotal + itTotal + variableTotal + acquiring + maintenance + fbCost,
   }
 }
 

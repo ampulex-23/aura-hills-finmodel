@@ -243,6 +243,14 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
     { label: 'Эквайринг', values: O.map((m) => m.pct.acquiring), hint: pctHint('Эквайринг', 'acquiring') },
     { label: 'Ремонт/обслуживание', values: O.map((m) => m.pct.maintenance), hint: pctHint('Ремонт/обслуживание', 'maintenance') },
     {
+      label: 'Себестоимость F&B', values: O.map((m) => m.pct.fbCost),
+      tip: 'Продукты/расходники кухни — % от выручки F&B (не от общей). Повар — в ФОТ.',
+      hint: (ci) => ({
+        title: 'Себестоимость F&B',
+        calc: `${pc(params.fb.foodCostPct, 2)} × ${e0(R[ci].fb)} = ${e0(O[ci].pct.fbCost)}`,
+      }),
+    },
+    {
       label: 'ИТОГО OPEX', values: O.map((m) => m.total), bold: true,
       hint: (ci) => ({
         title: 'Итого OPEX',
@@ -260,11 +268,12 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
   const inflAt = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
   const baseSalaries = params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0)
     + (params.it.enabled ? params.it.curator : 0)
+    + (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
   const kpi = params.kpi
   const rows: RowDef[] = [
     {
       label: 'Оклады (фикс.)', values: F.map((m) => m.salaries),
-      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}, индексируется на инфляцию ежегодно.`,
+      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}${params.fb.enabled ? ` и повара (${params.fb.cookCount} × ${e0(params.fb.cookSalary)}/мес)` : ''}, индексируется на инфляцию ежегодно.`,
       hint: (ci) => ({
         title: 'Оклады',
         calc: `${e0(baseSalaries)}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
@@ -515,8 +524,8 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: '% от выручки', values: P.map((m) => m.pctOpex),
-      tip: 'Эквайринг и ремонт/обслуживание — процент от брутто-выручки.',
-      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. = ${e0(P[ci].pctOpex)}`),
+      tip: 'Эквайринг и ремонт — % от брутто-выручки; себестоимость F&B — % от выручки F&B.',
+      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. + ${e0(r.opex[ci].pct.fbCost)} F&B = ${e0(P[ci].pctOpex)}`),
     },
     {
       label: 'Маржинальная прибыль', values: P.map((m) => m.marginalProfit), bold: true,
