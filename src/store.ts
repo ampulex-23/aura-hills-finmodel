@@ -202,6 +202,9 @@ export const useModel = create<ModelState>()(
         if (merged.params && !merged.params.land) {
           merged.params = { ...merged.params, land: defaults().params.land }
         }
+        if (merged.params && !merged.params.preopen) {
+          merged.params = { ...merged.params, preopen: defaults().params.preopen }
+        }
         if (merged.params?.units && !merged.params.units.presaleMode) {
           merged.params = { ...merged.params, units: { ...defaults().params.units, ...merged.params.units } }
         }

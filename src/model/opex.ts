@@ -5,6 +5,16 @@ export function landedCost(item: NomenclatureItem): number {
   return item.price + Math.max(item.deliveryFix, item.price * item.deliveryPct)
 }
 
+// Постоянные + IT расходы месяца 0 (без инфляции) — для pre-opening burn в стройке
+export function fixedOpexMonthly(params: Params): number {
+  return (
+    params.opexFixed.reduce(
+      (s, f) => s + f.base * (f.perModule ? activeModuleCount(params) : 1),
+      0,
+    ) + (params.it.enabled ? params.it.opex.reduce((s, x) => s + x.base, 0) : 0)
+  )
+}
+
 // Переменные расходы статьи = слоты × Σ(норма_слот) + гости × Σ(норма_гость) + Σ(норма_мес)
 // Порт OPEX!C20:C29 (SUMPRODUCT по справочнику).
 export function computeOpexMonth(

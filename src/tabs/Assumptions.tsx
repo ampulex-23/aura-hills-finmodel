@@ -129,6 +129,8 @@ export function Assumptions() {
           label="Признание пре-сейла, мес" path="units.presaleRecognizeMonths"
           value={P.units.presaleRecognizeMonths} step={1}
         />
+        <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1} />
+        <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
       </fieldset>
 
       <fieldset>

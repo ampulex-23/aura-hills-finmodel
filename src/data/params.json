@@ -78,6 +78,10 @@
     "purchaseCost": 80000,
     "rentMonthly": 800
   },
+  "preopen": {
+    "enabled": true,
+    "months": 2
+  },
   "deposit": {
     "base": 110,
     "steamBase": 50,

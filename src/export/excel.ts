@@ -171,6 +171,8 @@ export async function exportWorkbook(
       { label: 'Операционный CF', values: r.cashflow.map((m) => m.operatingCf) },
       { label: 'CAPEX', values: r.cashflow.map((m) => m.capex) },
       { label: 'Пре-сейл', values: r.cashflow.map((m) => m.presale) },
+      { label: 'Аренда земли (стройка)', values: r.cashflow.map((m) => m.landLease) },
+      { label: 'Pre-opening', values: r.cashflow.map((m) => m.preopen) },
       { label: 'FCFF', values: r.cashflow.map((m) => m.fcff), bold: true },
       { label: 'Дивиденды', values: r.cashflow.map((m) => m.dividends) },
       { label: 'SDC', values: r.cashflow.map((m) => m.sdc) },

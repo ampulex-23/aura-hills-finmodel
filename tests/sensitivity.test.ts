@@ -9,6 +9,7 @@ const params = paramsJson as Params
 params.it.enabled = false // IT/АСУ нет в оракуле — сверяем ядро 1:1
 params.units.presaleMode = 'incremental' // deferred-пресейл вне оракула (см. golden.test)
 params.fb.enabled = false // F&B-слой вне оракула
+params.preopen.enabled = false // pre-opening вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

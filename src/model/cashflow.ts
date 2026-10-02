@@ -1,4 +1,6 @@
 import type { CashFlowMonth, Params, PnlMonth } from './types'
+import { baseSalariesMonthly } from './fot'
+import { fixedOpexMonthly } from './opex'
 
 const MONTHS_RU = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
 
@@ -27,6 +29,18 @@ export function computeCashFlow(
   const recogMonths = Math.max(1, params.units.presaleRecognizeMonths)
   const unwindMonthly = deferred ? (presaleMonthly * params.units.presaleMonths) / recogMonths : 0
 
+  // Pre-opening: последние N мес стройки штат уже нанят и объект работает «вхолостую»:
+  // оклады + взносы работодателя + постоянные/IT расходы. Без переменных (нет гостей)
+  // и без аренды земли — она идёт отдельной строкой landLease во все месяцы стройки.
+  const preopenMonths = params.preopen.enabled
+    ? Math.min(params.preopen.months, params.meta.capexMonths)
+    : 0
+  const preopenStart = params.meta.capexMonths - preopenMonths + 1
+  const preopenMonthly = -(
+    baseSalariesMonthly(params) * (1 + params.taxes.employerRate) +
+    fixedOpexMonthly(params)
+  )
+
   let cumCash = 0
   let cumFcff = 0
   let cumDcf = 0
@@ -49,7 +63,8 @@ export function computeCashFlow(
     // Аренда земли в стройке: площадку арендуют до открытия (после — в OPEX с инфляцией)
     const landLease =
       !isOps && params.land.mode === 'lease' ? -params.land.rentMonthly : 0
-    const fcff = operatingCf + capex + presale + presaleUnwind + landLease
+    const preopen = !isOps && m1 >= preopenStart ? preopenMonthly : 0
+    const fcff = operatingCf + capex + presale + presaleUnwind + landLease + preopen
     const dividends = isOps ? -pnl[opsIdx].dividends : 0
     const sdc = isOps ? -pnl[opsIdx].sdc : 0
     const totalCf = fcff + dividends + sdc
@@ -62,7 +77,7 @@ export function computeCashFlow(
 
     out.push({
       label, isOps, netProfit, amortization, operatingCf, capex, presale, presaleUnwind,
-      landLease, fcff, dividends, sdc, totalCf, cumCash, cumFcff,
+      landLease, preopen, fcff, dividends, sdc, totalCf, cumCash, cumFcff,
       discountFactor, discountedFcff, cumDcf,
     })
   }

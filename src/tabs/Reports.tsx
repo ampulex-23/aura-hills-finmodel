@@ -629,6 +629,13 @@ export function CashFlow({ r }: { r: ModelResult }) {
       tip: 'Deferred-режим: членства, проданные в пресейле, доходят в первые месяцы операционки без нового кэша.',
       hint: (ci) => ({ title: 'Прогорание пре-сейла', calc: C[ci].presaleUnwind ? e0(C[ci].presaleUnwind) : '—' }),
     },
+    ...(params.preopen.enabled
+      ? [{
+          label: '− Pre-opening (ФОТ + фикс)', values: C.map((m) => m.preopen),
+          tip: `Последние ${params.preopen.months} мес стройки: штат нанят, объект работает вхолостую — оклады с взносами + постоянные/IT расходы.`,
+          hint: (ci) => ({ title: 'Pre-opening', calc: C[ci].preopen ? e0(C[ci].preopen) + '/мес' : '—' }),
+        }]
+      : []),
     ...(params.land.mode === 'lease'
       ? [{
           label: '− Аренда земли (стройка)', values: C.map((m) => m.landLease),
@@ -638,8 +645,8 @@ export function CashFlow({ r }: { r: ModelResult }) {
       : []),
     {
       label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
-      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}`,
-      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) = ${e0(C[ci].fcff)}` }),
+      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}+\mathrm{preopen}`,
+      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) + (${e0(C[ci].preopen)}) = ${e0(C[ci].fcff)}` }),
     },
     {
       label: 'Дивиденды и УК', values: C.map((m) => m.dividends),

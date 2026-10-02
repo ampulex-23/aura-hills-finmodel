@@ -14,6 +14,7 @@ params.it.enabled = false
 params.units.presaleMode = 'incremental'
 // F&B-слой (food-cost + повар) — расширение сверх Excel-оракула.
 params.fb.enabled = false
+params.preopen.enabled = false // pre-opening вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 

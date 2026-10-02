@@ -1,12 +1,18 @@
 import type { FotMonth, Params, RevenueMonth } from './types'
 
+// Базовый фонд окладов месяца 0 (без бонусов и индексации) — штат + IT-куратор + повар
+export function baseSalariesMonthly(params: Params): number {
+  return (
+    params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
+    (params.it.enabled ? params.it.curator : 0) +
+    (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
+  )
+}
+
 // ФОТ: оклады × инфляция^год; KPI-бонусы = 30% парений + 30% массажа + 1% выручки; взносы 15.15%
 export function computeFotMonth(params: Params, rev: RevenueMonth, k: number): FotMonth {
   const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
-  const salaries =
-    (params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
-      (params.it.enabled ? params.it.curator : 0) +
-      (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)) * infl
+  const salaries = baseSalariesMonthly(params) * infl
   const bonuses =
     rev.steamTotal * params.kpi.steamShare +
     rev.massageTotal * params.kpi.massageShare +
