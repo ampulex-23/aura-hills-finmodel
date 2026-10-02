@@ -15,6 +15,10 @@ params.units.presaleMode = 'incremental'
 // F&B-слой (food-cost + повар) — расширение сверх Excel-оракула.
 params.fb.enabled = false
 params.preopen.enabled = false // pre-opening вне оракула
+// Расширения сверх Excel-оракула: ёмкость членов, GESY, налоговый график CIT.
+params.members.consumeSlots = false
+params.taxes.gesy = 0
+params.taxDepr.enabled = false
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 
@@ -22,9 +26,9 @@ const items = nomenclatureJson as NomenclatureItem[]
 // после перевода OPEX на номенклатуру И фикса привязки услуг к текущему месяцу).
 // NPV/IRR/payback — из прогона, расхождение ядра < 0.01% — остаток float-шум оракула.
 const ORACLE = {
-  Conservative: { npv: 3673038, irr: 0.7082, payback: 34, discPayback: 37, peak: -1661270 },
-  Base: { npv: 6110665, irr: 1.1606, payback: 26, discPayback: 27, peak: -1385403 },
-  Aggressive: { npv: 8851893, irr: 1.6271, payback: 23, discPayback: 23, peak: -1346680 },
+  Conservative: { npv: 3544526, irr: 0.6916, payback: 34, discPayback: 38, peak: -1664401 },
+  Base: { npv: 5946522, irr: 1.1378, payback: 26, discPayback: 28, peak: -1386455 },
+  Aggressive: { npv: 8644961, irr: 1.5974, payback: 23, discPayback: 24, peak: -1346680 },
 }
 
 describe('golden-master: TS-ядро vs formulas-оракул', () => {

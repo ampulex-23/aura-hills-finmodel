@@ -56,6 +56,30 @@ export function Assumptions() {
         <Row label="НДС входной" path="taxes.vatInput" value={P.taxes.vatInput} pct />
         <Row label="Взносы работодателя" path="taxes.employerRate" value={P.taxes.employerRate} pct />
         <Row label="SDC (Defence Tax)" path="taxes.sdc" value={P.taxes.sdc} pct />
+        <Row label="GESY (здравоохранение)" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
+      </fieldset>
+
+      <fieldset>
+        <legend>Прочие OPEX</legend>
+        <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct />
+        <Row label="Ремонт/обслуживание, %" path="opexPct.maintenance" value={P.opexPct.maintenance} pct />
+        <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50} />
+        <small className="note">FF&E-норма отрасли 3–4% выручки на ремонт/обслуживание; страхование публичного банно-водного объекта €800–2,000/мес.</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Членства и ёмкость</legend>
+        <Row label="Визитов члена/мес" path="members.visitsPerMonth" value={P.members.visitsPerMonth} step={0.5} />
+        <Row label="Гостей в визите" path="members.partySize" value={P.members.partySize} step={0.5} />
+        <div className="field">
+          <span>Члены занимают слоты</span>
+          <Select
+            data={[{ value: 'true', label: 'Да — вычитаются из ёмкости' }, { value: 'false', label: 'Нет — члены вне слотов' }]}
+            value={P.members.consumeSlots ? 'true' : 'false'}
+            onChange={(v) => setParam('members.consumeSlots', v === 'true')}
+          />
+        </div>
+        <small className="note">Члены занимают слоты: члены × визиты × гостей ÷ вместимость слота — вычитаются из ёмкости до платных продаж, и добавляются к гостям F&B.</small>
       </fieldset>
 
       <fieldset>
@@ -140,8 +164,10 @@ export function Assumptions() {
             <span>{g}</span>
             <NumField value={P.amort.shares[i]} onChange={(v) => setParam(`amort.shares.${i}`, v)} pct />
             <NumField value={P.amort.years[i]} onChange={(v) => setParam(`amort.years.${i}`, v)} step={1} />
+            <NumField value={P.taxDepr.years[i]} onChange={(v) => setParam(`taxDepr.years.${i}`, v)} step={1} />
           </div>
         ))}
+        <small className="note">Третье число — налоговый срок (capital allowances для CIT): конструкции 25 лет (~4%), оборудование 7 лет (~14%), IT/прочее 5 лет (20%). Бухгалтерская амортизация в P&L — по второму числу.</small>
       </fieldset>
 
       <fieldset className="wide">

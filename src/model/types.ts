@@ -88,7 +88,7 @@ export interface Params {
   general: { rubEurRate: number; inflation: number; wacc: number }
   taxes: {
     cit: number; vatStd: number; vatGlamp: number; vatFb: number
-    vatInput: number; employerRate: number; sdc: number
+    vatInput: number; employerRate: number; sdc: number; gesy: number
   }
   prices: {
     membershipMonth: number; membershipYear: number; certificate: number
@@ -113,6 +113,13 @@ export interface Params {
   // Pre-opening: штат нанят и фикс-расходы капают за N мес до открытия — «мёртвый» период
   // в CF (оклады+взносы + постоянные+IT, без переменных). В Excel-оракуле нет.
   preopen: { enabled: boolean; months: number }
+  // Члены клуба занимают ёмкость бань: активные члены × визитов/мес × гостей
+  // визита → слоты, вычитаемые из доступной ёмкости до платных продаж.
+  members: { consumeSlots: boolean; visitsPerMonth: number; partySize: number }
+  // Налоговая амортизация (кипрские capital allowances) — отдельный график для CIT:
+  // конструкции ~4%/год (25 лет), оборудование ~14% (7 лет), прочее/IT ~20% (5 лет).
+  // Доли берутся из amort.shares, здесь только сроки. В Excel-оракуле нет.
+  taxDepr: { enabled: boolean; years: number[] }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi: { steamShare: number; massageShare: number; revenueShare: number }
   service: { upgradeShare: number; walletExtraShare: number; demandMult: number }
@@ -198,6 +205,8 @@ export interface RevenueMonth {
   membersMonthCount: number
   membersMonth: number
   membersYear: number
+  memberSlots: number   // слоты, занятые членами клуба
+  memberGuests: number  // гости-члены (участвуют в F&B)
   certificates: number
   membershipTotal: number
   fb: number
@@ -234,6 +243,7 @@ export interface TaxMonth {
   cit: number
   dividends: number
   sdc: number
+  gesy: number
   total: number
 }
 
@@ -252,7 +262,8 @@ export interface PnlMonth {
   netProfit: number
   dividends: number
   sdc: number
-  netAfterSdc: number
+  gesy: number
+  netAfterSdc: number // ЧП минус SDC и GESY
 }
 
 export interface CashFlowMonth {
@@ -269,6 +280,7 @@ export interface CashFlowMonth {
   fcff: number
   dividends: number
   sdc: number
+  gesy: number
   totalCf: number
   cumCash: number
   cumFcff: number
@@ -300,7 +312,7 @@ export interface ModelResult {
   taxes: TaxMonth[]
   pnl: PnlMonth[]
   cashflow: CashFlowMonth[]
-  capex: { items: { name: string; eur: number }[]; totalEur: number; adjustedEur: number; monthlyAmort: number }
+  capex: { items: { name: string; eur: number }[]; totalEur: number; adjustedEur: number; monthlyAmort: number; amortizableEur: number; monthlyTaxDepr: number }
   citByYear: number[]
   kpis: Kpis
 }

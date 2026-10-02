@@ -33,9 +33,11 @@ export function computeRevenueMonth(
   let slots = 0
   let guests = 0
   let rental = 0
+  let capSlots = 0 // ёмкость без фактора загрузки — для вычета слотов членов
   const slotCounts = params.slotMix.map(() => 0)
   for (const m of params.modules) {
     if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) continue
+    capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK
     const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad
     slots += s
     guests += s * m.capacity
@@ -44,6 +46,24 @@ export function computeRevenueMonth(
     params.slotMix.forEach((mix, j) => {
       slotCounts[j] += s * mix
     })
+  }
+
+  // Члены клуба занимают ёмкость: активные члены × визиты/мес × гостей/визит.
+  // Слоты членов вычитаются из доступной ёмкости до платных продаж —
+  // в пиковые месяцы они вытесняют платные слоты (консервативно).
+  const membersMonthCount = dm * sc.membersMonth[yearIdx] * ramp
+  const annualActive = dm * params.units.annualMembersPlan[yearIdx] * ramp
+  const memberGuests = params.members.consumeSlots
+    ? (membersMonthCount + annualActive) * params.members.visitsPerMonth * params.members.partySize
+    : 0
+  const memberSlots = memberGuests / sc.avgCapacity
+  if (memberSlots > 0 && capSlots > 0) {
+    const paidSlots = Math.max(0, Math.min(slots, capSlots - memberSlots))
+    const scale = slots > 0 ? paidSlots / slots : 1
+    slots = paidSlots
+    guests = guests * scale + memberGuests
+    rental *= scale
+    for (let j = 0; j < slotCounts.length; j++) slotCounts[j] *= scale
   }
 
   const cap = sc.avgCapacity
@@ -88,7 +108,6 @@ export function computeRevenueMonth(
     (params.units.glampSmall * glampLoad * params.prices.glampSmall +
       params.units.glampBig * glampLoad * params.prices.glampBig) * growth
 
-  const membersMonthCount = dm * sc.membersMonth[yearIdx] * ramp
   const membersMonth = membersMonthCount * params.prices.membershipMonth * growth
   const membersYearCount = (dm * params.units.annualMembersPlan[yearIdx] / 12) * ramp
   const membersYear = membersYearCount * params.prices.membershipYear * growth
@@ -120,6 +139,8 @@ export function computeRevenueMonth(
     membersMonthCount,
     membersMonth,
     membersYear,
+    memberSlots,
+    memberGuests,
     certificates,
     membershipTotal,
     fb,

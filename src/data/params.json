@@ -21,7 +21,8 @@
     "vatFb": 0.09,
     "vatInput": 0.19,
     "employerRate": 0.1515,
-    "sdc": 0.17
+    "sdc": 0.17,
+    "gesy": 0.0265
   },
   "prices": {
     "membershipMonth": 200,
@@ -65,7 +66,7 @@
   },
   "opexPct": {
     "acquiring": 0.02,
-    "maintenance": 0.02
+    "maintenance": 0.03
   },
   "fb": {
     "enabled": true,
@@ -81,6 +82,15 @@
   "preopen": {
     "enabled": true,
     "months": 2
+  },
+  "members": {
+    "consumeSlots": true,
+    "visitsPerMonth": 2,
+    "partySize": 2
+  },
+  "taxDepr": {
+    "enabled": true,
+    "years": [25, 7, 5]
   },
   "deposit": {
     "base": 110,
@@ -357,7 +367,7 @@
     },
     {
       "name": "Страхование",
-      "base": 400.0
+      "base": 1000.0
     },
     {
       "name": "Бухгалтерия / юрист",

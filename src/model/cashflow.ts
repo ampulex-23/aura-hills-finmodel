@@ -67,7 +67,8 @@ export function computeCashFlow(
     const fcff = operatingCf + capex + presale + presaleUnwind + landLease + preopen
     const dividends = isOps ? -pnl[opsIdx].dividends : 0
     const sdc = isOps ? -pnl[opsIdx].sdc : 0
-    const totalCf = fcff + dividends + sdc
+    const gesy = isOps ? -pnl[opsIdx].gesy : 0
+    const totalCf = fcff + dividends + sdc + gesy
 
     cumCash += totalCf
     cumFcff += fcff
@@ -77,7 +78,7 @@ export function computeCashFlow(
 
     out.push({
       label, isOps, netProfit, amortization, operatingCf, capex, presale, presaleUnwind,
-      landLease, preopen, fcff, dividends, sdc, totalCf, cumCash, cumFcff,
+      landLease, preopen, fcff, dividends, sdc, gesy, totalCf, cumCash, cumFcff,
       discountFactor, discountedFcff, cumDcf,
     })
   }

@@ -205,6 +205,15 @@ export const useModel = create<ModelState>()(
         if (merged.params && !merged.params.preopen) {
           merged.params = { ...merged.params, preopen: defaults().params.preopen }
         }
+        if (merged.params && !merged.params.members) {
+          merged.params = { ...merged.params, members: defaults().params.members }
+        }
+        if (merged.params && !merged.params.taxDepr) {
+          merged.params = { ...merged.params, taxDepr: defaults().params.taxDepr }
+        }
+        if (merged.params?.taxes && merged.params.taxes.gesy === undefined) {
+          merged.params.taxes = { ...merged.params.taxes, gesy: defaults().params.taxes.gesy }
+        }
         if (merged.params?.units && !merged.params.units.presaleMode) {
           merged.params = { ...merged.params, units: { ...defaults().params.units, ...merged.params.units } }
         }

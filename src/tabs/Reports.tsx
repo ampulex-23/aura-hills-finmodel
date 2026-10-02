@@ -139,6 +139,16 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
   const rows: RowDef[] = [
     { label: 'Загрузка бань', values: stream((m) => m.bathsLoad), fmt: 'pct' as const, hint: h.load },
     { label: 'Слоты (шт)', values: stream((m) => m.slots), hint: h.slots },
+    ...(params.members.consumeSlots
+      ? [{
+          label: '— в т.ч. слоты членов', values: stream((m) => m.memberSlots),
+          tip: 'Члены клуба занимают ёмкость: активные члены × визитов/мес × гостей в визите ÷ средняя вместимость слота. В пиковые месяцы вытесняют платные слоты.',
+          hint: (i: number): CellHint => ({
+            title: 'Слоты членов',
+            calc: `${fmt(R[i].memberSlots)} слот (${fmt(R[i].memberGuests)} гостей-членов в F&B)`,
+          }),
+        }]
+      : []),
     { label: 'Аренда бань', values: stream((m) => m.rental), hint: h.rental },
     { label: 'Парения', values: stream((m) => m.steamTotal), hint: h.steam },
     { label: 'Массаж', values: stream((m) => m.massageTotal), hint: h.massage },
@@ -492,10 +502,18 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
       }),
     },
     {
+      label: 'GESY (здравоохранение)', values: T.map((m) => m.gesy),
+      tip: 'Взнос GHS/GESY 2.65% на дивиденды резидентам Кипра — действует вместе с SDC; non-dom освобождены.',
+      hint: (ci) => ({
+        title: 'GESY на дивиденды',
+        calc: `${e0(T[ci].dividends)} × взвеш. ставка ${pc(t.gesy * sdcRate / t.sdc || 0, 2)} = ${e0(T[ci].gesy)}`,
+      }),
+    },
+    {
       label: 'ИТОГО НАЛОГИ', values: T.map((m) => m.total), bold: true,
       hint: (ci) => ({
         title: 'Итого налоги',
-        calc: `НДС ${e0(T[ci].vatPayable)} + CIT ${e0(T[ci].cit)} + SDC ${e0(T[ci].sdc)} = ${e0(T[ci].total)}`,
+        calc: `НДС ${e0(T[ci].vatPayable)} + CIT ${e0(T[ci].cit)} + SDC ${e0(T[ci].sdc)} + GESY ${e0(T[ci].gesy)} = ${e0(T[ci].total)}`,
       }),
     },
   ]
@@ -580,8 +598,8 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
       hint: arith('Дивиденды', 'Чистая прибыль годом ранее × доля партнёров.', (ci) => `${e0(P[ci].dividends)}`),
     },
     {
-      label: 'SDC', values: P.map((m) => m.sdc),
-      hint: arith('SDC', 'Defence Tax на дивиденды резидентов Кипра.', (ci) => `${e0(P[ci].sdc)}`),
+      label: 'SDC + GESY', values: P.map((m) => m.sdc + m.gesy),
+      hint: arith('SDC + GESY', 'Defence Tax 17% + здравоохранение 2.65% на дивиденды резидентов Кипра.', (ci) => `${e0(P[ci].sdc + P[ci].gesy)}`),
     },
     {
       label: 'ЧП после SDC', values: P.map((m) => m.netAfterSdc), bold: true,
@@ -653,12 +671,12 @@ export function CashFlow({ r }: { r: ModelResult }) {
       hint: (ci) => ({ title: 'Дивиденды', calc: C[ci].dividends ? `${e0(C[ci].dividends)}` : '—' }),
     },
     {
-      label: 'Defence Tax', values: C.map((m) => m.sdc),
-      hint: (ci) => ({ title: 'SDC', calc: C[ci].sdc ? `${e0(C[ci].sdc)}` : '—' }),
+      label: 'Defence Tax + GESY', values: C.map((m) => m.sdc + m.gesy),
+      hint: (ci) => ({ title: 'SDC + GESY', calc: C[ci].sdc || C[ci].gesy ? `${e0(C[ci].sdc + C[ci].gesy)}` : '—' }),
     },
     {
       label: 'CF после распределения', values: C.map((m) => m.totalCf), bold: true,
-      hint: (ci) => ({ title: 'CF после распределения', calc: `${e0(C[ci].fcff)} + ${e0(C[ci].dividends)} + ${e0(C[ci].sdc)} = ${e0(C[ci].totalCf)}` }),
+      hint: (ci) => ({ title: 'CF после распределения', calc: `${e0(C[ci].fcff)} + ${e0(C[ci].dividends)} + ${e0(C[ci].sdc + C[ci].gesy)} = ${e0(C[ci].totalCf)}` }),
     },
     {
       label: 'Остаток денег', values: C.map((m) => m.cumCash),

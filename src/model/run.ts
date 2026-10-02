@@ -51,9 +51,12 @@ export function runModel(
   )
   // CIT не зависит от чистой прибыли → первый проход даёт корректный CIT.
   // Дивиденды берут ЧП с лагом 12 мес → второй проход с реальной базой.
-  const citPass = computeProfitTaxes(p, revenue, ebit, ebit.map(() => 0), vat)
+  // CIT считается от налоговой базы: EBIT с налоговой амортизацией (capital
+  // allowances) вместо бухгалтерской — на Кипре они разные графики.
+  const citEbit = ebit.map((e) => e + capex.monthlyAmort - capex.monthlyTaxDepr)
+  const citPass = computeProfitTaxes(p, revenue, citEbit, citEbit.map(() => 0), vat)
   const netPreDiv = ebit.map((e, k) => e - citPass.taxes[k].cit)
-  const { taxes, citByYear } = computeProfitTaxes(p, revenue, ebit, netPreDiv, vat)
+  const { taxes, citByYear } = computeProfitTaxes(p, revenue, citEbit, netPreDiv, vat)
 
   const pnl = computePnl(p, revenue, opex, fot, taxes, capex.monthlyAmort)
   const cashflow = computeCashFlow(p, pnl, capex.adjustedEur, sc.presaleMonthly)

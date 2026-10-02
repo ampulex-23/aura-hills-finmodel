@@ -10,6 +10,9 @@ params.it.enabled = false // IT/АСУ нет в оракуле — сверяе
 params.units.presaleMode = 'incremental' // deferred-пресейл вне оракула (см. golden.test)
 params.fb.enabled = false // F&B-слой вне оракула
 params.preopen.enabled = false // pre-opening вне оракула
+params.members.consumeSlots = false // ёмкость членов вне оракула
+params.taxes.gesy = 0 // GESY вне оракула
+params.taxDepr.enabled = false // налоговый график CIT вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 
@@ -17,8 +20,8 @@ const items = nomenclatureJson as NomenclatureItem[]
 // системный сдвиг ≈ −0.25%). Проверяем направление и порядок величин.
 // Пересчитано после фикса привязки услуг к слотам текущего месяца (был C13-костыль).
 const ORACLE = {
-  t1_d08_w14: 4317940, t1_d10_w14: 6110665, t1_d12_w14: 7764291,
-  t2_g0_c30: 5144320, t2_g7_c30: 6571877, t3_p08: 4169239, t3_p12: 8052092,
+  t1_d08_w14: 4182495, t1_d10_w14: 5946522, t1_d12_w14: 7573750,
+  t2_g0_c30: 4988922, t2_g7_c30: 6395268, t3_p08: 4033807, t3_p12: 7859236,
 }
 
 describe('sensitivity: 57 точек реального пересчёта', () => {

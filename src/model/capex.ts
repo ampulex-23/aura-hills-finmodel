@@ -6,7 +6,14 @@ export function computeCapex(
   params: Params,
   items: NomenclatureItem[],
   capexAdj: number,
-): { items: { name: string; eur: number }[]; totalEur: number; adjustedEur: number; monthlyAmort: number } {
+): {
+  items: { name: string; eur: number }[]
+  totalEur: number
+  adjustedEur: number
+  monthlyAmort: number
+  amortizableEur: number
+  monthlyTaxDepr: number
+} {
   const rate = params.general.rubEurRate
   const out = params.capexItems.map((it) => {
     let eur: number
@@ -31,5 +38,13 @@ export function computeCapex(
       (s, sh, i) => s + (amortizableEur * sh) / (params.amort.years[i] * 12),
       0,
     )
-  return { items: out, totalEur, adjustedEur, monthlyAmort }
+  // Налоговая амортизация (capital allowances): те же доли активов, другие сроки —
+  // конструкции 25 лет (~4%/год), оборудование 7 лет (~14%), прочее/IT 5 лет (20%).
+  const monthlyTaxDepr = params.taxDepr.enabled
+    ? params.amort.shares.reduce(
+        (s, sh, i) => s + (amortizableEur * sh) / (params.taxDepr.years[i] * 12),
+        0,
+      )
+    : monthlyAmort
+  return { items: out, totalEur, adjustedEur, monthlyAmort, amortizableEur, monthlyTaxDepr }
 }

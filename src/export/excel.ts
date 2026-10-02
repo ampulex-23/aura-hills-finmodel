@@ -143,6 +143,7 @@ export async function exportWorkbook(
     { label: 'CIT', values: r.taxes.map((m) => m.cit) },
     { label: 'Дивиденды', values: r.taxes.map((m) => m.dividends) },
     { label: 'SDC', values: r.taxes.map((m) => m.sdc) },
+    { label: 'GESY', values: r.taxes.map((m) => m.gesy) },
     { label: 'ИТОГО НАЛОГИ', values: r.taxes.map((m) => m.total), bold: true },
   ])
 
@@ -176,6 +177,7 @@ export async function exportWorkbook(
       { label: 'FCFF', values: r.cashflow.map((m) => m.fcff), bold: true },
       { label: 'Дивиденды', values: r.cashflow.map((m) => m.dividends) },
       { label: 'SDC', values: r.cashflow.map((m) => m.sdc) },
+      { label: 'GESY', values: r.cashflow.map((m) => m.gesy) },
       { label: 'CF после распределения', values: r.cashflow.map((m) => m.totalCf), bold: true },
       { label: 'Накопл. FCFF', values: r.cashflow.map((m) => m.cumFcff) },
       { label: 'Накопл. DCF', values: r.cashflow.map((m) => m.cumDcf), bold: true },

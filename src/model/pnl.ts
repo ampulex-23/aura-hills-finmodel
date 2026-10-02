@@ -30,7 +30,8 @@ export function computePnl(
       netProfit,
       dividends: taxes[k].dividends,
       sdc: taxes[k].sdc,
-      netAfterSdc: netProfit - taxes[k].sdc,
+      gesy: taxes[k].gesy,
+      netAfterSdc: netProfit - taxes[k].sdc - taxes[k].gesy,
     }
   })
 }

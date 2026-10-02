@@ -66,9 +66,15 @@ export function computeProfitTaxes(
 
   const distShare =
     params.partners.shares.reduce((a, b) => a + b, 0) + params.partners.corporate.mgmt
+  // SDC 17% и GESY 2.65% — на дивиденды резидентам Кипра (non-dom освобождены от обоих)
   const sdcWeighted = params.partners.shares.reduce(
     (s, sh, i) =>
       s + sh * (params.partners.statuses[i] === 'Резидент Кипра (17%)' ? r.sdc : 0),
+    0,
+  )
+  const gesyWeighted = params.partners.shares.reduce(
+    (s, sh, i) =>
+      s + sh * (params.partners.statuses[i] === 'Резидент Кипра (17%)' ? r.gesy : 0),
     0,
   )
 
@@ -78,7 +84,8 @@ export function computeProfitTaxes(
     const cit = mo === 6 || mo === 12 ? citByYear[y] / 2 : 0
     const dividends = k >= 12 ? Math.max(0, netProfitPreDiv[k - 12]) * distShare : 0
     const sdc = (dividends * sdcWeighted) / distShare
-    return { ...v, cit, dividends, sdc, total: v.vatPayable + cit + sdc }
+    const gesy = (dividends * gesyWeighted) / distShare
+    return { ...v, cit, dividends, sdc, gesy, total: v.vatPayable + cit + sdc + gesy }
   })
   return { taxes, citByYear }
 }
