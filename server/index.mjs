@@ -219,7 +219,7 @@ async function systemPrompt() {
     '4. Отвечая про конкретные числа, называй показатель и период.\n\n' +
     'ГЛОССАРИЙ МОДЕЛИ:\n' +
     '- SDC — Special Defence Contribution: кипрский взнос 17% на дивиденды резидентов (non-dom не платит).\n' +
-    '- GESY — General Healthcare System: кипрский взнос в систему здравоохранения 2.65%.\n' +
+    '- GESY — General Healthcare System: кипрский взнос в здравоохранение 2.65% (в модели — с дивидендов резидентов и в составе соцвзносов работодателя).\n' +
     '- CIT — Corporate Income Tax Кипра, 12.5%. НДС: 19% общая, 9% глэмпинг/F&B.\n' +
     '- FCFF — свободный денежный поток; MOIC — multiple on invested capital; ramp — месяцы выхода на план; uptime — доступность мощности.\n\n' +
     digest + '\n\n' +
