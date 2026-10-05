@@ -442,3 +442,6 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 @media (max-width: 900px) {
   .ai-drawer { width: 100vw; border-left: none; }
 }
+.month-table td.ai-pinned, .month-table th.ai-pinned {
+  background: #1d3a5f !important; outline: 1px solid #5b8dd9; outline-offset: -1px;
+}

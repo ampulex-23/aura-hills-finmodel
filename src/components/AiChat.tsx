@@ -7,7 +7,7 @@ import rehypeKatex from 'rehype-katex'
 import { IconSparkles, IconX, IconSend, IconTrash, IconPin } from '@tabler/icons-react'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
-export type Pin = { id: string; label: string; text: string }
+export type Pin = { id: string; label: string; text: string; els: Element[] }
 
 const API = `${import.meta.env.BASE_URL}api`.replace(/\/{2,}/g, '/')
 
@@ -19,17 +19,30 @@ export const useChat = create<{
   toggle: () => void
   pin: (p: Omit<Pin, 'id'>) => void
   unpin: (id: string) => void
+  unpinEl: (el: Element) => void
   clearPins: () => void
-}>((set) => ({
+}>((set, get) => ({
   open: false,
   pins: [],
   toggle: () => set((s) => ({ open: !s.open })),
-  pin: (p) =>
-    set((s) =>
-      s.pins.some((x) => x.text === p.text) ? s : { pins: [...s.pins, { ...p, id: `${Date.now()}-${s.pins.length}` }] },
-    ),
-  unpin: (id) => set((s) => ({ pins: s.pins.filter((p) => p.id !== id) })),
-  clearPins: () => set({ pins: [] }),
+  pin: (p) => {
+    if (get().pins.some((x) => x.text === p.text)) return
+    p.els.forEach((e) => e.classList.add('ai-pinned'))
+    set((s) => ({ pins: [...s.pins, { ...p, id: `${Date.now()}-${s.pins.length}` }] }))
+  },
+  unpin: (id) => {
+    const p = get().pins.find((x) => x.id === id)
+    p?.els.forEach((e) => e.classList.remove('ai-pinned'))
+    set((s) => ({ pins: s.pins.filter((x) => x.id !== id) }))
+  },
+  unpinEl: (el) => {
+    const p = get().pins.find((x) => x.els.includes(el))
+    if (p) get().unpin(p.id)
+  },
+  clearPins: () => {
+    get().pins.forEach((p) => p.els.forEach((e) => e.classList.remove('ai-pinned')))
+    set({ pins: [] })
+  },
 }))
 
 const cellText = (el: Element | null) => (el?.textContent || '').replace(/ⓘ|\s+/g, ' ').trim()
@@ -48,28 +61,30 @@ function pinFromClick(e: MouseEvent): Pin | null {
 
   // заголовок строки (sticky) → вся строка
   if (cell.classList.contains('sticky') && cell.tagName === 'TD' && tr.parentElement?.tagName === 'TBODY') {
+    if (tr.classList.contains('section')) return null
     const row = cellText(cell)
-    const vals = [...tr.querySelectorAll('td')].slice(1).map(cellText)
+    const tds = [...tr.querySelectorAll('td')]
+    const vals = tds.slice(1).map(cellText)
     const cols = ths.slice(1)
     const pairs = cols.map((c, i) => `${c}=${vals[i] ?? '—'}`).join('; ')
-    return { id: '', label: `ряд «${row}»`, text: `«${sheet}», строка «${row}» по периодам: ${pairs}` }
+    return { id: '', label: `ряд «${row}»`, text: `«${sheet}», строка «${row}» по периодам: ${pairs}`, els: tds }
   }
   // заголовок колонки (thead) → вся колонка
   if (cell.tagName === 'TH' && !cell.classList.contains('sticky')) {
     const col = cellText(cell)
-    const rows = [...table.querySelectorAll('tbody tr')]
-      .filter((r) => !r.classList.contains('section'))
-      .map((r) => {
-        const tds = r.querySelectorAll('td')
-        return `«${cellText(tds[0])}»=${cellText(tds[idx]) ?? '—'}`
-      })
-    return { id: '', label: `колонка ${col}`, text: `«${sheet}», колонка «${col}»: ${rows.join('; ')}` }
+    const bodyRows = [...table.querySelectorAll('tbody tr')].filter((r) => !r.classList.contains('section'))
+    const rows = bodyRows.map((r) => {
+      const tds = r.querySelectorAll('td')
+      return `«${cellText(tds[0])}»=${cellText(tds[idx]) ?? '—'}`
+    })
+    const els = [cell, ...bodyRows.map((r) => r.querySelectorAll('td')[idx]).filter(Boolean)] as Element[]
+    return { id: '', label: `колонка ${col}`, text: `«${sheet}», колонка «${col}»: ${rows.join('; ')}`, els }
   }
   // обычная клетка
   if (cell.tagName === 'TD' && !cell.classList.contains('sticky')) {
     const row = cellText(tr.querySelector('td.sticky') ?? tr.cells[0])
     const col = ths[idx] ?? `колонка ${idx}`
-    return { id: '', label: `${row} · ${col}`, text: `«${sheet}», «${row}» за «${col}»: ${cellText(cell)}` }
+    return { id: '', label: `${row} · ${col}`, text: `«${sheet}», «${row}» за «${col}»: ${cellText(cell)}`, els: [cell] }
   }
   return null
 }
@@ -92,17 +107,21 @@ export function AiChat() {
       .catch(() => setAvail('off'))
   }, [])
 
-  // Пины собираются кликом по таблицам — только когда дровер открыт
+  // Пины собираются кликом по таблицам — только когда дровер открыт.
+  // Повторный клик по уже подсвеченной клетке снимает пин.
+  const { unpinEl } = useChat()
   useEffect(() => {
     if (!open) return
     const h = (e: MouseEvent) => {
+      const cell = (e.target as Element).closest('td, th')
       if ((e.target as Element).closest('.ai-drawer, .ai-fab')) return
+      if (cell?.classList.contains('ai-pinned')) { e.preventDefault(); unpinEl(cell); return }
       const p = pinFromClick(e)
       if (p) { e.preventDefault(); pin(p) }
     }
     document.addEventListener('click', h, true)
     return () => document.removeEventListener('click', h, true)
-  }, [open, pin])
+  }, [open, pin, unpinEl])
 
   useEffect(() => {
     sessionStorage.setItem('ah-chat', JSON.stringify(msgs.slice(-40)))
