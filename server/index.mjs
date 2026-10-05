@@ -39,6 +39,14 @@ async function modelContext() {
     const params = await readFile(join(ROOT, 'data/params.json'), 'utf8')
     chunks.push('Допущения модели (params.json):\n' + params.slice(0, 40000))
   } catch { }
+  try {
+    const scen = await readFile(join(ROOT, 'data/scenarios.json'), 'utf8')
+    chunks.push('Сценарная матрица (scenarios.json):\n' + scen.slice(0, 30000))
+  } catch { }
+  try {
+    const guide = await readFile(join(ROOT, 'docs/model-guide.md'), 'utf8')
+    chunks.push('Руководство по модели (формулы, логика, справочник):\n' + guide.slice(0, 80000))
+  } catch { }
   cachedCtx = chunks.join('\n\n')
   return cachedCtx
 }
