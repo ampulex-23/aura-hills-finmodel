@@ -115,6 +115,10 @@ export function AiChat() {
     const h = (e: MouseEvent) => {
       const cell = (e.target as Element).closest('td, th')
       if ((e.target as Element).closest('.ai-drawer, .ai-fab')) return
+      // Клики по редактируемым ячейкам (инпуты, селекты, кнопки) — не пины:
+      // не мешаем фокусу и вводу, пинятся только ячейки с данными.
+      if ((e.target as Element).closest('input, button, select, textarea, [role="combobox"], .mantine-Select-dropdown, .mantine-Autocomplete-dropdown'))
+        return
       if (cell?.classList.contains('ai-pinned')) { e.preventDefault(); unpinEl(cell); return }
       const p = pinFromClick(e)
       if (p) { e.preventDefault(); pin(p) }
