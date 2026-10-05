@@ -1,3 +1,4 @@
+import { Fragment, useState } from 'react'
 import type { ModelResult, ModuleSpec, NomenclatureItem, Params } from '../model/types'
 import { landedCost, activeModuleCount } from '../model/opex'
 import { useModel } from '../store'
@@ -340,11 +341,38 @@ export function Capex({ r }: { r: ModelResult }) {
   const { capex } = r
   const amortTex = String.raw`\mathrm{аморт}=\sum_{групп}\frac{\mathrm{CAPEX}\cdot\mathrm{доля}_{группы}}{\mathrm{срок}_{лет}\cdot 12}`
   const half = Math.ceil(capex.items.length / 2)
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  const toggleOpen = (k: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
   const ItemRows = ({ rows }: { rows: typeof capex.items }) => (
     <>
-      {rows.map((i) => (
-        <tr key={i.name}><td className="sticky">{i.name}</td><td>{fmt(i.eur)}</td></tr>
-      ))}
+      {rows.map((i) => {
+        const has = !!i.detail?.length
+        const isOpen = open.has(i.name)
+        return (
+          <Fragment key={i.name}>
+            <tr className={has ? 'spec-head' : undefined} onClick={() => has && toggleOpen(i.name)}>
+              <td className="sticky">
+                {has && <span className="spec-caret">{isOpen ? '▾' : '▸'}</span>}
+                {i.name}
+              </td>
+              <td>{fmt(i.eur)}</td>
+            </tr>
+            {has && isOpen &&
+              i.detail!.map((d) => (
+                <tr key={`${i.name}-${d.code}`} className="sub-detail">
+                  <td className="sticky"><small>{d.code} · {d.name}</small></td>
+                  <td><small>{fmt(d.qty)} × {fmt(d.landed, 2)} = {fmt(d.eur)}</small></td>
+                </tr>
+              ))}
+          </Fragment>
+        )
+      })}
     </>
   )
   const summaryRows = (

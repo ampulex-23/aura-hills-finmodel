@@ -1,5 +1,5 @@
 import type { NomenclatureItem, Params } from './types'
-import { activeModuleCount, nomenclatureCapexEur } from './opex'
+import { activeModuleCount, landedCost, nomenclatureCapexEur } from './opex'
 
 // CAPEX: qty × ценаRUB / курс = EUR; строка «Наполнение» = справочник; итог × (1+capexAdj)
 export function computeCapex(
@@ -16,15 +16,36 @@ export function computeCapex(
   deferred: { month: number; eur: number }[]
 } {
   const rate = params.general.rubEurRate
-  const out = params.capexItems.map((it) => {
+  const out: {
+    name: string
+    eur: number
+    detail?: { code: string; name: string; qty: number; landed: number; eur: number }[]
+  }[] = params.capexItems.map((it) => {
     let eur: number
+    let detail: { code: string; name: string; qty: number; landed: number; eur: number }[] | undefined
     if (it.row === 30) {
       eur = nomenclatureCapexEur(items) // наполнение — из справочника, уже в EUR
+      detail = items
+        .filter((x) => x.use === 'CAPEX')
+        .map((x) => ({
+          code: x.code, name: x.name, qty: x.qty,
+          landed: landedCost(x), eur: landedCost(x) * x.qty,
+        }))
     } else {
-      const qty = it.qty === 'MODULES_COUNT' ? activeModuleCount(params) : Number(it.qty ?? 0)
+      const isModules = it.qty === 'MODULES_COUNT'
+      const qty = isModules ? activeModuleCount(params) : Number(it.qty ?? 0)
       eur = (qty * Number(it.priceRub ?? 0)) / rate
+      if (isModules) {
+        const unit = Number(it.priceRub ?? 0) / rate
+        detail = params.modules
+          .filter((m) => m.status === 'Активен')
+          .map((m) => ({
+            code: `Модуль #${m.id}`, name: `запуск ${m.launchDate.slice(0, 7)}`,
+            qty: 1, landed: unit, eur: unit,
+          }))
+      }
     }
-    return { name: it.name ?? '', eur }
+    return { name: it.name ?? '', eur, detail }
   })
   // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
   if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur })))

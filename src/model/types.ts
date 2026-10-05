@@ -326,7 +326,12 @@ export interface ModelResult {
   pnl: PnlMonth[]
   cashflow: CashFlowMonth[]
   capex: {
-    items: { name: string; eur: number }[]
+    items: {
+      name: string
+      eur: number
+      /** Дрилл-даун строки: из чего складывается сумма (номенклатура / модули) */
+      detail?: { code: string; name: string; qty: number; landed: number; eur: number }[]
+    }[]
     totalEur: number
     adjustedEur: number
     monthlyAmort: number

@@ -445,3 +445,5 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 .month-table td.ai-pinned, .month-table th.ai-pinned {
   background: #1d3a5f !important; outline: 1px solid #5b8dd9; outline-offset: -1px;
 }
+.month-table tr.sub-detail td { background: #131d30; color: #9fb0d0; }
+.month-table tr.sub-detail td.sticky { padding-left: 26px; }
