@@ -22,6 +22,7 @@ import { Staff } from './tabs/Staff'
 import { Sensitivity } from './tabs/Sensitivity'
 import { DocView } from './components/DocView'
 import { DeckView } from './components/DeckView'
+import { AiChat } from './components/AiChat'
 import { DOCS, getDoc } from './docs'
 
 type Tab =
@@ -274,6 +275,8 @@ export default function App() {
           })()}
         </main>
       </div>
+
+      <AiChat />
     </div>
   )
 }
