@@ -291,17 +291,17 @@ async function handleChat(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
 
   try {
-    const convo = [{ role: 'system', content: await systemPrompt() }]
+    const convo = [{ role: 'system', content: await systemPrompt() }, ...messages]
     if (pins.length) {
-      convo.push({
-        role: 'system',
-        content: 'Пользователь прикрепил (📌) точные данные из таблиц отчётов. ' +
-          'Вопрос относится к ним напрямую: «что это за число/строка» — это всегда про прикреплённое. ' +
-          'Отвечай сразу по существу, БЕЗ уточняющих вопросов и без «какое число вы имеете в виду»:\n' +
-          pins.slice(0, 12).map((p) => `- ${String(p.text || '').slice(0, 4000)}`).join('\n'),
-      })
+      // Пины вшиваем в последний user-месседж, а не вторым system:
+      // адаптеры OpenAI→Anthropic могут отбрасывать лишние system-сообщения.
+      const pinText = 'Пользователь прикрепил (📌) точные данные из таблиц отчётов. ' +
+        'Вопрос относится к ним напрямую: «что это за число/строка» — это всегда про прикреплённое. ' +
+        'Отвечай сразу по существу, БЕЗ уточняющих вопросов и без «какое число вы имеете в виду»:\n' +
+        pins.slice(0, 12).map((p) => `- ${String(p.text || '').slice(0, 4000)}`).join('\n')
+      const last = convo[convo.length - 1]
+      convo[convo.length - 1] = { ...last, content: `[${pinText}]\n\n${last.content}` }
     }
-    convo.push(...messages)
 
     let answer = null
     for (let i = 0; i <= MAX_TOOL_ITERS; i++) {
