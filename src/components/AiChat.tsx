@@ -140,7 +140,8 @@ export function AiChat() {
     const next = [...msgs, { role: 'user' as const, content: shown }]
     setMsgs([...next, { role: 'assistant', content: '' }])
     setInput('')
-    clearPins()
+    // Пины и подсветка ячеек намеренно НЕ сбрасываются: выбранное остаётся
+    // видимым после отправки — снять можно крестиком на чипе или повторным кликом.
     setBusy(true)
     try {
       const res = await fetch(`${API}/chat`, {
@@ -255,6 +256,11 @@ export function AiChat() {
                 <button onClick={() => unpin(p.id)}><IconX size={11} /></button>
               </span>
             ))}
+            {pins.length > 1 && (
+              <span className="ai-pin ai-pin-clear" title="Снять все пины">
+                <button onClick={clearPins}><IconX size={11} /> все</button>
+              </span>
+            )}
           </div>
         )}
 
