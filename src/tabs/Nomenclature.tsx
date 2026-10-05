@@ -89,7 +89,8 @@ export function Nomenclature() {
     <div>
       <p className="note">
         {items.length} позиций · OPEX: {opexItems} · Спецификация: {specItems} · наполнение CAPEX: €{fmt(capexEur)} ·
-        landed cost = цена + max(доставка €/ед, цена × доставка %)
+        landed cost = цена + max(доставка €/ед, цена × доставка %).
+        В помесячный OPEX списывается любая позиция со статьёй и нормой (кроме CAPEX); «Кол-во CAPEX» работает только при учёте «CAPEX».
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
         <TextInput
@@ -168,19 +169,25 @@ export function Nomenclature() {
                             size="xs" w={132} data={articles}
                             filter={({ options }) => options}
                             placeholder="—"
+                            disabled={it.use === 'CAPEX'}
                             value={it.opexArticle ?? ''} onChange={(v) => setItem(i, { opexArticle: v || null })}
                           />
                         </td>
-                        <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} /></td>
+                        <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} disabled={it.use === 'CAPEX'} /></td>
                         <td>
                           <Select
                             size="xs" w={58}
                             data={['слот', 'гость', 'мес']}
                             value={it.normBase} placeholder="—" clearable
+                            disabled={it.use === 'CAPEX'}
                             onChange={(v) => setItem(i, { normBase: v as NomenclatureItem['normBase'] })}
                           />
                         </td>
-                        <td><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></td>
+                        <td>
+                          <Tooltip label="Учитывается только при Учёт = CAPEX" openDelay={300} disabled={it.use === 'CAPEX'}>
+                            <span><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} disabled={it.use !== 'CAPEX'} /></span>
+                          </Tooltip>
+                        </td>
                         <td>
                           <Tooltip label="Удалить" openDelay={300}>
                             <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk(it)}>✕</ActionIcon>
@@ -224,12 +231,12 @@ export function Nomenclature() {
               <NumberInput label="Доставка %" value={draft.deliveryPct * 100} min={0} suffix="%" decimalScale={1} onChange={(v) => setD({ deliveryPct: (Number(v) || 0) / 100 })} />
             </Group>
             <Group grow>
-              <Autocomplete label="Статья OPEX" data={articles} filter={({ options }) => options} value={draft.opexArticle ?? ''} onChange={(v) => setD({ opexArticle: v || null })} />
-              <NumberInput label="Норма расхода" value={draft.norm} min={0} decimalScale={3} onChange={(v) => setD({ norm: Number(v) || 0 })} />
-              <Select label="База нормы" data={['слот', 'гость', 'мес']} value={draft.normBase} onChange={(v) => setD({ normBase: (v as NomenclatureItem['normBase']) ?? null })} />
+              <Autocomplete label="Статья OPEX" data={articles} filter={({ options }) => options} disabled={draft.use === 'CAPEX'} value={draft.opexArticle ?? ''} onChange={(v) => setD({ opexArticle: v || null })} />
+              <NumberInput label="Норма расхода" value={draft.norm} min={0} decimalScale={3} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ norm: Number(v) || 0 })} />
+              <Select label="База нормы" data={['слот', 'гость', 'мес']} value={draft.normBase} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ normBase: (v as NomenclatureItem['normBase']) ?? null })} />
             </Group>
             <Group grow>
-              <NumberInput label="Кол-во (CAPEX)" value={draft.qty} min={0} onChange={(v) => setD({ qty: Number(v) || 0 })} />
+              <NumberInput label="Кол-во (CAPEX)" value={draft.qty} min={0} disabled={draft.use !== 'CAPEX'} onChange={(v) => setD({ qty: Number(v) || 0 })} />
               <TextInput label="Примечание" value={draft.note ?? ''} onChange={(e) => setD({ note: e.currentTarget.value || null })} />
             </Group>
             <Group justify="flex-end" mt="md">

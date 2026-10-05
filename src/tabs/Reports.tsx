@@ -186,7 +186,7 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
 
   const byBase = (article: string, base: string, its: NomenclatureItem[]) =>
     its
-      .filter((it) => it.use === 'OPEX' && it.opexArticle === article && it.normBase === base)
+      .filter((it) => it.use !== 'CAPEX' && it.opexArticle === article && it.normBase === base)
       .reduce((s, it) => s + it.norm * landedCost(it), 0)
 
   const variableHint = (article: string) => (ci: number): CellHint => {

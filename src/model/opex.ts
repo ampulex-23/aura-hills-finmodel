@@ -41,7 +41,12 @@ export function computeOpexMonth(
     'Средства гигиены', 'Косметика / SPA', 'Косметика / массаж', 'Инвентарь / уборка',
     'Прачечная / текстиль',
   ]
-  const opexItems = items.filter((it) => it.use === 'OPEX')
+  // Позиция списывается в OPEX, если заданы статья и база нормы — независимо
+  // от флага «Учёт» (кроме CAPEX): «Спецификация»-материал со статьёй и нормой
+  // тоже считается расходником, иначе заполненные нормы молча игнорировались бы.
+  const opexItems = items.filter(
+    (it) => it.use !== 'CAPEX' && it.opexArticle != null && it.normBase != null,
+  )
   const variable = articles.map((article) => {
     const rel = opexItems.filter((it) => it.opexArticle === article)
     const byBase = (base: string) =>
