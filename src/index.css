@@ -375,13 +375,15 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   box-shadow: 0 4px 18px rgba(0,0,0,.45); transition: background .15s, transform .15s;
 }
 .ai-fab:hover { background: #233252; transform: translateY(-1px); }
-.ai-panel {
-  position: fixed; right: 22px; bottom: 78px; z-index: 300;
-  width: min(400px, calc(100vw - 30px)); height: min(560px, calc(100vh - 110px));
+.ai-drawer {
+  position: fixed; top: 0; right: 0; z-index: 300;
+  width: min(672px, 96vw); height: 100vh;
   display: flex; flex-direction: column;
-  background: #141b28; border: 1px solid #2a3548; border-radius: 12px;
-  box-shadow: 0 12px 40px rgba(0,0,0,.55); overflow: hidden;
+  background: #141b28; border-left: 1px solid #2a3548;
+  box-shadow: -16px 0 48px rgba(0,0,0,.5);
+  transform: translateX(102%); transition: transform .22s ease;
 }
+.ai-drawer.open { transform: translateX(0); }
 .ai-head {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   border-bottom: 1px solid #223048; color: #cfe0f5; font-size: 13px;
@@ -413,3 +415,25 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   display: flex; align-items: center; justify-content: center;
 }
 .ai-send:disabled { background: #223048; color: #5a6b85; cursor: default; }
+.ai-status { font-size: 11px; color: #7f93b8; padding: 2px 4px; font-style: italic; }
+.ai-pins {
+  display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px;
+  border-top: 1px solid #223048; background: #101826;
+}
+.ai-pin {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11px; color: #b8cff0; background: #1d2a44;
+  border: 1px solid #33507e; border-radius: 20px; padding: 3px 8px;
+}
+.ai-pin button { background: none; border: none; color: #6b86ad; cursor: pointer; padding: 0; display: flex; }
+.ai-pin button:hover { color: #fff; }
+.ai-msg.assistant .katex-display { overflow-x: auto; padding: 4px 0; }
+.ai-msg.assistant .katex { color: #dbe6f5; }
+body:has(.ai-drawer.open) .month-table td:not(.sticky),
+body:has(.ai-drawer.open) .month-table th:not(.sticky),
+body:has(.ai-drawer.open) .month-table td.sticky { cursor: copy; }
+body:has(.ai-drawer.open) .month-table td:hover,
+body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; outline-offset: -1px; }
+@media (max-width: 900px) {
+  .ai-drawer { width: 100vw; border-left: none; }
+}
