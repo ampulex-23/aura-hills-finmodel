@@ -36,17 +36,15 @@ export function computeOpexMonth(
     : []
   const itTotal = it.reduce((s, x) => s + x.amount, 0)
 
-  const articles = [
-    'Представительские', 'Веники', 'Дрова основные', 'Дрова для очага', 'Брикеты руф',
-    'Средства гигиены', 'Косметика / SPA', 'Косметика / массаж', 'Инвентарь / уборка',
-    'Прачечная / текстиль',
-  ]
   // Позиция списывается в OPEX, если заданы статья и база нормы — независимо
   // от флага «Учёт» (кроме CAPEX): «Спецификация»-материал со статьёй и нормой
   // тоже считается расходником, иначе заполненные нормы молча игнорировались бы.
   const opexItems = items.filter(
     (it) => it.use !== 'CAPEX' && it.opexArticle != null && it.normBase != null,
   )
+  // Статьи — динамически из данных: в UI статья вводится свободным текстом,
+  // жёсткий список молча выкидывал бы пользовательские статьи из OPEX.
+  const articles = [...new Set(opexItems.map((it) => it.opexArticle!))]
   const variable = articles.map((article) => {
     const rel = opexItems.filter((it) => it.opexArticle === article)
     const byBase = (base: string) =>
