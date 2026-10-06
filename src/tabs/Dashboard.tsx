@@ -63,7 +63,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
       hint: {
         title: 'Внутренняя норма доходности',
         text: 'Ставка, при которой NPV = 0. Считается по помесячным FCFF, переведена в годовую.',
-        calc: `IRR мес ${fmtPct(k.irrMonthly, 2)} → годовая ${fmtPct(k.irrAnnual)}`,
+        calc: `IRR мес ${fmtPct(k.irrMonthly, 2)} → годовая эффективная ${fmtPct(k.irrAnnual)} · номинальная (мес×12, сопоставима с WACC) ${fmtPct(k.irrNominal)}`,
       },
     },
     {

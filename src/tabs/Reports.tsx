@@ -473,13 +473,13 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
     {
       label: 'Входной НДС', values: T.map((m) => m.inputVat),
       tip: reimb
-        ? 'Режим «С возмещением»: НДС с OPEX помесячно и с CAPEX разово в первом месяце уменьшает платёж.'
+        ? 'Режим «С возмещением»: НДС с OPEX помесячно и с CAPEX в первом месяце (земля не даёт входного НДС; отложенные модули — в месяц их ввода).'
         : 'Режим «Гросс»: входной НДС не возмещается и включён в расходы.',
       hint: (ci) => ({
         title: 'Входной НДС',
         text: reimb ? undefined : 'В режиме «Гросс» входной НДС не возмещается — всегда 0.',
         calc: reimb
-          ? `(OPEX ${e0(r.opex[ci].fixedTotal + r.opex[ci].variableTotal)}${ci === 0 ? ` + CAPEX ${e0(r.capex.adjustedEur)}` : ''}) × ${pc(eff19, 2)} = ${e0(T[ci].inputVat)}`
+          ? `(OPEX ${e0(r.opex[ci].fixedTotal + r.opex[ci].variableTotal)}${ci === 0 ? ` + CAPEX без земли ${e0(r.capex.amortizableEur)}` : ''}) × ${pc(eff19, 2)} = ${e0(T[ci].inputVat)}`
           : '—',
       }),
     },
@@ -507,16 +507,16 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
       },
     },
     {
-      label: 'CIT (июнь/декабрь)', values: T.map((m) => m.cit),
-      tip: 'Корпоративный налог на прибыль (EBIT за вычетом перенесённых убытков). Уплата двумя авансами: июнь и декабрь.',
+      label: 'CIT (июль/декабрь)', values: T.map((m) => m.cit),
+      tip: 'Корпоративный налог на прибыль по календарным годам (перенос убытков). Провизиональный налог Кипра: авансы 31 июля и 31 декабря.',
       hint: (ci) => {
         const y = Math.min(years - 1, Math.floor(ci / 12))
         return {
           title: 'CIT',
           text: `Год ${y + 1}: CIT ${e0(r.citByYear[y] ?? 0)} (${pc(t.cit)} от налогооблагаемой базы с переносом убытков).`,
           calc: T[ci].cit
-            ? `${e0(r.citByYear[y])} / 2 = ${e0(T[ci].cit)}`
-            : 'Уплата только в июне и декабре',
+            ? `${e0(r.citByYear[y])} / число дат платежа года = ${e0(T[ci].cit)}`
+            : 'Уплата только в июле и декабре',
         }
       },
     },
@@ -576,13 +576,13 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
       hint: (ci) => ({ title: 'Выручка брутто', calc: `Σ потоков выручки = ${e0(P[ci].revenueGross)}` }),
     },
     {
-      label: 'НДС к уплате', values: P.map((m) => -m.revenueGross + m.revenueNet),
-      tip: 'НДС, который уходит государству (выходной минус возмещённый).',
-      hint: (ci) => ({ title: 'НДС к уплате', calc: `${e0(r.taxes[ci].vatPayable)}` }),
+      label: 'НДС начисленный', values: P.map((m) => -m.revenueGross + m.revenueNet),
+      tip: 'Выходной НДС, «сидящий» в брутто-выручке. Не путать с «НДС к уплате» из налогов: разница (входной кредит) проходит в Cash Flow строкой «ΔНДС».',
+      hint: (ci) => ({ title: 'НДС начисленный', calc: `выходной ${e0(r.taxes[ci].vatOut)} (к уплате ${e0(r.taxes[ci].vatPayable)})` }),
     },
     {
       label: 'Выручка (нетто)', values: P.map((m) => m.revenueNet), bold: true,
-      hint: (ci) => ({ title: 'Выручка нетто', calc: `${e0(P[ci].revenueGross)} − ${e0(r.taxes[ci].vatPayable)} НДС = ${e0(P[ci].revenueNet)}` }),
+      hint: (ci) => ({ title: 'Выручка нетто', calc: `${e0(P[ci].revenueGross)} − ${e0(r.taxes[ci].vatOut)} начисленный НДС = ${e0(P[ci].revenueNet)}` }),
     },
     {
       label: 'Переменные расходы', values: P.map((m) => m.variableOpex),
@@ -665,8 +665,16 @@ export function CashFlow({ r }: { r: ModelResult }) {
       hint: (ci) => ({ title: 'Амортизация', text: ops(ci, 'Неденежная статья — возвращается в поток.'), calc: C[ci].isOps ? `${e0(C[ci].amortization)}` : undefined }),
     },
     {
+      label: '+ ΔНДС (начисл. − уплач.)', values: C.map((m) => m.vatTiming),
+      tip: 'Кэш-корректировка НДС: P&L берёт начисленный выходной НДС, а уплачивается меньше на входной кредит — разница остаётся в деньгах. В режиме «Гросс» всегда 0.',
+      hint: (ci) => ({
+        title: 'ΔНДС',
+        calc: C[ci].vatTiming ? `${e0(r.pnl[ci - params.meta.capexMonths]?.vatOut ?? 0)} − ${e0(r.pnl[ci - params.meta.capexMonths]?.vatPayable ?? 0)} = ${e0(C[ci].vatTiming)}` : '—',
+      }),
+    },
+    {
       label: 'Операционный CF', values: C.map((m) => m.operatingCf), bold: true,
-      hint: (ci) => ({ title: 'Операционный CF', calc: `${e0(C[ci].netProfit)} + ${e0(C[ci].amortization)} = ${e0(C[ci].operatingCf)}` }),
+      hint: (ci) => ({ title: 'Операционный CF', calc: `${e0(C[ci].netProfit)} + ${e0(C[ci].amortization)} + (${e0(C[ci].vatTiming)}) ΔНДС = ${e0(C[ci].operatingCf)}` }),
     },
     {
       label: 'CAPEX', values: C.map((m) => m.capex),
@@ -714,7 +722,7 @@ export function CashFlow({ r }: { r: ModelResult }) {
       : []),
     {
       label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
-      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}+\mathrm{preopen}`,
+      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}+\mathrm{preopen}`, // OCF включает ΔНДС
       hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + (${e0(C[ci].deferredCapex)}) + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) + (${e0(C[ci].preopen)}) = ${e0(C[ci].fcff)}` }),
     },
     {

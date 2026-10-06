@@ -73,7 +73,8 @@ export interface ServiceCost {
 export interface CapexItem {
   name: string
   unit: string
-  qty: number | 'MODULES_COUNT'
+  // qty: число | 'MODULES_COUNT' (1 шт на активный модуль) | 'MODULES_COUNT:N' (N шт на модуль)
+  qty: number | string
   priceRub: number | null
   row: number
 }
@@ -244,6 +245,8 @@ export interface FotMonth {
 export interface TaxMonth {
   vatOut19: number
   vatOut9: number
+  /** Начисленный выходной НДС (19% + 9%) — база нетто-выручки P&L */
+  vatOut: number
   inputVat: number
   vatCredit: number
   vatPayable: number
@@ -257,6 +260,9 @@ export interface TaxMonth {
 export interface PnlMonth {
   revenueNet: number
   revenueGross: number
+  /** Начисленный НДС (в P&L) и уплаченный (в CF) — разница = Δ обязательства по НДС */
+  vatOut: number
+  vatPayable: number
   variableOpex: number
   pctOpex: number
   marginalProfit: number
@@ -278,6 +284,8 @@ export interface CashFlowMonth {
   isOps: boolean
   netProfit: number
   amortization: number
+  /** ΔНДС: начисленный − уплаченный (кредит CAPEX «зажимает» кэш-платёж) */
+  vatTiming: number
   operatingCf: number
   capex: number
   deferredCapex: number // CAPEX модулей, запускаемых после открытия (real option)
@@ -302,6 +310,9 @@ export interface Kpis {
   npv: number
   irrMonthly: number
   irrAnnual: number
+  /** IRR × 12 — номинальная годовая; сопоставима с WACC, который в NPV
+   *  трактуется как номинальная ставка с помесячным начислением */
+  irrNominal: number
   paybackMonths: number
   discountedPaybackMonths: number
   peakFundingNeed: number

@@ -23,6 +23,9 @@ export function computeKpis(params: Params, cashflow: CashFlowMonth[]): Kpis {
   const npv = cashflow[cashflow.length - 1].cumDcf
   const irrMonthly = irr(fcff)
   const irrAnnual = Math.pow(1 + irrMonthly, 12) - 1
+  // Дисконтирование ведётся по WACC/12 как номинальной ставке — значит,
+  // сопоставимый с WACC показатель доходности — номинальный IRR (мес×12).
+  const irrNominal = irrMonthly * 12
   const paybackMonths = cashflow.findIndex((m) => m.cumFcff > 0) + 1 || 0
   const discountedPaybackMonths = cashflow.findIndex((m) => m.cumDcf > 0) + 1 || 0
   const peakFundingNeed = Math.min(...cashflow.map((m) => m.cumFcff))
@@ -46,5 +49,5 @@ export function computeKpis(params: Params, cashflow: CashFlowMonth[]): Kpis {
   }
   const npvWithTv = npv + tvValue
 
-  return { npv, irrMonthly, irrAnnual, paybackMonths, discountedPaybackMonths, peakFundingNeed, moic, cashOnCash, investedTotal, tvValue, npvWithTv }
+  return { npv, irrMonthly, irrAnnual, irrNominal, paybackMonths, discountedPaybackMonths, peakFundingNeed, moic, cashOnCash, investedTotal, tvValue, npvWithTv }
 }

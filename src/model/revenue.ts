@@ -34,9 +34,13 @@ export function computeRevenueMonth(
   let guests = 0
   let rental = 0
   let capSlots = 0 // ёмкость без фактора загрузки — для вычета слотов членов
+  let capSum = 0 // ёмкость гостей активных ЭТОГО месяца модулей (не всех «Активен»)
+  let capN = 0
   const slotCounts = params.slotMix.map(() => 0)
   for (const m of params.modules) {
     if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) continue
+    capSum += m.capacity
+    capN++
     capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK
     const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad
     slots += s
@@ -56,7 +60,11 @@ export function computeRevenueMonth(
   const memberGuests = params.members.consumeSlots
     ? (membersMonthCount + annualActive) * params.members.visitsPerMonth * params.members.partySize
     : 0
-  const memberSlots = memberGuests / sc.avgCapacity
+  // Средняя вместимость слота — по модулям, запущенным к этому месяцу
+  // (раньше считалась по всем активным статусам → будущие модули занижали
+  // ёмкость членов и базу услуг до своего запуска).
+  const cap = capN ? capSum / capN : sc.avgCapacity
+  const memberSlots = memberGuests / cap
   if (memberSlots > 0 && capSlots > 0) {
     const paidSlots = Math.max(0, Math.min(slots, capSlots - memberSlots))
     const scale = slots > 0 ? paidSlots / slots : 1
@@ -66,7 +74,6 @@ export function computeRevenueMonth(
     for (let j = 0; j < slotCounts.length; j++) slotCounts[j] *= scale
   }
 
-  const cap = sc.avgCapacity
   const up = sc.effectiveUptake
   // Векторы загрузки услуг из матрицы сценариев — множители доли реализации.
   // Отключаемы флагом service.serviceLoads (golden-master держит паритет с оракулом).

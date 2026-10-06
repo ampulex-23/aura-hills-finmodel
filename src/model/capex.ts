@@ -1,7 +1,12 @@
-import type { NomenclatureItem, Params } from './types'
+import type { CapexItem, NomenclatureItem, Params } from './types'
 import { activeModuleCount, landedCost, nomenclatureCapexEur } from './opex'
 
 // CAPEX: qty × ценаRUB / курс = EUR; строка «Наполнение» = справочник; итог × (1+capexAdj)
+// qty 'MODULES_COUNT[:N]' → N единиц на каждый активный модуль (N по умолчанию 1).
+function perModuleUnits(qty: CapexItem['qty']): number | null {
+  const m = /^MODULES_COUNT(?::(\d+))?$/.exec(String(qty))
+  return m ? Number(m[1] ?? 1) : null
+}
 export function computeCapex(
   params: Params,
   items: NomenclatureItem[],
@@ -32,16 +37,19 @@ export function computeCapex(
           landed: landedCost(x), eur: landedCost(x) * x.qty,
         }))
     } else {
-      const isModules = it.qty === 'MODULES_COUNT'
-      const qty = isModules ? activeModuleCount(params) : Number(it.qty ?? 0)
+      // 'MODULES_COUNT' = 1 ед. на активный модуль; 'MODULES_COUNT:N' = N ед. на модуль.
+      // Так оборудование модулей (печи, купели, ванны) масштабируется при активации
+      // резервных модулей, а не остаётся захардкоженным под стартовый контур.
+      const perModule = perModuleUnits(it.qty)
+      const qty = perModule !== null ? perModule * activeModuleCount(params) : Number(it.qty ?? 0)
       eur = (qty * Number(it.priceRub ?? 0)) / rate
-      if (isModules) {
+      if (perModule !== null) {
         const unit = Number(it.priceRub ?? 0) / rate
         detail = params.modules
           .filter((m) => m.status === 'Активен')
           .map((m) => ({
             code: `Модуль #${m.id}`, name: `запуск ${m.launchDate.slice(0, 7)}`,
-            qty: 1, landed: unit, eur: unit,
+            qty: perModule, landed: unit, eur: unit * perModule,
           }))
       }
     }
@@ -69,11 +77,13 @@ export function computeCapex(
       )
     : monthlyAmort
   // Real option: активный модуль с запуском после открытия платит свою долю
-  // помодульного CAPEX (строки qty=MODULES_COUNT) в месяц ввода, а не в стройке.
+  // помодульного CAPEX (строки qty=MODULES_COUNT[:N]) в месяц ввода — сумму
+  // ВСЕХ помодульных статей за единицу, а не только корпуса.
   // Амортизация упрощённо идёт с общей даты открытия — отмечено в аудите.
-  const unitEur = params.capexItems
-    .filter((it) => it.qty === 'MODULES_COUNT')
-    .reduce((s, it) => s + Number(it.priceRub ?? 0) / rate, 0)
+  const unitEur = params.capexItems.reduce((s, it) => {
+    const n = perModuleUnits(it.qty)
+    return n === null ? s : s + (Number(it.priceRub ?? 0) / rate) * n
+  }, 0)
   const ym = (iso: string) => {
     const [y, m] = iso.slice(0, 7).split('-').map(Number)
     return y * 12 + m

@@ -9,7 +9,7 @@ export function landedCost(item: NomenclatureItem): number {
 export function fixedOpexMonthly(params: Params): number {
   return (
     params.opexFixed.reduce(
-      (s, f) => s + f.base * (f.perModule ? activeModuleCount(params) : 1),
+      (s, f) => s + f.base * (f.perModule ? activeModuleCountAt(params, 0) : 1),
       0,
     ) + (params.it.enabled ? params.it.opex.reduce((s, x) => s + x.base, 0) : 0)
   )
@@ -25,8 +25,11 @@ export function computeOpexMonth(
 ): OpexMonth {
   const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
 
+  // Помодульные статьи берут только модули, уже запущенные к этому месяцу —
+  // статус «Активен» с launchDate в будущем не должен тратить деньги заранее.
+  const modulesNow = activeModuleCountAt(params, k)
   const fixed = params.opexFixed.map(
-    (f) => f.base * (f.perModule ? activeModuleCount(params) : 1) * infl,
+    (f) => f.base * (f.perModule ? modulesNow : 1) * infl,
   )
   const fixedTotal = fixed.reduce((a, b) => a + b, 0)
 
@@ -92,6 +95,18 @@ export function computeOpex(
 
 export function activeModuleCount(params: Params): number {
   return params.modules.filter((m) => m.status === 'Активен').length
+}
+
+// Модули, запущенные к операционному месяцу k (launchDate ≤ opening + k).
+const ymIndex = (iso: string) => {
+  const [y, m] = iso.slice(0, 7).split('-').map(Number)
+  return y * 12 + m
+}
+export function activeModuleCountAt(params: Params, k: number): number {
+  const now = ymIndex(params.meta.openingDate) + k
+  return params.modules.filter(
+    (m) => m.status === 'Активен' && ymIndex(m.launchDate) <= now,
+  ).length
 }
 
 // Наполнение CAPEX из справочника: Σ landedCost × qty по позициям use='CAPEX' — CAPEX!G30/H30

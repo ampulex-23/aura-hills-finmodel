@@ -86,12 +86,12 @@ export function resolveScenario(
       : [],
     steamLoad,
     massageLoad,
-    extraLoad: steamLoad.map((v) => v - 0.25),
+    extraLoad: steamLoad.map((v) => Math.max(0, v - 0.25)), // без пола при steam<25% шла отрицательная выручка допуслуг
     glampLoad,
     membersMonth,
     priceGrowth: pick(matrix.priceGrowth),
     capexAdj: pick(matrix.capexAdj),
-    rampMonths: pick(matrix.rampMonths),
+    rampMonths: Math.max(1, pick(matrix.rampMonths)), // 0 молча выключал рампу (деление на 0 → ∞ → min(1,∞)=1)
     uptake,
     effectiveUptake: isPackage ? 1 : uptake,
     presaleMonthly,

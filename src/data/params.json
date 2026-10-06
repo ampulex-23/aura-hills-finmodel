@@ -90,7 +90,11 @@
   },
   "taxDepr": {
     "enabled": true,
-    "years": [25, 7, 5]
+    "years": [
+      25,
+      7,
+      5
+    ]
   },
   "glampOta": {
     "enabled": true,
@@ -353,39 +357,39 @@
   "opexFixed": [
     {
       "name": "Маркетинг и реклама",
-      "base": 5000.0
+      "base": 5000
     },
     {
       "name": "Электроэнергия",
-      "base": 3000.0
+      "base": 3000
     },
     {
       "name": "Водоснабжение",
-      "base": 800.0
+      "base": 800
     },
     {
       "name": "Отопление (газ)",
-      "base": 300.0
+      "base": 300
     },
     {
       "name": "Транспорт",
-      "base": 300.0
+      "base": 300
     },
     {
       "name": "Прочие операционные",
-      "base": 600.0
+      "base": 600
     },
     {
       "name": "Страхование",
-      "base": 1000.0
+      "base": 1000
     },
     {
       "name": "Бухгалтерия / юрист",
-      "base": 400.0
+      "base": 400
     },
     {
       "name": "Обслуживание модулей",
-      "base": 100.0,
+      "base": 100,
       "perModule": true
     }
   ],
@@ -441,29 +445,29 @@
     },
     {
       "name": "Печное оборудование",
-      "unit": "шт",
-      "qty": 3,
+      "unit": "шт/модуль",
+      "qty": "MODULES_COUNT",
       "priceRub": 250000,
       "row": 8
     },
     {
       "name": "Водоемы Купели холод",
-      "unit": "шт",
-      "qty": 3,
+      "unit": "шт/модуль",
+      "qty": "MODULES_COUNT",
       "priceRub": 250000,
       "row": 9
     },
     {
       "name": "Водоемы Купели горяч",
-      "unit": "шт",
-      "qty": 3,
+      "unit": "шт/модуль",
+      "qty": "MODULES_COUNT",
       "priceRub": 500000,
       "row": 10
     },
     {
       "name": "Ванны Афродиты",
-      "unit": "шт",
-      "qty": 6,
+      "unit": "шт/модуль",
+      "qty": "MODULES_COUNT:2",
       "priceRub": 1000000,
       "row": 11
     },

@@ -241,6 +241,11 @@ export function Assumptions() {
             allowDeselect={false}
           />
         </label>
+        <small className="note">
+          «Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке
+          (рекомендуется). «Доп. канал» — поведение исходного Excel: пресейл как отдельная выручка сверх плана;
+          проданные так членства ёмкость не занимают — агрессивное допущение.
+        </small>
         <Row
           label="Признание пре-сейла, мес" path="units.presaleRecognizeMonths"
           value={P.units.presaleRecognizeMonths} step={1}

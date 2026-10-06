@@ -10,7 +10,11 @@ export function computePnl(
   monthlyAmort: number,
 ): PnlMonth[] {
   return revenue.map((rev, k) => {
-    const revenueNet = rev.total - taxes[k].vatPayable
+    // Нетто-выручка = брутто − НАЧИСЛЕННЫЙ выходной НДС. Уплаченный НДС
+    // (за вычетом входного кредита) — кэш-эффект, уходит в CF через vatTiming;
+    // иначе в режиме «С возмещением» месяцы сгорания CAPEX-кредита показывали
+    // бы EBITDA с полным НДС внутри.
+    const revenueNet = rev.total - taxes[k].vatOut
     const marginalProfit = revenueNet - opex[k].variableTotal - opex[k].pctTotal
     const ebitda = marginalProfit - opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total
     const ebit = ebitda - monthlyAmort
@@ -18,6 +22,8 @@ export function computePnl(
     return {
       revenueNet,
       revenueGross: rev.total,
+      vatOut: taxes[k].vatOut,
+      vatPayable: taxes[k].vatPayable,
       variableOpex: opex[k].variableTotal,
       pctOpex: opex[k].pctTotal,
       marginalProfit,

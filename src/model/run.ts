@@ -53,11 +53,11 @@ export function runModel(
   const revenue = computeRevenue(p, sc)
   const opex = computeOpex(p, items, revenue)
   const fot = computeFot(p, revenue)
-  const vat = computeVat(p, revenue, opex, capex.adjustedEur)
+  const vat = computeVat(p, revenue, opex, capex)
 
   const ebit = revenue.map(
     (r, k) =>
-      r.total - vat[k].vatPayable - opex[k].variableTotal - opex[k].pctTotal -
+      r.total - vat[k].vatOut - opex[k].variableTotal - opex[k].pctTotal -
       opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total - capex.monthlyAmort,
   )
   // CIT не зависит от чистой прибыли → первый проход даёт корректный CIT.

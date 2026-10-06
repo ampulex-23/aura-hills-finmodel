@@ -5,6 +5,9 @@ import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import { IconSparkles, IconX, IconSend, IconTrash, IconPin } from '@tabler/icons-react'
+import { useModel } from '../store'
+import { runModel } from '../model/run'
+import { scenarioView } from '../model/view'
 
 type Msg = { role: 'user' | 'assistant'; content: string }
 export type Pin = { id: string; label: string; text: string; els: Element[] }
@@ -136,6 +139,17 @@ export function AiChat() {
     const text = input.trim()
     if (!text || busy) return
     const snapshot = pins.map((p) => ({ text: p.text }))
+    // Живой прогон модели с текущими правками пользователя (localStorage):
+    // без него инструменты агента отвечали бы по статичному build-снимку.
+    let live: unknown = null
+    try {
+      const { params, matrix, items, scenario } = useModel.getState()
+      live = {
+        scenario,
+        ...scenarioView(runModel(params, matrix, items, scenario), params),
+        params,
+      }
+    } catch { /* если прогон упал — агент работает по серверному снимку */ }
     const shown = text + (pins.length ? `\n\n*📌 ${pins.map((p) => p.label).join(' · ')}*` : '')
     const next = [...msgs, { role: 'user' as const, content: shown }]
     setMsgs([...next, { role: 'assistant', content: '' }])
@@ -148,7 +162,7 @@ export function AiChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // сообщения для API без декоративного 📌-суффикса
-        body: JSON.stringify({ messages: [...msgs, { role: 'user', content: text }], pins: snapshot }),
+        body: JSON.stringify({ messages: [...msgs, { role: 'user', content: text }], pins: snapshot, live }),
       })
       if (!res.ok || !res.body) {
         const e = await res.json().catch(() => ({}))

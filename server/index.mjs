@@ -144,26 +144,32 @@ const TOOLS = [
   },
 ]
 
-async function runTool(name, args) {
+// live — живой прогон модели из браузера пользователя (с его localStorage-правками).
+// Для текущего сценария живые данные приоритетнее статичного build-снимка.
+async function runTool(name, args, live) {
   const snap = await load('snap', 'data/model-snapshot.json')
+  const liveSc = live && live.scenario ? live : null
+  const preferLive = (sc) => liveSc && (!sc || sc === liveSc.scenario)
   switch (name) {
     case 'get_kpis': {
-      if (!snap) return 'snapshot недоступен'
       const out = {}
-      for (const [sc, d] of Object.entries(snap.scenarios))
-        out[sc] = { kpis: d.kpis, yearly: d.yearly }
-      return JSON.stringify(out)
+      for (const [sc, d] of Object.entries(snap?.scenarios ?? {}))
+        out[sc] = { kpis: d.kpis, yearly: d.yearly, source: 'snapshot' }
+      if (liveSc) out[liveSc.scenario] = { kpis: liveSc.kpis, yearly: liveSc.yearly, source: 'live (текущие правки пользователя)' }
+      return Object.keys(out).length ? JSON.stringify(out) : 'snapshot недоступен'
     }
     case 'get_monthly': {
+      if (preferLive(args.scenario)) return JSON.stringify(liveSc.monthly)
       const d = snap?.scenarios?.[args.scenario]
       return d ? JSON.stringify(d.monthly) : `нет сценария "${args.scenario}"`
     }
     case 'get_revenue_streams': {
+      if (preferLive(args.scenario)) return JSON.stringify(liveSc.revenueStreamsTotal)
       const d = snap?.scenarios?.[args.scenario]
       return d ? JSON.stringify(d.revenueStreamsTotal) : `нет сценария "${args.scenario}"`
     }
     case 'get_params': {
-      const p = await load('params', 'data/params.json')
+      const p = liveSc?.params ?? (await load('params', 'data/params.json'))
       if (!p) return 'params недоступны'
       if (!args.path) return JSON.stringify(Object.keys(p))
       const v = dig(p, args.path)
@@ -199,14 +205,19 @@ async function runTool(name, args) {
 }
 
 // ---------- system prompt: компактный, данные по требованию ----------
-async function systemPrompt() {
+async function systemPrompt(live) {
   const snap = await load('snap', 'data/model-snapshot.json')
   const secs = await guideSections()
   let digest = ''
+  if (live?.kpis) {
+    digest += 'ТЕКУЩИЙ СЦЕНАРИЙ ПОЛЬЗОВАТЕЛЯ (live, с правками в браузере — приоритетнее снимка): ' +
+      `${live.scenario}: NPV ${Math.round(live.kpis.npv).toLocaleString('ru')} €, IRR ${(live.kpis.irrAnnual * 100).toFixed(1)}%, ` +
+      `payback ${live.kpis.paybackMonths} мес, MOIC ${(live.kpis.moic ?? 0).toFixed(2)}x.\n`
+  }
   if (snap) {
     digest = 'KPI по сценариям (снимок от ' + String(snap.generatedAt).slice(0, 10) + '):\n' +
       Object.entries(snap.scenarios)
-        .map(([n, s]) => `- ${n}: NPV ${Math.round(s.kpis.npv).toLocaleString('ru')} €, IRR ${(s.kpis.irr * 100).toFixed(1)}%, payback ${s.kpis.paybackMonths} мес, MOIC ${s.kpis.moic?.toFixed(2)}x`)
+        .map(([n, s]) => `- ${n}: NPV ${Math.round(s.kpis.npv).toLocaleString('ru')} €, IRR ${((s.kpis.irrAnnual ?? s.kpis.irr ?? 0) * 100).toFixed(1)}%, payback ${s.kpis.paybackMonths} мес, MOIC ${s.kpis.moic?.toFixed(2)}x`)
         .join('\n')
   }
   return (
@@ -222,8 +233,14 @@ async function systemPrompt() {
     'ГЛОССАРИЙ МОДЕЛИ:\n' +
     '- SDC — Special Defence Contribution: кипрский взнос 17% на дивиденды резидентов (non-dom не платит).\n' +
     '- GESY — General Healthcare System: кипрский взнос в здравоохранение 2.65% (в модели — с дивидендов резидентов и в составе соцвзносов работодателя).\n' +
-    '- CIT — Corporate Income Tax Кипра, 12.5%. НДС: 19% общая, 9% глэмпинг/F&B.\n' +
-    '- FCFF — свободный денежный поток; MOIC — multiple on invested capital; ramp — месяцы выхода на план; uptime — доступность мощности.\n' +
+    '- CIT — Corporate Income Tax Кипра, 12.5%; провизиональные платежи 31 июля и 31 декабря (в месячной таблице — июль и декабрь). ' +
+    'НДС: 19% общая, 9% глэмпинг/F&B. В P&L из выручки вычитается НАЧИСЛЕННЫЙ НДС (output VAT), а к уплате идёт выходной минус входной минус перенос — ' +
+    'разница видна в Cash-Flow строкой «ΔНДС». В режиме «С возмещением» входной НДС по CAPEX зачитывается в месяце платежа (земля не создаёт кредита).\n' +
+    '- FCFF — свободный денежный поток; MOIC — multiple on invested capital (знаменатель — сумма отрицательных месяцев FCFF); ramp — месяцы выхода на план; uptime — доступность мощности.\n' +
+    '- IRR на дашборде двойной: эффективная годовая (1+r_m)^12−1 и номинальная r_m×12 — сравнивать с WACC корректно номинальную, т.к. дисконтирование помесячное WACC/12.\n' +
+    '- Пресейл: режим deferred — предоплата тех же продаж (без двойного счёта, пул прогорает 12 мес); incremental — доп. канал сверх плана (наследие Excel, завышает).\n' +
+    '- Резервные модули: до launchDate не дают слотов, не размывают лимит членов и не несут помодульный OPEX/CAPEX; при активации платят помодульный CAPEX ' +
+    '(строки с qty MODULES_COUNT — по 1 на модуль, MODULES_COUNT:N — по N на модуль) в месяц запуска, их НДС зачитывается там же.\n' +
     '- Номенклатура, колонка «Учёт»: OPEX — помесячное списание по норме; CAPEX — разовая закупка (landed × кол-во) в «Наполнение»; ' +
     'Спецификация — материал для себестоимости услуг, НО если у неё заданы статья OPEX и норма — она тоже списывается в OPEX помесячно.\n\n' +
     digest + '\n\n' +
@@ -276,13 +293,14 @@ async function handleChat(req, res) {
   let body = ''
   for await (const c of req) {
     body += c
-    if (body.length > 96_000) return json(res, 413, { error: 'Запрос слишком большой' })
+    if (body.length > 400_000) return json(res, 413, { error: 'Запрос слишком большой' })
   }
-  let messages, pins
+  let messages, pins, live
   try {
     const parsed = JSON.parse(body)
     messages = Array.isArray(parsed.messages) ? parsed.messages : null
     pins = Array.isArray(parsed.pins) ? parsed.pins : []
+    live = parsed.live && typeof parsed.live === 'object' ? parsed.live : null
   } catch { }
   if (!messages?.length) return json(res, 400, { error: 'Ожидался {messages: [...]}' })
   messages = messages
@@ -293,7 +311,7 @@ async function handleChat(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' })
 
   try {
-    const convo = [{ role: 'system', content: await systemPrompt() }, ...messages]
+    const convo = [{ role: 'system', content: await systemPrompt(live) }, ...messages]
     if (pins.length) {
       // Пины вшиваем в последний user-месседж, а не вторым system:
       // адаптеры OpenAI→Anthropic могут отбрасывать лишние system-сообщения.
@@ -324,7 +342,7 @@ async function handleChat(req, res) {
         let args = {}
         try { args = JSON.parse(c.function?.arguments || '{}') } catch { }
         sse(res, { aura_status: `${c.function.name}(${(c.function.arguments || '').slice(0, 60)})` })
-        const out = await runTool(c.function.name, args)
+        const out = await runTool(c.function.name, args, live)
         convo.push({ role: 'tool', tool_call_id: c.id, content: String(out).slice(0, 45000) })
       }
     }

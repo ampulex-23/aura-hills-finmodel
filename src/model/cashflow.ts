@@ -60,7 +60,11 @@ export function computeCashFlow(
 
     const netProfit = isOps ? pnl[opsIdx].netProfit : 0
     const amortization = isOps ? pnl[opsIdx].amortization : 0
-    const operatingCf = netProfit + amortization
+    // P&L берёт выручку за вычетом НАЧИСЛЕННОГО НДС, а в кэше остаётся
+    // неуплаченная часть (входной кредит OPEX/CAPEX) → добавляем Δ обязательства.
+    // В режиме «Гросс» vatOut ≡ vatPayable и строка всегда 0.
+    const vatTiming = isOps ? pnl[opsIdx].vatOut - pnl[opsIdx].vatPayable : 0
+    const operatingCf = netProfit + amortization + vatTiming
     const defCapex = deferredCapex
       .filter((d) => d.month === m1)
       .reduce((s, d) => s - d.eur, 0)
@@ -88,7 +92,7 @@ export function computeCashFlow(
     cumDcf += discountedFcff
 
     out.push({
-      label, isOps, netProfit, amortization, operatingCf, capex, deferredCapex: defCapex,
+      label, isOps, netProfit, amortization, vatTiming, operatingCf, capex, deferredCapex: defCapex,
       presale, presaleUnwind, prepaidPool: pool,
       landLease, preopen, fcff, dividends, sdc, gesy, totalCf, cumCash, cumFcff,
       discountFactor, discountedFcff, cumDcf,
