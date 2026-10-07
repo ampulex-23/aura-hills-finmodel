@@ -150,7 +150,7 @@ export function Nomenclature() {
                       <tr key={it.code}>
                         <td className="sticky">{it.code}</td>
                         <td className="lft">
-                          <TextCell w={280} value={it.name} onChange={(v) => setItem(i, { name: v })} />
+                          <TextCell w={220} value={it.name} onChange={(v) => setItem(i, { name: v })} />
                         </td>
                         <td>
                           <Autocomplete
