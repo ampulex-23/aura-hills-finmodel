@@ -5,11 +5,11 @@ import {
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
 import { NumField, TextCell, fmt } from '../components/ui'
-import { costAllServices, deriveRateFromStaff } from '../model/spec'
+import { costAllServices } from '../model/spec'
 import { landedCost } from '../model/opex'
 import type { SpecItem } from '../model/types'
 
-// Спецификации услуг: себестоимость = материалы (номенклатура) + труд (ставки из Штата).
+// Спецификации услуг: себестоимость = материалы (номенклатура) + KPI ролей (% от цены).
 export function Specs() {
   const {
     items, services, params, setServicePrice, setSpecQty,
@@ -43,7 +43,7 @@ export function Specs() {
   const materialOptions = items
     .filter((i) => i.use === 'Спецификация' || i.use === 'OPEX')
     .map((i) => ({ value: i.code, label: `${i.code} — ${i.name}` }))
-  const roleOptions = params.fot.roles.map((r) => ({ value: r, label: `${r} (€${fmt(deriveRateFromStaff(r, params), 1)}/ч)` }))
+  const roleOptions = params.fot.roles.map((r) => ({ value: r, label: r }))
 
   const openAdd = () => {
     const direction = 'Доп. услуги'
@@ -63,7 +63,7 @@ export function Specs() {
     const qty = entryQty[svcCode] ?? 0
     if (!ref || qty <= 0) return
     const entry: SpecItem =
-      kind === 'material' ? { kind, code: ref, qty } : { kind, role: ref, minutes: qty }
+      kind === 'material' ? { kind, code: ref, qty } : { kind, role: ref, pct: qty }
     addSpecEntry(svcCode, entry)
     setEntryQty((p) => ({ ...p, [svcCode]: 0 }))
   }
@@ -126,14 +126,15 @@ export function Specs() {
                           <small>
                             {it.kind === 'material'
                               ? byCode.get(it.code ?? '')?.name ?? it.code
-                              : `${it.role} (${it.minutes} мин)`}
+                              : it.role}
                           </small>
                         </td>
                         <td>
                           <NumField
-                            value={it.kind === 'labor' ? (it.minutes ?? 0) : (it.qty ?? 0)}
+                            value={it.kind === 'labor' ? (it.pct ?? 0) : (it.qty ?? 0)}
                             onChange={(v) => setSpecQty(c.spec.code, ii, v)}
-                            step={it.kind === 'labor' ? 5 : 0.01}
+                            step={it.kind === 'labor' ? 1 : 0.01}
+                            pct={it.kind === 'labor'}
                           />
                         </td>
                         <td colSpan={2} className="lft">
@@ -141,7 +142,7 @@ export function Specs() {
                             {it.kind === 'material' && byCode.get(it.code ?? '')
                               ? `× €${fmt(landedCost(byCode.get(it.code ?? '')!), 2)}/${byCode.get(it.code ?? '')!.unit}`
                               : it.kind === 'labor'
-                                ? `× €${fmt(deriveRateFromStaff(it.role!, params), 2)}/ч`
+                                ? `× прайс €${fmt(c.spec.price, 2)}`
                                 : ''}
                           </small>
                         </td>
@@ -150,7 +151,7 @@ export function Specs() {
                             {it.kind === 'material' && byCode.get(it.code ?? '')
                               ? fmt(landedCost(byCode.get(it.code ?? '')!) * (it.qty ?? 0), 2)
                               : it.kind === 'labor'
-                                ? fmt(((it.minutes ?? 0) / 60) * deriveRateFromStaff(it.role!, params), 2)
+                                ? fmt(c.spec.price * (it.pct ?? 0), 2)
                                 : '—'}
                           </small>
                         </td>
@@ -190,9 +191,10 @@ export function Specs() {
                             <NumField
                               value={entryQty[c.spec.code] ?? 0}
                               onChange={(v) => setEntryQty((p) => ({ ...p, [c.spec.code]: v }))}
-                              step={(entryKind[c.spec.code] ?? 'material') === 'labor' ? 5 : 0.01}
+                              step={(entryKind[c.spec.code] ?? 'material') === 'labor' ? 1 : 0.01}
+                              pct={(entryKind[c.spec.code] ?? 'material') === 'labor'}
                             />
-                            <small>{(entryKind[c.spec.code] ?? 'material') === 'labor' ? 'минут' : 'единиц'}</small>
+                            <small>{(entryKind[c.spec.code] ?? 'material') === 'labor' ? '% от прайса' : 'единиц'}</small>
                           </Group>
                         </td>
                         <td colSpan={2}>
@@ -215,10 +217,12 @@ export function Specs() {
       ))}
 
       <p className="note">
-        Себестоимость = Σ(норма × landed cost материала) + Σ(минуты/60 × ставка роли).
-        Ставки ролей выводятся из штатного расписания: оклад × (1 + 15.15% взносов) / 173 ч —
-        редактируются во вкладке «Штат». Аналитический блок — в P&amp;L не входит:
-        выручка услуг уже учтена через депозит/uptake.
+        Себестоимость = Σ(норма × landed cost материала) + прайс × Σ(% ролей).
+        Процент у строки «Труд» — доля прайса услуги, которую роль получает как KPI за каждую
+        проведённую услугу (начисляется в ФОТ: «KPI бонусы»). Оклад платится всегда —
+        не провёл ни одной услуги за месяц → голый оклад. Несервисные роли (клинеры,
+        охрана и т.п.) в спеки не добавляются. Аналитический блок — в P&amp;L отдельной
+        строкой не идёт: выручка услуг уже учтена через депозит/uptake.
       </p>
 
       <Modal opened={addOpen} onClose={() => setAddOpen(false)} title="Новая услуга" size="md" centered>

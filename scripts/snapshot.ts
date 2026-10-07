@@ -7,24 +7,26 @@ import { resolve } from 'node:path'
 import paramsJson from '../src/data/params.json'
 import matrixJson from '../src/data/scenarios.json'
 import nomenclatureJson from '../src/data/nomenclature.json'
+import servicesJson from '../src/data/services.json'
 import { runModel } from '../src/model/run'
 import { computeBreakEven, computeSensitivity, computeTornado } from '../src/model/sensitivity'
 import { scenarioView } from '../src/model/view'
-import type { NomenclatureItem, Params, ScenarioMatrix, ScenarioName } from '../src/model/types'
+import type { NomenclatureItem, Params, ScenarioMatrix, ScenarioName, ServiceSpec } from '../src/model/types'
 
 const params = paramsJson as unknown as Params
 const matrix = matrixJson as unknown as ScenarioMatrix
 const items = nomenclatureJson as unknown as NomenclatureItem[]
+const services = servicesJson.services as unknown as ServiceSpec[]
 const capexM = params.meta.capexMonths
 
 const scenarios: Record<string, unknown> = {}
 for (const name of matrix.names as ScenarioName[]) {
-  scenarios[name] = scenarioView(runModel(params, matrix, items, name), params)
+  scenarios[name] = scenarioView(runModel(params, matrix, items, services, name), params)
 }
 
-const sens = computeSensitivity(params, matrix, items)
-const tornado = computeTornado(params, matrix, items, runModel(params, matrix, items, params.meta.scenario).kpis.npv)
-const breakEven = computeBreakEven(params, matrix, items)
+const sens = computeSensitivity(params, matrix, items, services)
+const tornado = computeTornado(params, matrix, items, services, runModel(params, matrix, items, services, params.meta.scenario).kpis.npv)
+const breakEven = computeBreakEven(params, matrix, items, services)
 
 const snapshot = {
   generatedAt: new Date().toISOString(),

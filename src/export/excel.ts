@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs'
-import type { ModelResult, NomenclatureItem, Params, ScenarioMatrix } from '../model/types'
+import type { ModelResult, NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../model/types'
 import { runModel } from '../model/run'
 import { computeSensitivity, T1_WACC, T2_CAPEX } from '../model/sensitivity'
 import { landedCost } from '../model/opex'
@@ -30,6 +30,7 @@ export async function exportWorkbook(
   params: Params,
   matrix: ScenarioMatrix,
   items: NomenclatureItem[],
+  services: ServiceSpec[],
 ): Promise<Blob> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'AURA HILLS Model'
@@ -40,7 +41,7 @@ export async function exportWorkbook(
   })
 
   // Результаты по всем сценариям — лист «Сценарии» получает живой снимок.
-  const results = matrix.names.map((n) => runModel(params, matrix, items, n))
+  const results = matrix.names.map((n) => runModel(params, matrix, items, services, n))
   const r = results[matrix.names.indexOf(params.meta.scenario)] ?? results[1]
 
   // Допущения
@@ -201,7 +202,7 @@ export async function exportWorkbook(
   // Sensitivity
   {
     const ws = wb.addWorksheet('Sensitivity')
-    const s = computeSensitivity(params, matrix, items)
+    const s = computeSensitivity(params, matrix, items, services)
     ws.addRow([`Спрос \\ WACC`, ...T1_WACC.map((w) => `${w * 100}%`)])
     ws.getRow(1).eachCell((c) => Object.assign(c, HEADER))
     for (const row of s.t1.rows)

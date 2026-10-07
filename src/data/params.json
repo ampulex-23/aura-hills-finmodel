@@ -111,11 +111,6 @@
     "massageBase": 60,
     "policy": "Несгораемый за юнитом"
   },
-  "kpi": {
-    "steamShare": 0.3,
-    "massageShare": 0.3,
-    "revenueShare": 0.01
-  },
   "service": {
     "upgradeShare": 0,
     "walletExtraShare": 0.2,

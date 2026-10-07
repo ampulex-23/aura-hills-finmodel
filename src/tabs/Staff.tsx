@@ -44,7 +44,7 @@ export function Staff() {
       <p className="note" style={{ maxWidth: 720 }}>
         Штатное расписание и связанные ставки. Оклады индексируются инфляцией ежегодно
         и облагаются взносами работодателя ({(P.taxes.employerRate * 100).toFixed(2)}%).
-        Почасовые ставки для себестоимости услуг — во вкладке «Спецификации» (это не оклады).
+        KPI ролей за услуги — во вкладке «Спецификации» (процент от прайса каждой услуги).
       </p>
 
       <div className="form-row">
@@ -96,24 +96,14 @@ export function Staff() {
         <fieldset>
           <legend>Бонусы и взносы</legend>
           <label className="field">
-            <span>KPI-бонус: доля парений</span>
-            <NumField value={P.kpi.steamShare} onChange={(v) => setParam('kpi.steamShare', v)} pct />
-          </label>
-          <label className="field">
-            <span>KPI-бонус: доля массажа</span>
-            <NumField value={P.kpi.massageShare} onChange={(v) => setParam('kpi.massageShare', v)} pct />
-          </label>
-          <label className="field">
-            <span>KPI-бонус: доля выручки</span>
-            <NumField value={P.kpi.revenueShare} onChange={(v) => setParam('kpi.revenueShare', v)} pct step={0.001} />
-          </label>
-          <label className="field">
             <span>Взносы работодателя</span>
             <NumField value={P.taxes.employerRate} onChange={(v) => setParam('taxes.employerRate', v)} pct />
           </label>
           <small className="note">
-            Бонусы = доля парений × выручка парений + доля массажа × выручка массажа
-            + доля выручки × общая выручка — сверх окладов, тоже со взносами.
+            KPI-бонусы задаются не здесь, а во вкладке «Спецификации»: у каждой услуги —
+            процент от прайса для каждой роли в её составе. Бонус месяца =
+            Σ (кол-во проведённых услуг × прайс × % роли) — сверх окладов, тоже со взносами.
+            Роли без строки в спеке KPI не получают.
           </small>
         </fieldset>
 

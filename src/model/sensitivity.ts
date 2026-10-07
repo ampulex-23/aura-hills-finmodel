@@ -1,4 +1,4 @@
-import type { NomenclatureItem, Params, ScenarioMatrix } from './types'
+import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from './types'
 import { runModel } from './run'
 import { resolveScenario } from './scenario'
 
@@ -29,6 +29,7 @@ export function computeSensitivity(
   params: Params,
   matrix: ScenarioMatrix,
   items: NomenclatureItem[],
+  services: ServiceSpec[],
 ): SensitivityResult {
   const t0 = performance.now()
   const scenario = params.meta.scenario
@@ -36,7 +37,7 @@ export function computeSensitivity(
   const t1: SensTable1Row[] = T1_DEMAND.map((demand) => ({
     demand,
     cells: T1_WACC.map((wacc) => {
-      const r = runModel(params, matrix, items, scenario, { demandMult: demand, wacc })
+      const r = runModel(params, matrix, items, services, scenario, { demandMult: demand, wacc })
       return { wacc, npv: r.kpis.npv, discPayback: r.kpis.discountedPaybackMonths }
     }),
   }))
@@ -44,13 +45,13 @@ export function computeSensitivity(
   const t2: SensTable2Row[] = T2_GROWTH.map((priceGrowth) => ({
     priceGrowth,
     cells: T2_CAPEX.map((capexAdj) => {
-      const r = runModel(params, matrix, items, scenario, { priceGrowth, capexAdj })
+      const r = runModel(params, matrix, items, services, scenario, { priceGrowth, capexAdj })
       return { capexAdj, npv: r.kpis.npv, irr: r.kpis.irrAnnual }
     }),
   }))
 
   const t3: SensTable3Row[] = T3_PRICE.map((priceMult) => {
-    const r = runModel(params, matrix, items, scenario, { priceMult })
+    const r = runModel(params, matrix, items, services, scenario, { priceMult })
     return { priceMult, npv: r.kpis.npv, irr: r.kpis.irrAnnual }
   })
 
@@ -77,10 +78,11 @@ export function computeBreakEven(
   params: Params,
   matrix: ScenarioMatrix,
   items: NomenclatureItem[],
+  services: ServiceSpec[],
 ): BreakEvenResult {
   const scenario = params.meta.scenario
   const ebitdaY3 = (mult: number) => {
-    const r = runModel(params, matrix, items, scenario, { loadMult: mult })
+    const r = runModel(params, matrix, items, services, scenario, { loadMult: mult })
     return r.pnl.slice(24, 36).reduce((s, p) => s + p.ebitda, 0) / 12
   }
   const ebitdaBase = ebitdaY3(1)
@@ -108,13 +110,14 @@ export function computeTornado(
   params: Params,
   matrix: ScenarioMatrix,
   items: NomenclatureItem[],
+  services: ServiceSpec[],
   baseNpv: number,
 ): TornadoBar[] {
   const scenario = params.meta.scenario
   const baseCapexAdj = resolveScenario(params, matrix, scenario).capexAdj
   const baseWacc = params.general.wacc
 
-  type Ov = Parameters<typeof runModel>[4]
+  type Ov = Parameters<typeof runModel>[5]
   const drivers: { label: string; loLabel: string; hiLabel: string; lo: Ov; hi: Ov }[] = [
     { label: 'Спрос', loLabel: '−15%', hiLabel: '+15%', lo: { demandMult: 0.85 }, hi: { demandMult: 1.15 } },
     { label: 'Уровень цен', loLabel: '−10%', hiLabel: '+10%', lo: { priceMult: 0.9 }, hi: { priceMult: 1.1 } },
@@ -158,8 +161,8 @@ export function computeTornado(
       label: d.label,
       loLabel: d.loLabel,
       hiLabel: d.hiLabel,
-      npvLo: runModel(params, matrix, items, scenario, d.lo).kpis.npv,
-      npvHi: runModel(params, matrix, items, scenario, d.hi).kpis.npv,
+      npvLo: runModel(params, matrix, items, services, scenario, d.lo).kpis.npv,
+      npvHi: runModel(params, matrix, items, services, scenario, d.hi).kpis.npv,
     }))
     .sort(
       (a, b) =>

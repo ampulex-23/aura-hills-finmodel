@@ -115,6 +115,13 @@ export function computeRevenueMonth(
   const steamTotal = steam.reduce((a, b) => a + b, 0)
   const massageTotal = massage.reduce((a, b) => a + b, 0)
   const extraTotal = extra.reduce((a, b) => a + b, 0)
+  // Эквивалент проданных процедур по каждой ценовой ступени — база KPI
+  // спецификаций: count = выручка ступени / (её цена × годовой индекс цен).
+  const cnt = (stream: number[], set: { prices: number[] }) =>
+    stream.map((r, j) => (set.prices[j] * growth > 0 ? r / (set.prices[j] * growth) : 0))
+  const steamCounts = cnt(steam, params.procedures.steam)
+  const massageCounts = cnt(massage, params.procedures.massage)
+  const extraCounts = cnt(extra, params.procedures.extra)
 
   const glamping =
     30 *
@@ -144,10 +151,13 @@ export function computeRevenueMonth(
     rental,
     steam,
     steamTotal,
+    steamCounts,
     massage,
     massageTotal,
+    massageCounts,
     extra,
     extraTotal,
+    extraCounts,
     glamping,
     membersMonthCount,
     membersMonth,

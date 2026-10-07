@@ -50,13 +50,14 @@ export interface NomenclatureItem {
   note: string | null
 }
 
-// Спецификация услуги: материалы по кодам номенклатуры + труд по ролям штата.
+// Спецификация услуги: материалы по кодам номенклатуры + KPI-доли ролей.
 export interface SpecItem {
   kind: 'material' | 'labor'
-  code?: string   // для material — код номенклатуры
-  role?: string   // для labor — роль из штатного расписания (params.fot.roles)
-  qty?: number    // для material — кол-во единиц
-  minutes?: number // для labor — минуты работы
+  code?: string    // для material — код номенклатуры
+  role?: string    // для labor — роль из штатного расписания (params.fot.roles)
+  qty?: number     // для material — кол-во единиц
+  pct?: number     // для labor — доля цены услуги, уходящая роли в KPI (0.3 = 30%)
+  minutes?: number // legacy: минуты → конвертируется в эквивалентный pct при загрузке
 }
 export interface ServiceSpec {
   code: string
@@ -127,7 +128,7 @@ export interface Params {
   // enabled=false — база консервативна, TV только как sensitivity-кейс. В Excel нет.
   tv: { enabled: boolean; growth: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
-  kpi: { steamShare: number; massageShare: number; revenueShare: number }
+  kpi?: { steamShare: number; massageShare: number; revenueShare: number } // legacy: игнорируется, KPI задаётся в спецификациях
   service: {
     upgradeShare: number
     walletExtraShare: number
@@ -209,10 +210,13 @@ export interface RevenueMonth {
   rental: number
   steam: number[]
   steamTotal: number
+  steamCounts: number[]    // проданных процедур по ценовым ступеням — для KPI спецификаций
   massage: number[]
   massageTotal: number
+  massageCounts: number[]
   extra: number[]
   extraTotal: number
+  extraCounts: number[]
   glamping: number
   membersMonthCount: number
   membersMonth: number
@@ -241,6 +245,7 @@ export interface OpexMonth {
 export interface FotMonth {
   salaries: number
   bonuses: number
+  bonusDetail: string // разложение KPI по направлениям для подсказок отчётов
   gross: number
   employerContrib: number
   total: number

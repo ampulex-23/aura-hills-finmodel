@@ -1,4 +1,5 @@
-import type { FotMonth, Params, RevenueMonth } from './types'
+import type { FotMonth, Params, RevenueMonth, ServiceSpec } from './types'
+import { serviceLaborShare } from './spec'
 
 // Базовый фонд окладов месяца 0 (без бонусов и индексации) — штат + IT-куратор + повар
 export function baseSalariesMonthly(params: Params): number {
@@ -9,19 +10,57 @@ export function baseSalariesMonthly(params: Params): number {
   )
 }
 
-// ФОТ: оклады × инфляция^год; KPI-бонусы = 30% парений + 30% массажа + 1% выручки; взносы 15.15%
-export function computeFotMonth(params: Params, rev: RevenueMonth, k: number): FotMonth {
-  const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
-  const salaries = baseSalariesMonthly(params) * infl
-  const bonuses =
-    rev.steamTotal * params.kpi.steamShare +
-    rev.massageTotal * params.kpi.massageShare +
-    rev.total * params.kpi.revenueShare
-  const gross = salaries + bonuses
-  const employerContrib = gross * params.taxes.employerRate
-  return { salaries, bonuses, gross, employerContrib, total: gross + employerContrib }
+// Направление спецификации → вектор количества проданных услуг месяца.
+// Роли с окладом (клинер, охрана) в спеки не входят — KPI получают только
+// роли, явно указанные в составе услуги с долей pct от её прайса.
+const dirCounts = (rev: RevenueMonth, direction: string): number[] => {
+  if (direction === 'Аренда бани') return rev.slotCounts
+  if (direction === 'Парения') return rev.steamCounts
+  if (direction === 'Массаж') return rev.massageCounts
+  if (direction === 'Доп. услуги') return rev.extraCounts
+  return []
 }
 
-export function computeFot(params: Params, revenue: RevenueMonth[]): FotMonth[] {
-  return revenue.map((r, k) => computeFotMonth(params, r, k))
+// ФОТ: оклады × инфляция^год + KPI-бонусы из спецификаций услуг.
+// Бонус услуги за месяц = продано услуг × прайс спецификации × Σ долей ролей.
+// Не провёл ни одной услуги → бонус 0, роль получает голый оклад.
+export function computeFotMonth(
+  params: Params,
+  rev: RevenueMonth,
+  services: ServiceSpec[],
+  k: number,
+): FotMonth {
+  const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+  const salaries = baseSalariesMonthly(params) * infl
+
+  let bonuses = 0
+  const byDir = new Map<string, number>()
+  const dirOrder = [...new Set(services.map((s) => s.direction))]
+  for (const dir of dirOrder) {
+    const counts = dirCounts(rev, dir)
+    services
+      .filter((s) => s.direction === dir)
+      .forEach((s, idx) => {
+        const amt = (counts[idx] ?? 0) * s.price * serviceLaborShare(s, params)
+        if (amt > 0) {
+          bonuses += amt
+          byDir.set(dir, (byDir.get(dir) ?? 0) + amt)
+        }
+      })
+  }
+  const bonusDetail = [...byDir.entries()]
+    .map(([d, v]) => `${d.toLowerCase()} €${Math.round(v).toLocaleString('ru-RU')}`)
+    .join(' + ')
+
+  const gross = salaries + bonuses
+  const employerContrib = gross * params.taxes.employerRate
+  return { salaries, bonuses, bonusDetail, gross, employerContrib, total: gross + employerContrib }
+}
+
+export function computeFot(
+  params: Params,
+  revenue: RevenueMonth[],
+  services: ServiceSpec[],
+): FotMonth[] {
+  return revenue.map((r, k) => computeFotMonth(params, r, services, k))
 }

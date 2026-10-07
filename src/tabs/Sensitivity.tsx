@@ -6,15 +6,15 @@ import { fmt } from '../components/ui'
 
 // Три таблицы чувствительности — реальный пересчёт (57 точек, ~0.3с).
 export function Sensitivity({ r }: { r: ModelResult }) {
-  const { params, matrix, items, scenario } = useModel()
+  const { params, matrix, items, services, scenario } = useModel()
   const s = useMemo(
-    () => computeSensitivity(params, matrix, items),
-    [params, matrix, items],
+    () => computeSensitivity(params, matrix, items, services),
+    [params, matrix, items, services],
   )
   const baseNpv = r.kpis.npv
   const tornado = useMemo(
-    () => computeTornado(params, matrix, items, baseNpv),
-    [params, matrix, items, baseNpv],
+    () => computeTornado(params, matrix, items, services, baseNpv),
+    [params, matrix, items, services, baseNpv],
   )
   const torMax = Math.max(
     ...tornado.flatMap((d) => [Math.abs(d.npvHi - baseNpv), Math.abs(d.npvLo - baseNpv)]),

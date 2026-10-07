@@ -132,7 +132,7 @@ export const useModel = create<ModelState>()(
         set({
           services: get().services.map((s) =>
             s.code === serviceCode
-              ? { ...s, items: s.items.map((it, i) => (i === itemIdx ? { ...it, ...(it.kind === 'labor' ? { minutes: qty } : { qty }) } : it)) }
+              ? { ...s, items: s.items.map((it, i) => (i === itemIdx ? { ...it, ...(it.kind === 'labor' ? { pct: qty } : { qty }) } : it)) }
               : s,
           ),
         }),

@@ -81,7 +81,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
 ]
 
 export default function App() {
-  const { params, matrix, items, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
+  const { params, matrix, items, services, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
   const { open: aiOpen, pins: aiPins, toggle: aiToggle } = useChat()
   const [tab, setTabState] = useState<Route>(() => routeFromHash() ?? 'Дашборд')
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ah-side') === '1')
@@ -122,8 +122,8 @@ export default function App() {
     })
 
   const result = useMemo(
-    () => runModel(params, matrix, items, scenario),
-    [params, matrix, items, scenario],
+    () => runModel(params, matrix, items, services, scenario),
+    [params, matrix, items, services, scenario],
   )
   const opsLabels = useMemo(
     () => monthLabels(params.meta.openingDate, params.meta.opsMonths),
@@ -140,7 +140,7 @@ export default function App() {
   const upload = (f: File) => f.text().then(importJson)
 
   const exportExcel = async () => {
-    const blob = await exportWorkbook(params, matrix, items)
+    const blob = await exportWorkbook(params, matrix, items, services)
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = 'aura-hills-model.xlsx'

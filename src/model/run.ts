@@ -1,4 +1,4 @@
-import type { ModelResult, NomenclatureItem, Params, ScenarioName, ScenarioMatrix } from './types'
+import type { ModelResult, NomenclatureItem, Params, ScenarioName, ScenarioMatrix, ServiceSpec } from './types'
 import { resolveScenario } from './scenario'
 import { computeRevenue } from './revenue'
 import { computeOpex } from './opex'
@@ -16,6 +16,7 @@ export function runModel(
   params: Params,
   matrix: ScenarioMatrix,
   items: NomenclatureItem[],
+  services: ServiceSpec[],
   scenario: ScenarioName = params.meta.scenario,
   overrides: Partial<{
     demandMult: number
@@ -52,7 +53,7 @@ export function runModel(
   const capex = computeCapex(p, items, sc.capexAdj)
   const revenue = computeRevenue(p, sc)
   const opex = computeOpex(p, items, revenue)
-  const fot = computeFot(p, revenue)
+  const fot = computeFot(p, revenue, services)
   const vat = computeVat(p, revenue, opex, capex)
 
   const ebit = revenue.map(

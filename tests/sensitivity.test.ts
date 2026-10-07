@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import paramsJson from '../src/data/params.json'
 import scenariosJson from '../src/data/scenarios.json'
 import nomenclatureJson from '../src/data/nomenclature.json'
-import type { NomenclatureItem, Params, ScenarioMatrix } from '../src/model/types'
+import servicesJson from '../src/data/services.json'
+import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../src/model/types'
 import { computeSensitivity } from '../src/model/sensitivity'
 
 const params = paramsJson as Params
@@ -17,17 +18,20 @@ params.glampOta.enabled = false // OTA-комиссия вне оракула
 params.service.serviceLoads = false // векторы загрузки услуг вне оракула
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
+const services = servicesJson.services as unknown as ServiceSpec[]
 
 // Оракул sens_run.py (57 точек, до перехода OPEX на номенклатуру → ожидаемый
 // системный сдвиг ≈ −0.25%). Проверяем направление и порядок величин.
-// Пересчитано после фикса привязки услуг к слотам текущего месяца (был C13-костыль).
+// Пересчитано после фикса привязки услуг к слотам текущего месяца (был C13-костыль)
+// и после перехода KPI на спецификации (продано × прайс × % роли) — значения ниже
+// зафиксированы с прогона ядра, Excel-оракул к KPI-спекам неприменим.
 const ORACLE = {
-  t1_d08_w14: 4182495, t1_d10_w14: 5946522, t1_d12_w14: 7573750,
-  t2_g0_c30: 4988922, t2_g7_c30: 6395268, t3_p08: 4033807, t3_p12: 7859236,
+  t1_d08_w14: 4358002, t1_d10_w14: 6167696, t1_d12_w14: 7835865,
+  t2_g0_c30: 5094014, t2_g7_c30: 6781513, t3_p08: 3871026, t3_p12: 8464366,
 }
 
 describe('sensitivity: 57 точек реального пересчёта', () => {
-  const s = computeSensitivity(params, matrix, items)
+  const s = computeSensitivity(params, matrix, items, services)
 
   it('таблица 1: спрос × WACC', () => {
     const npv = (d: number, w: number) =>

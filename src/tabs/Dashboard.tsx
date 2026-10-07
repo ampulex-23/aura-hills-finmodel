@@ -17,10 +17,10 @@ const tooltipStyle = {
 } as const
 
 export function Dashboard({ r }: { r: ModelResult }) {
-  const { params, matrix, items } = useModel()
+  const { params, matrix, items, services } = useModel()
   const be = useMemo(
-    () => computeBreakEven(params, matrix, items),
-    [params, matrix, items],
+    () => computeBreakEven(params, matrix, items, services),
+    [params, matrix, items, services],
   )
   const revenueByStream = useMemo(
     () =>

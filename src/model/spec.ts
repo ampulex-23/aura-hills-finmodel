@@ -1,5 +1,5 @@
 import { landedCost } from './opex'
-import type { NomenclatureItem, Params, ServiceCost, ServiceSpec } from './types'
+import type { NomenclatureItem, Params, ServiceCost, ServiceSpec, SpecItem } from './types'
 
 // Норма часов в месяце для перевода оклада в ставку (≈40 ч/нед × 4.33).
 export const STAFF_HOURS_PER_MONTH = 173
@@ -22,7 +22,23 @@ export function deriveRateFromStaff(role: string, params: Params): number {
   return (params.fot.salary[i] ?? 0) * (1 + params.taxes.employerRate) / STAFF_HOURS_PER_MONTH
 }
 
-// Себестоимость услуги = Σ landedCost(материал) × qty + Σ минуты/60 × ставка роли.
+// Доля цены услуги, уходящая роли в KPI. Новые данные хранят pct напрямую;
+// старые записи с минутами конвертируются в эквивалентную долю через ставку
+// штата — так сохранённые состояния не ломаются.
+export function laborPct(it: SpecItem, price: number, params: Params): number {
+  if (it.kind !== 'labor' || !it.role) return 0
+  if (it.pct !== undefined) return it.pct
+  if (it.minutes && price > 0) return ((it.minutes / 60) * deriveRateFromStaff(it.role, params)) / price
+  return 0
+}
+
+// Суммарная KPI-доля всех ролей в спецификации — используется и в себестоимости,
+// и в бонусах ФОТ (заработок = доля × цена за каждую проведённую услугу).
+export function serviceLaborShare(spec: ServiceSpec, params: Params): number {
+  return spec.items.reduce((s, it) => s + laborPct(it, spec.price, params), 0)
+}
+
+// Себестоимость услуги = Σ landedCost(материал) × qty + цена × Σ KPI-долей ролей.
 // Порт листа «Себестоимость услуг» из исходной модели.
 export function costService(
   spec: ServiceSpec,
@@ -31,13 +47,11 @@ export function costService(
 ): ServiceCost {
   const byCode = new Map(items.map((i) => [i.code, i]))
   let materialsCost = 0
-  let laborCost = 0
+  const laborCost = spec.price * serviceLaborShare(spec, params)
   for (const it of spec.items) {
     if (it.kind === 'material' && it.code) {
       const m = byCode.get(it.code)
       if (m) materialsCost += landedCost(m) * (it.qty ?? 0)
-    } else if (it.kind === 'labor' && it.role) {
-      laborCost += ((it.minutes ?? 0) / 60) * deriveRateFromStaff(it.role, params)
     }
   }
   const cost = materialsCost + laborCost

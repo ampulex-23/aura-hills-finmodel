@@ -301,7 +301,6 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
   const baseSalaries = params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0)
     + (params.it.enabled ? params.it.curator : 0)
     + (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
-  const kpi = params.kpi
   const rows: RowDef[] = [
     {
       label: 'Оклады (фикс.)', values: F.map((m) => m.salaries),
@@ -313,10 +312,12 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'KPI бонусы', values: F.map((m) => m.bonuses),
-      tip: 'Переменная часть: доля от выручки парений и массажа + доля от всей выручки.',
+      tip: 'Переменная часть: Σ проданных услуг × прайс спецификации × % ролей в её составе (задаётся во вкладке «Спецификации»).',
       hint: (ci) => ({
         title: 'KPI бонусы',
-        calc: `парения ${e0(R[ci].steamTotal)}×${pc(kpi.steamShare)} + массаж ${e0(R[ci].massageTotal)}×${pc(kpi.massageShare)} + выручка ${e0(R[ci].total)}×${pc(kpi.revenueShare, 1)} = ${e0(F[ci].bonuses)}`,
+        calc: F[ci].bonusDetail
+          ? `${F[ci].bonusDetail} = ${e0(F[ci].bonuses)}`
+          : `услуг не проведено → ${e0(F[ci].bonuses)}`,
       }),
     },
     {

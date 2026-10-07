@@ -170,10 +170,10 @@ export function AiChat() {
     // без него инструменты агента отвечали бы по статичному build-снимку.
     let live: unknown = null
     try {
-      const { params, matrix, items, scenario } = useModel.getState()
+      const { params, matrix, items, services, scenario } = useModel.getState()
       live = {
         scenario,
-        ...scenarioView(runModel(params, matrix, items, scenario), params),
+        ...scenarioView(runModel(params, matrix, items, services, scenario), params),
         params,
       }
     } catch { /* если прогон упал — агент работает по серверному снимку */ }

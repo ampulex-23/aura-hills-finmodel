@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import paramsJson from '../src/data/params.json'
 import scenariosJson from '../src/data/scenarios.json'
 import nomenclatureJson from '../src/data/nomenclature.json'
-import type { NomenclatureItem, Params, ScenarioMatrix } from '../src/model/types'
+import servicesJson from '../src/data/services.json'
+import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../src/model/types'
 import { runModel } from '../src/model/run'
 
 const params = paramsJson as Params
@@ -25,23 +26,26 @@ params.glampOta.enabled = false // OTA-комиссия вне оракула
 params.service.serviceLoads = false
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
+const services = servicesJson.services as unknown as ServiceSpec[]
 
 // Оракул: formulas-движок на AURA_HILLS_MODEL.xlsx (пакетный режим, НДС=Гросс,
 // после перевода OPEX на номенклатуру И фикса привязки услуг к текущему месяцу).
 // NPV/IRR/payback — из прогона, расхождение ядра < 0.01% — остаток float-шум оракула.
-// Осознанное расхождение от книги: авансы CIT перенесены июнь→июль (на Кипре
-// провизиональный налог платится 31 июля и 31 декабря) — NPV выше оракула
-// на ~+4–6k; ожидаемые npv ниже уже скорректированы на этот сдвиг.
+// Осознанные расхождения от книги: авансы CIT перенесены июнь→июль (на Кипре
+// провизиональный налог платится 31 июля и 31 декабря); KPI-бонусы переведены
+// с глобального пула (30% парений + 30% массажа + 1% выручки) на спецификации
+// (продано услуг × прайс спеки × % ролей, клинеры/аренда без KPI) — обе правки
+// намеренные, поэтому ниже зафиксирован ПОСТ-KPI эталон прогона ядра (не книги).
 const ORACLE = {
-  Conservative: { npv: 3548430, irr: 0.6916, payback: 34, discPayback: 38, peak: -1664401 },
-  Base: { npv: 5952387, irr: 1.1378, payback: 26, discPayback: 28, peak: -1386455 },
-  Aggressive: { npv: 8653236, irr: 1.6040, payback: 23, discPayback: 24, peak: -1346680 },
+  Conservative: { npv: 3714215, irr: 0.7108, payback: 34, discPayback: 37, peak: -1663439 },
+  Base: { npv: 6167696, irr: 1.1638, payback: 26, discPayback: 27, peak: -1386130 },
+  Aggressive: { npv: 9010195, irr: 1.6365, payback: 23, discPayback: 23, peak: -1346680 },
 }
 
 describe('golden-master: TS-ядро vs formulas-оракул', () => {
   for (const name of matrix.names) {
     it(`сценарий ${name}`, () => {
-      const r = runModel(params, matrix, items, name)
+      const r = runModel(params, matrix, items, services, name)
       const exp = ORACLE[name as keyof typeof ORACLE]
       expect(r.kpis.npv).toBeGreaterThan(exp.npv - 2000)
       expect(r.kpis.npv).toBeLessThan(exp.npv + 2000)
@@ -53,7 +57,7 @@ describe('golden-master: TS-ядро vs formulas-оракул', () => {
   }
 
   it('структура: 72 месяца CF, 60 месяцев выручки', () => {
-    const r = runModel(params, matrix, items, 'Base')
+    const r = runModel(params, matrix, items, services, 'Base')
     expect(r.cashflow).toHaveLength(72)
     expect(r.revenue).toHaveLength(60)
     expect(r.revenue[0].steam).toHaveLength(4)
@@ -61,16 +65,16 @@ describe('golden-master: TS-ядро vs formulas-оракул', () => {
   })
 
   it('режим «С возмещением» снижает НДС к уплате', () => {
-    const gross = runModel(params, matrix, items, 'Base')
-    const reimb = runModel(params, matrix, items, 'Base', { vatMode: 'С возмещением' })
+    const gross = runModel(params, matrix, items, services, 'Base')
+    const reimb = runModel(params, matrix, items, services, 'Base', { vatMode: 'С возмещением' })
     const vatG = gross.taxes.reduce((s, t) => s + t.vatPayable, 0)
     const vatR = reimb.taxes.reduce((s, t) => s + t.vatPayable, 0)
     expect(vatR).toBeLessThan(vatG - 200000) // экономия ~€284k по модели
   })
 
   it('непакетный режим: uptake < 100% снижает выручку от услуг', () => {
-    const pkg = runModel(params, matrix, items, 'Base')
-    const nopkg = runModel(params, matrix, items, 'Base', { mode: 'Нет' })
+    const pkg = runModel(params, matrix, items, services, 'Base')
+    const nopkg = runModel(params, matrix, items, services, 'Base', { mode: 'Нет' })
     expect(nopkg.revenue[0].steamTotal).toBeCloseTo(pkg.revenue[0].steamTotal * 0.3, 0)
   })
 })
