@@ -190,11 +190,11 @@ export async function exportWorkbook(
   // Номенклатура
   {
     const ws = wb.addWorksheet('Номенклатура')
-    ws.addRow(['Код', 'Наименование', 'Категория', 'Тип', 'Ед.', 'Цена €', 'Дост.€/ед', 'Дост.%', 'Landed €', 'Учёт', 'Статья OPEX', 'Норма', 'База', 'Кол-во'])
+    ws.addRow(['Код', 'Наименование', 'Категория', 'Тип', 'Ед.', 'Цена €', 'Дост.€/ед', 'Дост.%', 'Landed €', 'Учёт', 'Статья OPEX', 'Норма', 'База', 'Кол-во', 'Нач. запас'])
     ws.getRow(1).eachCell((c) => Object.assign(c, HEADER))
     for (const it of items)
       ws.addRow([it.code, it.name, it.category, it.type, it.unit, it.price, it.deliveryFix, it.deliveryPct,
-        landedCost(it), it.use, it.opexArticle, it.norm, it.normBase, it.qty])
+        landedCost(it), it.use, it.opexArticle, it.norm, it.normBase, it.qty, it.initialQty ?? 0])
     ws.getColumn(2).width = 30
   }
 

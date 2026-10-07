@@ -5,7 +5,7 @@ import {
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
 import { NumField, TextCell, fmt } from '../components/ui'
-import { landedCost } from '../model/opex'
+import { landedCost, nomenclatureCapexEur } from '../model/opex'
 import type { NomenclatureItem } from '../model/types'
 
 const emptyItem = (code: string): NomenclatureItem => ({
@@ -27,9 +27,7 @@ export function Nomenclature() {
 
   const opexItems = items.filter((i) => i.use === 'OPEX').length
   const specItems = items.filter((i) => i.use === 'Спецификация').length
-  const capexEur = items
-    .filter((i) => i.use === 'CAPEX')
-    .reduce((s, i) => s + landedCost(i) * i.qty, 0)
+  const capexEur = nomenclatureCapexEur(items)
 
   const categories = [...new Set(items.map((i) => i.category))]
   const articles = [...new Set(items.map((i) => i.opexArticle).filter(Boolean))] as string[]
@@ -91,6 +89,7 @@ export function Nomenclature() {
         {items.length} позиций · OPEX: {opexItems} · Спецификация: {specItems} · наполнение CAPEX: €{fmt(capexEur)} ·
         landed cost = цена + max(доставка €/ед, цена × доставка %).
         В помесячный OPEX списывается любая позиция со статьёй и нормой (кроме CAPEX); «Кол-во CAPEX» работает только при учёте «CAPEX».
+        «Нач. запас» — разовая закупка в стройке для любой позиции: стартовый комплект, который дальше пополняется нормой (халаты, полотенца).
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
         <TextInput
@@ -113,7 +112,7 @@ export function Nomenclature() {
             <tr>
               <th className="sticky">Код</th><th>Наименование</th><th>Тип</th>
               <th>Ед.</th><th>Цена €</th><th>Дост. €/ед</th><th>Дост. %</th><th>Landed €</th>
-              <th>Учёт</th><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Кол-во CAPEX</th><th></th>
+              <th>Учёт</th><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Кол-во CAPEX</th><th>Нач. запас</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -125,7 +124,7 @@ export function Nomenclature() {
                   className="section spec-head"
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={14} className="sticky">
+                  <td colSpan={15} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
@@ -189,6 +188,11 @@ export function Nomenclature() {
                           </Tooltip>
                         </td>
                         <td>
+                          <Tooltip label="Разовая закупка на открытие — уходит в «Наполнение» CAPEX при любом режиме учёта" openDelay={300}>
+                            <span><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></span>
+                          </Tooltip>
+                        </td>
+                        <td>
                           <Tooltip label="Удалить" openDelay={300}>
                             <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk(it)}>✕</ActionIcon>
                           </Tooltip>
@@ -237,6 +241,7 @@ export function Nomenclature() {
             </Group>
             <Group grow>
               <NumberInput label="Кол-во (CAPEX)" value={draft.qty} min={0} disabled={draft.use !== 'CAPEX'} onChange={(v) => setD({ qty: Number(v) || 0 })} />
+              <NumberInput label="Нач. запас (закупка на открытие)" value={draft.initialQty ?? 0} min={0} onChange={(v) => setD({ initialQty: Number(v) || 0 })} />
               <TextInput label="Примечание" value={draft.note ?? ''} onChange={(e) => setD({ note: e.currentTarget.value || null })} />
             </Group>
             <Group justify="flex-end" mt="md">

@@ -43,6 +43,10 @@ export interface NomenclatureItem {
   norm: number
   normBase: NormBase | null
   qty: number
+  /** Начальный запас — разовая закупка в стройке (в «Наполнение» CAPEX) поверх
+   *  обычного учёта позиции: для OPEX/Спецификации это стартовый комплект,
+   *  который потом пополняется помесячной нормой. */
+  initialQty?: number
   note: string | null
 }
 

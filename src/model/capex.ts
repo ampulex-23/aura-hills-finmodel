@@ -31,11 +31,14 @@ export function computeCapex(
     if (it.row === 30) {
       eur = nomenclatureCapexEur(items) // наполнение — из справочника, уже в EUR
       detail = items
-        .filter((x) => x.use === 'CAPEX')
-        .map((x) => ({
-          code: x.code, name: x.name, qty: x.qty,
-          landed: landedCost(x), eur: landedCost(x) * x.qty,
-        }))
+        .filter((x) => x.use === 'CAPEX' || (x.initialQty ?? 0) > 0)
+        .map((x) => {
+          const qty = (x.use === 'CAPEX' ? x.qty : 0) + (x.initialQty ?? 0)
+          return {
+            code: x.code, name: x.name + (x.use === 'CAPEX' ? '' : ' (нач. запас)'),
+            qty, landed: landedCost(x), eur: landedCost(x) * qty,
+          }
+        })
     } else {
       // 'MODULES_COUNT' = 1 ед. на активный модуль; 'MODULES_COUNT:N' = N ед. на модуль.
       // Так оборудование модулей (печи, купели, ванны) масштабируется при активации

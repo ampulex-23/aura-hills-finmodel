@@ -86,6 +86,21 @@ describe('аудит-регрессии', () => {
     expect(svcM13).toBeCloseTo(svcM0 * inflY2 + 100 * inflY2, 0)
   })
 
+  it('начальный запас (initialQty) уходит в CAPEX и не трогает OPEX', () => {
+    const base = runModel(clone(), matrix, items, 'Base')
+    const items2 = items.map((it) =>
+      it.code === 'NC-001' ? { ...it, initialQty: 100 } : it,
+    )
+    const r = runModel(clone(), matrix, items2, 'Base')
+    const robe = items2.find((x) => x.code === 'NC-001')!
+    const landed = robe.price + Math.max(robe.deliveryFix, robe.price * robe.deliveryPct)
+    const capexRow = r.capex.items.find((i) => i.name.includes('Наполнение'))!
+    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + landed * 100, 2)
+    expect(capexRow.detail!.some((d) => d.code === 'NC-001' && d.qty === 100)).toBe(true)
+    // помесячный OPEX не изменился — норма та же
+    expect(r.opex[5].variableTotal).toBeCloseTo(base.opex[5].variableTotal, 6)
+  })
+
   it('MODULES_COUNT:N — отложенный модуль платит полный помодульный CAPEX', () => {
     const p = clone()
     p.modules[3].status = 'Активен' // launch 2029-01
