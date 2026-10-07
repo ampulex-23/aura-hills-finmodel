@@ -278,8 +278,9 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
   margin: 10px 0; padding: 4px 14px; border-left: 3px solid #3a5a8a;
   background: #141d2b; border-radius: 0 8px 8px 0; color: #9fb0c8;
 }
-.doc-body table { border-collapse: collapse; font-size: 12.5px; margin: 12px 0; display: block; overflow-x: auto; }
-.doc-body th, .doc-body td { border: 1px solid #26314a; padding: 6px 12px; text-align: left; white-space: nowrap; }
+.doc-body table { border-collapse: collapse; font-size: 12.5px; margin: 12px 0; width: 100%; }
+.doc-body th, .doc-body td { border: 1px solid #26314a; padding: 6px 12px; text-align: left; white-space: normal; overflow-wrap: break-word; vertical-align: top; }
+.doc-body td code { white-space: normal; }
 .doc-body th { background: #1a2334; color: #93a3bc; font-weight: 600; }
 .doc-body td { color: #c9d4e3; }
 .doc-body tr:hover td { background: #16202f; }
