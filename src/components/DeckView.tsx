@@ -9,6 +9,7 @@ export function DeckView() {
   const [idx, setIdx] = useState(0)
   const [fs, setFs] = useState(false)
   const stageRef = useRef<HTMLDivElement>(null)
+  const tocRef = useRef<HTMLElement>(null)
   const total = DECK_SLIDES.length
   const go = useCallback(
     (d: number) => setIdx((i) => Math.min(total - 1, Math.max(0, i + d))),
@@ -40,6 +41,13 @@ export function DeckView() {
     for (const i of [idx - 1, idx + 1])
       if (i >= 0 && i < total) new Image().src = DECK_SLIDES[i]
   }, [idx, total])
+
+  // Лента превью догоняет активный слайд (стрелки/клавиши)
+  useEffect(() => {
+    tocRef.current
+      ?.querySelector('.doc-toc-item.active')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [idx])
 
   if (!total) return null
 
@@ -76,7 +84,7 @@ export function DeckView() {
         </Tooltip>
         </div>
       </div>
-      <aside className="deck-toc">
+      <aside className="deck-toc" ref={tocRef}>
         <div className="doc-toc-title">Слайды</div>
         {DECK_SLIDES.map((s, i) => (
           <button
