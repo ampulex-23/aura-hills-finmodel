@@ -107,6 +107,15 @@ export function DocView({ doc }: { doc: DocEntry }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [toc])
 
+  // Автопрокрутка содержания: активный пункт не должен уезжать за скролл.
+  const tocRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!activeId) return
+    tocRef.current
+      ?.querySelector('.doc-toc-item.active')
+      ?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [activeId])
+
   const jump = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 
@@ -122,7 +131,7 @@ export function DocView({ doc }: { doc: DocEntry }) {
         </Markdown>
       </article>
       {toc.length > 0 && (
-        <aside className="doc-toc">
+        <aside className="doc-toc" ref={tocRef}>
           <div className="doc-toc-title">Содержание</div>
           {toc.map((h) => (
             <button
