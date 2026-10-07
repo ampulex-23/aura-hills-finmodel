@@ -108,7 +108,16 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .chart-card h3 { margin: 0 0 10px; }
 .note { color: #8b98ad; font-size: 12px; line-height: 1.5; }
 
-.table-wrap { overflow-x: auto; border: 1px solid #26314a; border-radius: 8px; }
+.table-wrap {
+  overflow-x: auto; border: 1px solid #26314a; border-radius: 8px;
+  scrollbar-width: thin; scrollbar-color: #2a3548 transparent;
+}
+.table-wrap::-webkit-scrollbar { height: 6px; width: 6px; }
+.table-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-wrap::-webkit-scrollbar-thumb { background: #2a3548; border-radius: 3px; }
+.table-wrap::-webkit-scrollbar-thumb:hover { background: #3a4a66; }
+.table-wrap::-webkit-scrollbar-corner { background: transparent; }
+.table-wrap::-webkit-scrollbar-button { display: none; }
 .month-table { border-collapse: collapse; font-size: 13px; min-width: 100%; }
 .month-table th, .month-table td { padding: 7px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid #1d2636; }
 .month-table th { background: #1a2334; color: #93a3bc; font-weight: 500; position: sticky; top: 0; }
