@@ -1,12 +1,30 @@
 import { useMemo, useState } from 'react'
 import {
   ActionIcon, Autocomplete, Button, Group, Modal, NumberInput,
-  SegmentedControl, Select, TextInput, Tooltip,
+  SegmentedControl, Select, TextInput,
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
-import { NumField, TextCell, fmt } from '../components/ui'
+import { Hint, NumField, TextCell, fmt } from '../components/ui'
 import { landedCost, nomenclatureCapexEur } from '../model/opex'
 import type { NomenclatureItem } from '../model/types'
+
+// Пояснения колонок — тот же стиль Hint-балунов, что в отчётах
+const COL = {
+  code: 'Уникальный код позиции (NC-XXX). По коду она привязывается к спецификациям услуг и отчётным строкам.',
+  name: 'Свободное название — только для чтения, на расчёт не влияет.',
+  type: 'Справочный тип (Расходник / ОС / прочее) — для группировки, на расчёт не влияет.',
+  unit: 'Единица измерения — справочно.',
+  price: 'Закупочная цена поставщика за единицу, без доставки.',
+  dfix: 'Фиксированная доставка за единицу. Сравнивается с процентной — в landed идёт большее из двух.',
+  dpct: 'Доставка в процентах от цены. Сравнивается с фиксом — берётся большее. Для чисто процентной доставки поставьте «Дост. €/ед» = 0 (и наоборот).',
+  landed: 'Полная себестоимость единицы: цена + max(дост. €/ед, цена × дост. %). Все суммы в модели считаются от landed.',
+  article: 'Статья переменных расходов, в которую позиция списывается помесячно. Пусто → не списывается (только справочник).',
+  norm: 'Расход единиц позиции на единицу базы: 0.25 веника на слот, 0.1 л масла на гостя, 2 баллона в месяц.',
+  base: 'На что умножается норма: оплаченные слоты месяца, гости (включая членов), или просто месяц.',
+  qty: 'Единиц, закупаемых в стройке: landed × кол-во → строка «Наполнение» CAPEX.',
+  initial: 'Стартовый комплект на открытие: landed × кол-во → «Наполнение» CAPEX, а норма продолжает пополнять запас помесячно. Для халатов, полотенец и т.п.',
+  use: 'Режим учёта — переносит позицию между вкладками. OPEX — списание по норме; CAPEX — разовая закупка «Кол-во»; Спецификация — материал себестоимости услуг (со статьёй и нормой тоже списывается в OPEX).',
+}
 
 const emptyItem = (code: string): NomenclatureItem => ({
   code, name: '', category: 'Прочее', type: 'Расходник', unit: 'шт',
@@ -121,14 +139,25 @@ export function Nomenclature() {
         <table className="month-table nom">
           <thead>
             <tr>
-              <th className="sticky">Код</th><th>Наименование</th><th>Тип</th>
-              <th>Ед.</th><th>Цена €</th><th>Дост. €/ед</th><th>Дост. %</th><th>Landed €</th>
+              <th className="sticky"><Hint hint={{ text: COL.code }}><span>Код</span></Hint></th>
+              <th><Hint hint={{ text: COL.name }}><span>Наименование</span></Hint></th>
+              <th><Hint hint={{ text: COL.type }}><span>Тип</span></Hint></th>
+              <th><Hint hint={{ text: COL.unit }}><span>Ед.</span></Hint></th>
+              <th><Hint hint={{ text: COL.price }}><span>Цена €</span></Hint></th>
+              <th><Hint hint={{ text: COL.dfix }}><span>Дост. €/ед</span></Hint></th>
+              <th><Hint hint={{ text: COL.dpct }}><span>Дост. %</span></Hint></th>
+              <th><Hint hint={{ text: COL.landed }}><span>Landed €</span></Hint></th>
               {tab === 'CAPEX' ? (
-                <th>Кол-во</th>
+                <th><Hint hint={{ text: COL.qty }}><span>Кол-во</span></Hint></th>
               ) : (
-                <><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Нач. запас</th></>
+                <>
+                  <th><Hint hint={{ text: COL.article }}><span>Статья OPEX</span></Hint></th>
+                  <th><Hint hint={{ text: COL.norm }}><span>Норма</span></Hint></th>
+                  <th><Hint hint={{ text: COL.base }}><span>База</span></Hint></th>
+                  <th><Hint hint={{ text: COL.initial }}><span>Нач. запас</span></Hint></th>
+                </>
               )}
-              <th>Учёт</th><th></th>
+              <th><Hint hint={{ text: COL.use }}><span>Учёт</span></Hint></th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -171,11 +200,7 @@ export function Nomenclature() {
                         <td><NumField value={it.deliveryPct} onChange={(v) => setItem(i, { deliveryPct: v })} pct /></td>
                         <td><b>{fmt(landedCost(it), 2)}</b></td>
                         {tab === 'CAPEX' ? (
-                          <td>
-                            <Tooltip label="Единиц закупается в стройке — в строку «Наполнение» CAPEX" openDelay={300}>
-                              <span><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></span>
-                            </Tooltip>
-                          </td>
+                          <td><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></td>
                         ) : (
                           <>
                             <td className="lft">
@@ -198,11 +223,7 @@ export function Nomenclature() {
                           </>
                         )}
                         {tab !== 'CAPEX' && (
-                          <td>
-                            <Tooltip label="Разовая закупка на открытие — уходит в «Наполнение» CAPEX поверх помесячной нормы" openDelay={300}>
-                              <span><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></span>
-                            </Tooltip>
-                          </td>
+                          <td><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></td>
                         )}
                         <td>
                           <Select
@@ -214,9 +235,9 @@ export function Nomenclature() {
                           />
                         </td>
                         <td>
-                          <Tooltip label="Удалить" openDelay={300}>
-                            <ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk(it)}>✕</ActionIcon>
-                          </Tooltip>
+                          <Hint hint={{ text: 'Удалить позицию из справочника' }}>
+                            <span><ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk(it)}>✕</ActionIcon></span>
+                          </Hint>
                         </td>
                       </tr>
                     ))
