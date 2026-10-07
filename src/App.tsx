@@ -5,7 +5,7 @@ import {
   IconAdjustmentsHorizontal, IconArrowsExchange, IconBook2, IconChartLine,
   IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCpu,
   IconFlask2, IconLayoutDashboard, IconListDetails, IconMenu2,
-  IconPercentage, IconReceipt2, IconReportMoney, IconUserCog, IconUsers, IconVersions,
+  IconPercentage, IconReceipt2, IconReportMoney, IconSparkles, IconUserCog, IconUsers, IconVersions,
 } from '@tabler/icons-react'
 import { useModel } from './store'
 import { runModel } from './model/run'
@@ -22,7 +22,7 @@ import { Staff } from './tabs/Staff'
 import { Sensitivity } from './tabs/Sensitivity'
 import { DocView } from './components/DocView'
 import { DeckView } from './components/DeckView'
-import { AiChat } from './components/AiChat'
+import { AiChat, useChat } from './components/AiChat'
 import { DOCS, getDoc } from './docs'
 
 type Tab =
@@ -82,6 +82,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
 
 export default function App() {
   const { params, matrix, items, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
+  const { open: aiOpen, pins: aiPins, toggle: aiToggle } = useChat()
   const [tab, setTabState] = useState<Route>(() => routeFromHash() ?? 'Дашборд')
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ah-side') === '1')
   const [closedGroups, setClosedGroups] = useState<Set<string>>(
@@ -248,6 +249,14 @@ export default function App() {
               onClick={() => confirm('Сбросить все параметры к значениям по умолчанию?') && resetAll()}
             >
               Сбросить
+            </Button>
+            <Button
+              size="xs" variant={aiOpen ? 'filled' : 'light'}
+              leftSection={<IconSparkles size={14} />}
+              onClick={aiToggle}
+              title="ИИ-консультант по модели"
+            >
+              ИИ{aiPins.length > 0 ? ` · ${aiPins.length}` : ''}
             </Button>
           </Group>
         </header>

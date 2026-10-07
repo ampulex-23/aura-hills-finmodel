@@ -213,10 +213,6 @@ export function AiChat() {
 
   return (
     <>
-      <button className="ai-fab" onClick={toggle} title="ИИ-консультант">
-        {open ? <IconX size={20} /> : <IconSparkles size={20} />}
-      </button>
-
       <div className={`ai-drawer${open ? ' open' : ''}`}>
         <div className="ai-head">
           <IconSparkles size={16} />
