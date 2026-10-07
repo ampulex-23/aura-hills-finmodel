@@ -367,16 +367,20 @@ legend { color: #9fb4d1; font-size: 13px; padding: 0 6px; }
 }
 
 /* --- AI chat --- */
-/* дровер справа поверх контента — не выдвигает полосу, запуск из шапки */
+/* дровер справа сдвигает контент — правые колонки остаются доступны для пинов */
 .ai-drawer {
   position: fixed; top: 0; right: 0; z-index: 300;
-  width: min(560px, 60vw); height: 100vh;
+  width: min(672px, 60vw); height: 100vh;
   display: flex; flex-direction: column;
   background: #141b28; border-left: 1px solid #2a3548;
   box-shadow: -16px 0 48px rgba(0,0,0,.5);
   transform: translateX(102%); transition: transform .22s ease;
 }
 .ai-drawer.open { transform: translateX(0); }
+@media (min-width: 901px) {
+  .page { transition: margin-right .22s ease; }
+  body:has(.ai-drawer.open) .page { margin-right: min(672px, 60vw); }
+}
 .ai-head {
   display: flex; align-items: center; gap: 8px; padding: 10px 14px;
   border-bottom: 1px solid #223048; color: #cfe0f5; font-size: 13px;
