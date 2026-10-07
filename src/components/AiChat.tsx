@@ -48,7 +48,38 @@ export const useChat = create<{
   },
 }))
 
-const cellText = (el: Element | null) => (el?.textContent || '').replace(/ⓘ|\s+/g, ' ').trim()
+// Текст клетки: обычный textContent + значение вложенного инпута
+// (в таблицах-параметрах ячейки — это NumField/TextCell, их значение не входит в textContent).
+const cellText = (el: Element | null) => {
+  if (!el) return ''
+  const inp = el.querySelector('input, textarea') as HTMLInputElement | null
+  return ((el.textContent || '') + (inp ? ` ${inp.value}` : ''))
+    .replace(/ⓘ|▸|▾|\s+/g, ' ')
+    .trim()
+}
+
+// Индекс колонки с учётом colSpan (строки состава в «Спецификациях» иначе съезжают).
+const colIndexOf = (cell: HTMLTableCellElement) => {
+  const tr = cell.closest('tr')
+  if (!tr) return cell.cellIndex
+  let i = 0
+  for (const c of Array.from(tr.cells)) {
+    if (c === cell) return i
+    i += c.colSpan || 1
+  }
+  return cell.cellIndex
+}
+
+// Клетка строки, накрывающая колонку idx (учитывает colSpan).
+const cellAtCol = (tr: HTMLTableRowElement, idx: number) => {
+  let i = 0
+  for (const c of Array.from(tr.cells)) {
+    const span = c.colSpan || 1
+    if (idx >= i && idx < i + span) return c
+    i += span
+  }
+  return undefined
+}
 
 // Делегированный клик по .month-table: клетка / строка / колонка → pin
 function pinFromClick(e: MouseEvent): Pin | null {
@@ -60,27 +91,23 @@ function pinFromClick(e: MouseEvent): Pin | null {
   const tr = cell.closest('tr')
   if (!tr) return null
   const ths = [...table.querySelectorAll('thead th')].map(cellText)
-  const idx = cell.cellIndex
+  const idx = colIndexOf(cell)
 
   // заголовок строки (sticky) → вся строка
   if (cell.classList.contains('sticky') && cell.tagName === 'TD' && tr.parentElement?.tagName === 'TBODY') {
     if (tr.classList.contains('section')) return null
     const row = cellText(cell)
     const tds = [...tr.querySelectorAll('td')]
-    const vals = tds.slice(1).map(cellText)
-    const cols = ths.slice(1)
-    const pairs = cols.map((c, i) => `${c}=${vals[i] ?? '—'}`).join('; ')
+    const pairs = tds.slice(1).map((td) => `${ths[colIndexOf(td)] ?? '?'}=${cellText(td) || '—'}`).join('; ')
     return { id: '', label: `ряд «${row}»`, text: `«${sheet}», строка «${row}» по периодам: ${pairs}`, els: tds }
   }
   // заголовок колонки (thead) → вся колонка
   if (cell.tagName === 'TH' && !cell.classList.contains('sticky')) {
     const col = cellText(cell)
-    const bodyRows = [...table.querySelectorAll('tbody tr')].filter((r) => !r.classList.contains('section'))
-    const rows = bodyRows.map((r) => {
-      const tds = r.querySelectorAll('td')
-      return `«${cellText(tds[0])}»=${cellText(tds[idx]) ?? '—'}`
-    })
-    const els = [cell, ...bodyRows.map((r) => r.querySelectorAll('td')[idx]).filter(Boolean)] as Element[]
+    const bodyRows = [...table.querySelectorAll('tbody tr')]
+      .filter((r) => !r.classList.contains('section')) as HTMLTableRowElement[]
+    const rows = bodyRows.map((r) => `«${cellText(r.cells[0])}»=${cellText(cellAtCol(r, idx) ?? null) || '—'}`)
+    const els = [cell, ...bodyRows.map((r) => cellAtCol(r, idx)).filter(Boolean)] as Element[]
     return { id: '', label: `колонка ${col}`, text: `«${sheet}», колонка «${col}»: ${rows.join('; ')}`, els }
   }
   // обычная клетка
@@ -120,7 +147,7 @@ export function AiChat() {
       if ((e.target as Element).closest('.ai-drawer, .ai-fab')) return
       // Клики по редактируемым ячейкам (инпуты, селекты, кнопки) — не пины:
       // не мешаем фокусу и вводу, пинятся только ячейки с данными.
-      if ((e.target as Element).closest('input, button, select, textarea, [role="combobox"], .mantine-Select-dropdown, .mantine-Autocomplete-dropdown'))
+      if ((e.target as Element).closest('input, button, select, textarea, [role="combobox"], .mantine-Select-dropdown, .mantine-Autocomplete-dropdown, .spec-caret'))
         return
       if (cell?.classList.contains('ai-pinned')) { e.preventDefault(); unpinEl(cell); return }
       const p = pinFromClick(e)
