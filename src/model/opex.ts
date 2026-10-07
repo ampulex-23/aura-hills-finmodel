@@ -110,12 +110,14 @@ export function activeModuleCountAt(params: Params, k: number): number {
 }
 
 // Наполнение CAPEX из справочника: Σ landedCost × qty по позициям use='CAPEX'
-// плюс начальные запасы (initialQty × landed) у любых позиций — халаты,
+// плюс начальные запасы (initialQty × landed) у не-CAPEX позиций — халаты,
 // полотенца и т.п. закупаются на открытие, а потом пополняются нормой OPEX.
+// У CAPEX-позиций «Кол-во» само является закупкой на открытие — initialQty
+// там не используется, чтобы не было скрытого второго счётчика.
 export function nomenclatureCapexEur(items: NomenclatureItem[]): number {
   return items.reduce(
     (s, it) =>
-      s + landedCost(it) * ((it.use === 'CAPEX' ? it.qty : 0) + (it.initialQty ?? 0)),
+      s + landedCost(it) * (it.use === 'CAPEX' ? it.qty : (it.initialQty ?? 0)),
     0,
   )
 }

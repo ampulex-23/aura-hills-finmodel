@@ -33,7 +33,7 @@ export function computeCapex(
       detail = items
         .filter((x) => x.use === 'CAPEX' || (x.initialQty ?? 0) > 0)
         .map((x) => {
-          const qty = (x.use === 'CAPEX' ? x.qty : 0) + (x.initialQty ?? 0)
+          const qty = x.use === 'CAPEX' ? x.qty : (x.initialQty ?? 0)
           return {
             code: x.code, name: x.name + (x.use === 'CAPEX' ? '' : ' (нач. запас)'),
             qty, landed: landedCost(x), eur: landedCost(x) * qty,

@@ -91,7 +91,7 @@ export function Nomenclature() {
       <p className="note">
         {items.length} позиций · наполнение CAPEX: €{fmt(capexEur)} ·
         landed cost = цена + max(доставка €/ед, цена × доставка %).
-        «Нач. запас» — разовая закупка в стройке для любой позиции: стартовый комплект, который дальше пополняется нормой (халаты, полотенца).
+        «Нач. запас» — разовая закупка в стройке для OPEX/Спецификация-позиций: стартовый комплект, который дальше пополняется нормой (халаты, полотенца). У CAPEX-позиций «Кол-во» само является закупкой на открытие.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
         <SegmentedControl
@@ -126,9 +126,9 @@ export function Nomenclature() {
               {tab === 'CAPEX' ? (
                 <th>Кол-во</th>
               ) : (
-                <><th>Статья OPEX</th><th>Норма</th><th>База</th></>
+                <><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Нач. запас</th></>
               )}
-              <th>Нач. запас</th><th>Учёт</th><th></th>
+              <th>Учёт</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -140,7 +140,7 @@ export function Nomenclature() {
                   className="section spec-head"
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={tab === 'CAPEX' ? 12 : 14} className="sticky">
+                  <td colSpan={tab === 'CAPEX' ? 11 : 14} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
@@ -197,11 +197,13 @@ export function Nomenclature() {
                             </td>
                           </>
                         )}
-                        <td>
-                          <Tooltip label="Разовая закупка на открытие — уходит в «Наполнение» CAPEX при любом режиме учёта" openDelay={300}>
-                            <span><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></span>
-                          </Tooltip>
-                        </td>
+                        {tab !== 'CAPEX' && (
+                          <td>
+                            <Tooltip label="Разовая закупка на открытие — уходит в «Наполнение» CAPEX поверх помесячной нормы" openDelay={300}>
+                              <span><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></span>
+                            </Tooltip>
+                          </td>
+                        )}
                         <td>
                           <Select
                             size="xs" w={105}
