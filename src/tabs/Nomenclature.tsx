@@ -88,7 +88,7 @@ export function Nomenclature() {
       <p className="note">
         {items.length} позиций · OPEX: {opexItems} · Спецификация: {specItems} · наполнение CAPEX: €{fmt(capexEur)} ·
         landed cost = цена + max(доставка €/ед, цена × доставка %).
-        В помесячный OPEX списывается любая позиция со статьёй и нормой (кроме CAPEX); «Кол-во CAPEX» работает только при учёте «CAPEX».
+        В помесячный OPEX списывается любая позиция со статьёй и нормой (кроме CAPEX); «Кол-во» — разовая закупка, работает только при учёте «CAPEX».
         «Нач. запас» — разовая закупка в стройке для любой позиции: стартовый комплект, который дальше пополняется нормой (халаты, полотенца).
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
@@ -112,7 +112,7 @@ export function Nomenclature() {
             <tr>
               <th className="sticky">Код</th><th>Наименование</th><th>Тип</th>
               <th>Ед.</th><th>Цена €</th><th>Дост. €/ед</th><th>Дост. %</th><th>Landed €</th>
-              <th>Учёт</th><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Кол-во CAPEX</th><th>Нач. запас</th><th></th>
+              <th>Учёт</th><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Кол-во</th><th>Нач. запас</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -134,7 +134,7 @@ export function Nomenclature() {
                       <tr key={it.code}>
                         <td className="sticky">{it.code}</td>
                         <td className="lft">
-                          <TextCell w={212} value={it.name} onChange={(v) => setItem(i, { name: v })} />
+                          <TextCell w={280} value={it.name} onChange={(v) => setItem(i, { name: v })} />
                         </td>
                         <td>
                           <Autocomplete
