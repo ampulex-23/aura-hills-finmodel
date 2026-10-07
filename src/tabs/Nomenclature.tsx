@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   ActionIcon, Autocomplete, Button, Group, Modal, NumberInput,
-  Select, TextInput, Tooltip,
+  SegmentedControl, Select, TextInput, Tooltip,
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
 import { NumField, TextCell, fmt } from '../components/ui'
@@ -24,9 +24,11 @@ export function Nomenclature() {
   const [addOpen, setAddOpen] = useState(false)
   const [draft, setDraft] = useState<NomenclatureItem | null>(null)
   const [deleteAsk, setDeleteAsk] = useState<NomenclatureItem | null>(null)
+  const [tab, setTab] = useState<'OPEX' | 'CAPEX' | 'Спецификация'>('OPEX')
 
   const opexItems = items.filter((i) => i.use === 'OPEX').length
   const specItems = items.filter((i) => i.use === 'Спецификация').length
+  const capexItems = items.filter((i) => i.use === 'CAPEX').length
   const capexEur = nomenclatureCapexEur(items)
 
   const categories = [...new Set(items.map((i) => i.category))]
@@ -39,6 +41,7 @@ export function Nomenclature() {
     const query = q.trim().toLowerCase()
     const filtered = items
       .map((item, index) => ({ item, index }))
+      .filter(({ item }) => item.use === tab)
       .filter(({ item }) =>
         !query ||
         item.name.toLowerCase().includes(query) ||
@@ -52,7 +55,7 @@ export function Nomenclature() {
       map.set(f.item.category, arr)
     }
     return [...map.entries()]
-  }, [items, q])
+  }, [items, q, tab])
 
   const toggle = (cat: string) =>
     setExpanded((prev) => {
@@ -86,12 +89,20 @@ export function Nomenclature() {
   return (
     <div>
       <p className="note">
-        {items.length} позиций · OPEX: {opexItems} · Спецификация: {specItems} · наполнение CAPEX: €{fmt(capexEur)} ·
+        {items.length} позиций · наполнение CAPEX: €{fmt(capexEur)} ·
         landed cost = цена + max(доставка €/ед, цена × доставка %).
-        В помесячный OPEX списывается любая позиция со статьёй и нормой (кроме CAPEX); «Кол-во» — разовая закупка, работает только при учёте «CAPEX».
         «Нач. запас» — разовая закупка в стройке для любой позиции: стартовый комплект, который дальше пополняется нормой (халаты, полотенца).
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
+        <SegmentedControl
+          value={tab}
+          onChange={(v) => setTab(v as typeof tab)}
+          data={[
+            { label: `OPEX · ${opexItems}`, value: 'OPEX' },
+            { label: `CAPEX · ${capexItems}`, value: 'CAPEX' },
+            { label: `Спецификация · ${specItems}`, value: 'Спецификация' },
+          ]}
+        />
         <TextInput
           placeholder="Фильтр по наименованию, коду или статье OPEX…"
           value={q}
@@ -112,7 +123,12 @@ export function Nomenclature() {
             <tr>
               <th className="sticky">Код</th><th>Наименование</th><th>Тип</th>
               <th>Ед.</th><th>Цена €</th><th>Дост. €/ед</th><th>Дост. %</th><th>Landed €</th>
-              <th>Учёт</th><th>Статья OPEX</th><th>Норма</th><th>База</th><th>Кол-во</th><th>Нач. запас</th><th></th>
+              {tab === 'CAPEX' ? (
+                <th>Кол-во</th>
+              ) : (
+                <><th>Статья OPEX</th><th>Норма</th><th>База</th></>
+              )}
+              <th>Нач. запас</th><th>Учёт</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -124,7 +140,7 @@ export function Nomenclature() {
                   className="section spec-head"
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={15} className="sticky">
+                  <td colSpan={tab === 'CAPEX' ? 12 : 14} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
@@ -154,43 +170,46 @@ export function Nomenclature() {
                         <td><NumField value={it.deliveryFix} onChange={(v) => setItem(i, { deliveryFix: v })} /></td>
                         <td><NumField value={it.deliveryPct} onChange={(v) => setItem(i, { deliveryPct: v })} pct /></td>
                         <td><b>{fmt(landedCost(it), 2)}</b></td>
+                        {tab === 'CAPEX' ? (
+                          <td>
+                            <Tooltip label="Единиц закупается в стройке — в строку «Наполнение» CAPEX" openDelay={300}>
+                              <span><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></span>
+                            </Tooltip>
+                          </td>
+                        ) : (
+                          <>
+                            <td className="lft">
+                              <Autocomplete
+                                size="xs" w={132} data={articles}
+                                filter={({ options }) => options}
+                                placeholder="—"
+                                value={it.opexArticle ?? ''} onChange={(v) => setItem(i, { opexArticle: v || null })}
+                              />
+                            </td>
+                            <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} /></td>
+                            <td>
+                              <Select
+                                size="xs" w={58}
+                                data={['слот', 'гость', 'мес']}
+                                value={it.normBase} placeholder="—" clearable
+                                onChange={(v) => setItem(i, { normBase: v as NomenclatureItem['normBase'] })}
+                              />
+                            </td>
+                          </>
+                        )}
+                        <td>
+                          <Tooltip label="Разовая закупка на открытие — уходит в «Наполнение» CAPEX при любом режиме учёта" openDelay={300}>
+                            <span><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></span>
+                          </Tooltip>
+                        </td>
                         <td>
                           <Select
-                            size="xs" w={111}
+                            size="xs" w={105}
                             data={['OPEX', 'CAPEX', 'Спецификация']}
                             value={it.use}
                             onChange={(v) => v && setItem(i, { use: v })}
                             allowDeselect={false}
                           />
-                        </td>
-                        <td className="lft">
-                          <Autocomplete
-                            size="xs" w={132} data={articles}
-                            filter={({ options }) => options}
-                            placeholder="—"
-                            disabled={it.use === 'CAPEX'}
-                            value={it.opexArticle ?? ''} onChange={(v) => setItem(i, { opexArticle: v || null })}
-                          />
-                        </td>
-                        <td><NumField value={it.norm} onChange={(v) => setItem(i, { norm: v })} step={0.01} disabled={it.use === 'CAPEX'} /></td>
-                        <td>
-                          <Select
-                            size="xs" w={58}
-                            data={['слот', 'гость', 'мес']}
-                            value={it.normBase} placeholder="—" clearable
-                            disabled={it.use === 'CAPEX'}
-                            onChange={(v) => setItem(i, { normBase: v as NomenclatureItem['normBase'] })}
-                          />
-                        </td>
-                        <td>
-                          <Tooltip label="Учитывается только при Учёт = CAPEX" openDelay={300} disabled={it.use === 'CAPEX'}>
-                            <span><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} disabled={it.use !== 'CAPEX'} /></span>
-                          </Tooltip>
-                        </td>
-                        <td>
-                          <Tooltip label="Разовая закупка на открытие — уходит в «Наполнение» CAPEX при любом режиме учёта" openDelay={300}>
-                            <span><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></span>
-                          </Tooltip>
                         </td>
                         <td>
                           <Tooltip label="Удалить" openDelay={300}>
