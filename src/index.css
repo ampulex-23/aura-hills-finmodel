@@ -82,7 +82,7 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
   border-bottom: 1px solid #1d2636;
 }
 .page-title { letter-spacing: .02em; }
-.content { padding: 16px 24px 32px; max-width: 1400px; width: 100%; }
+.content { padding: 16px 24px 32px; width: 100%; }
 .burger {
   display: flex; align-items: center; justify-content: center;
   width: 34px; height: 34px; border-radius: 8px; border: 1px solid #2a3548;
