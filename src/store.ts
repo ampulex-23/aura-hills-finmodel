@@ -184,7 +184,9 @@ export const useModel = create<ModelState>()(
     }),
     {
       name: 'aura-hills-model',
-      version: 1,
+      // v2: номенклатурный реворк — старые снапшоты (115 позиций, старые коды
+      // спек) несовместимы → migrate сбрасывает к новым дефолтам.
+      version: 2,
       storage: createJSONStorage(() => debouncedLocalStorage),
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>
