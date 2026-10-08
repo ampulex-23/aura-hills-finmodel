@@ -1,0 +1,858 @@
+{
+  "services": [
+    {
+      "code": "SVC-A1",
+      "direction": "Аренда бани",
+      "name": "Аренда бани до 4 человек",
+      "price": 250,
+      "capacity": 4,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-087",
+          "qty": 0.06
+        },
+        {
+          "kind": "material",
+          "code": "NC-085",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-159",
+          "qty": 4
+        },
+        {
+          "kind": "material",
+          "code": "NC-097",
+          "qty": 8
+        },
+        {
+          "kind": "material",
+          "code": "NC-090",
+          "qty": 0.02
+        },
+        {
+          "kind": "material",
+          "code": "NC-094",
+          "qty": 0.2
+        },
+        {
+          "kind": "material",
+          "code": "NC-054",
+          "qty": 4
+        },
+        {
+          "kind": "material",
+          "code": "NC-150",
+          "qty": 0.19
+        },
+        {
+          "kind": "material",
+          "code": "NC-025",
+          "qty": 0.25
+        },
+        {
+          "kind": "material",
+          "code": "NC-030",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-031",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-032",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-037",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-038",
+          "qty": 0.02
+        }
+      ]
+    },
+    {
+      "code": "SVC-A2",
+      "direction": "Аренда бани",
+      "name": "Аренда бани до 8 человек",
+      "price": 500,
+      "capacity": 8,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-087",
+          "qty": 0.08
+        },
+        {
+          "kind": "material",
+          "code": "NC-085",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-159",
+          "qty": 8
+        },
+        {
+          "kind": "material",
+          "code": "NC-097",
+          "qty": 16
+        },
+        {
+          "kind": "material",
+          "code": "NC-090",
+          "qty": 0.04
+        },
+        {
+          "kind": "material",
+          "code": "NC-094",
+          "qty": 0.4
+        },
+        {
+          "kind": "material",
+          "code": "NC-054",
+          "qty": 8
+        },
+        {
+          "kind": "material",
+          "code": "NC-150",
+          "qty": 0.26
+        },
+        {
+          "kind": "material",
+          "code": "NC-025",
+          "qty": 0.25
+        },
+        {
+          "kind": "material",
+          "code": "NC-030",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-031",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-032",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-037",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-038",
+          "qty": 0.03
+        }
+      ]
+    },
+    {
+      "code": "SVC-A3",
+      "direction": "Аренда бани",
+      "name": "Аренда бани до 12 человек",
+      "price": 750,
+      "capacity": 12,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-087",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-085",
+          "qty": 0.15
+        },
+        {
+          "kind": "material",
+          "code": "NC-159",
+          "qty": 12
+        },
+        {
+          "kind": "material",
+          "code": "NC-097",
+          "qty": 24
+        },
+        {
+          "kind": "material",
+          "code": "NC-090",
+          "qty": 0.06
+        },
+        {
+          "kind": "material",
+          "code": "NC-094",
+          "qty": 0.6
+        },
+        {
+          "kind": "material",
+          "code": "NC-054",
+          "qty": 12
+        },
+        {
+          "kind": "material",
+          "code": "NC-150",
+          "qty": 0.37
+        },
+        {
+          "kind": "material",
+          "code": "NC-025",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-030",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-031",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-032",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-037",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-038",
+          "qty": 0.04
+        }
+      ]
+    },
+    {
+      "code": "SVC-P1",
+      "direction": "Парения",
+      "name": "Парения классика",
+      "price": 50,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-021",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-022",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-032",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-P2",
+      "direction": "Парения",
+      "name": "Парения Дубль",
+      "price": 100,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-021",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-022",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-024",
+          "qty": 0.25
+        },
+        {
+          "kind": "material",
+          "code": "NC-030",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-P3",
+      "direction": "Парения",
+      "name": "Парения Афродита",
+      "price": 150,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-021",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-023",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-025",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-041",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-040",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-P4",
+      "direction": "Парения",
+      "name": "Парения Боги Олимпа",
+      "price": 250,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Пармастер",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-020",
+          "qty": 0.75
+        },
+        {
+          "kind": "material",
+          "code": "NC-023",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-024",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-037",
+          "qty": 0.025
+        },
+        {
+          "kind": "material",
+          "code": "NC-042",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-050",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M1",
+      "direction": "Массаж",
+      "name": "Массаж 1 (классический)",
+      "price": 60,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-051",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-053",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M2",
+      "direction": "Массаж",
+      "name": "Массаж 2 (глубокий)",
+      "price": 120,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-046",
+          "qty": 0.02
+        },
+        {
+          "kind": "material",
+          "code": "NC-051",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M3",
+      "direction": "Массаж",
+      "name": "Массаж 3 (SPA-ритуал)",
+      "price": 150,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-042",
+          "qty": 0.15
+        },
+        {
+          "kind": "material",
+          "code": "NC-041",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-040",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-044",
+          "qty": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-048",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-058",
+          "qty": 0.15
+        },
+        {
+          "kind": "material",
+          "code": "NC-057",
+          "qty": 0.08
+        },
+        {
+          "kind": "material",
+          "code": "NC-051",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M4",
+      "direction": "Массаж",
+      "name": "Массаж 4 (премиум/огненный)",
+      "price": 200,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-047",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-050",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-046",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-049",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-057",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-058",
+          "qty": 0.03
+        },
+        {
+          "kind": "material",
+          "code": "NC-051",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-053",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M5",
+      "direction": "Массаж",
+      "name": "Мыльно-веничный массаж (45 мин)",
+      "price": 70,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-022",
+          "qty": 0.5
+        },
+        {
+          "kind": "material",
+          "code": "NC-207",
+          "qty": 0.05
+        },
+        {
+          "kind": "material",
+          "code": "NC-208",
+          "qty": 0.25
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M6",
+      "direction": "Массаж",
+      "name": "Пилинг Кесе / солевой скраб (30 мин)",
+      "price": 50,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-040",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-209",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M7",
+      "direction": "Массаж",
+      "name": "Экспресс-массаж стоп/головы (30 мин)",
+      "price": 40,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.02
+        },
+        {
+          "kind": "material",
+          "code": "NC-051",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-M8",
+      "direction": "Массаж",
+      "name": "Стоун-терапия (60 мин)",
+      "price": 100,
+      "items": [
+        {
+          "kind": "labor",
+          "role": "Массажист",
+          "pct": 0.3
+        },
+        {
+          "kind": "material",
+          "code": "NC-045",
+          "qty": 0.04
+        },
+        {
+          "kind": "material",
+          "code": "NC-051",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-053",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-210",
+          "qty": 1
+        }
+      ]
+    },
+    {
+      "code": "SVC-D1",
+      "direction": "Доп. услуги",
+      "name": "Ледянная купель",
+      "price": 150,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-060",
+          "qty": 200
+        }
+      ]
+    },
+    {
+      "code": "SVC-D2",
+      "direction": "Доп. услуги",
+      "name": "Пихтовая купель",
+      "price": 150,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-064",
+          "qty": 2
+        },
+        {
+          "kind": "material",
+          "code": "NC-038",
+          "qty": 0.02
+        }
+      ]
+    },
+    {
+      "code": "SVC-D3",
+      "direction": "Доп. услуги",
+      "name": "Травяной чан",
+      "price": 150,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-064",
+          "qty": 3
+        },
+        {
+          "kind": "material",
+          "code": "NC-088",
+          "qty": 0.3
+        }
+      ]
+    },
+    {
+      "code": "SVC-D4",
+      "direction": "Доп. услуги",
+      "name": "Ванна Клеопатры (молочная)",
+      "price": 500,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-061",
+          "qty": 4
+        },
+        {
+          "kind": "material",
+          "code": "NC-062",
+          "qty": 2
+        }
+      ]
+    },
+    {
+      "code": "SVC-D5",
+      "direction": "Доп. услуги",
+      "name": "Магниевая ванна",
+      "price": 250,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-063",
+          "qty": 20
+        }
+      ]
+    },
+    {
+      "code": "SVC-D6",
+      "direction": "Доп. услуги",
+      "name": "Травяной настил (базовый)",
+      "price": 120,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-064",
+          "qty": 1
+        },
+        {
+          "kind": "material",
+          "code": "NC-038",
+          "qty": 0.05
+        }
+      ]
+    },
+    {
+      "code": "SVC-D7",
+      "direction": "Доп. услуги",
+      "name": "Травяной настил (премиум)",
+      "price": 250,
+      "items": [
+        {
+          "kind": "material",
+          "code": "NC-064",
+          "qty": 2
+        },
+        {
+          "kind": "material",
+          "code": "NC-038",
+          "qty": 0.1
+        },
+        {
+          "kind": "material",
+          "code": "NC-062",
+          "qty": 1
+        }
+      ]
+    }
+  ]
+}
