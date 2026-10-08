@@ -33,7 +33,7 @@ npm install
 npm run dev     # http://localhost:5173/aura-hills-finmodel/
 npm run test    # golden-master сверка с Excel-оракулом
 npm run build   # статика в dist/
-npm run deploy  # gh-pages -d dist (или Actions при пуше)
+npm run deploy  # push main + VDS: pull → npm ci → build → pm2 restart (shared.metodoxia25.net)
 ```
 
 ## Горизонт модели

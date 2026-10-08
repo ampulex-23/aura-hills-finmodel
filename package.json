@@ -9,7 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "deploy": "vite build && gh-pages -d dist"
+    "deploy": "git push origin main && ssh VDS \"cd /srv/aura-hills && bash deploy/deploy-vds.sh\""
   },
   "dependencies": {
     "@mantine/core": "^7.17.8",
