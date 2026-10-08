@@ -36,10 +36,12 @@ const services = servicesJson.services as unknown as ServiceSpec[]
 // с глобального пула (30% парений + 30% массажа + 1% выручки) на спецификации
 // (продано услуг × прайс спеки × % ролей, клинеры/аренда без KPI) — обе правки
 // намеренные, поэтому ниже зафиксирован ПОСТ-KPI эталон прогона ядра (не книги).
+// Далее из OPEX удалён якорь «Веники» (NC-001, €3.09/слот) — веники живут
+// только в спецификациях парений по реальным SKU.
 const ORACLE = {
-  Conservative: { npv: 3714215, irr: 0.7108, payback: 34, discPayback: 37, peak: -1663439 },
-  Base: { npv: 6167696, irr: 1.1638, payback: 26, discPayback: 27, peak: -1386130 },
-  Aggressive: { npv: 9010195, irr: 1.6365, payback: 23, discPayback: 23, peak: -1346680 },
+  Conservative: { npv: 3730741, irr: 0.7129, payback: 34, discPayback: 37, peak: -1663225 },
+  Base: { npv: 6189625, irr: 1.1668, payback: 26, discPayback: 27, peak: -1386057 },
+  Aggressive: { npv: 9037417, irr: 1.6404, payback: 23, discPayback: 23, peak: -1346680 },
 }
 
 describe('golden-master: TS-ядро vs formulas-оракул', () => {
