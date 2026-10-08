@@ -52,7 +52,7 @@ export function runModel(
 
   const capex = computeCapex(p, items, sc.capexAdj)
   const revenue = computeRevenue(p, sc)
-  const opex = computeOpex(p, items, revenue)
+  const opex = computeOpex(p, items, revenue, services)
   const fot = computeFot(p, revenue, services)
   const vat = computeVat(p, revenue, opex, capex)
 

@@ -1,4 +1,5 @@
-import type { NomenclatureItem, OpexMonth, Params, RevenueMonth } from './types'
+import type { NomenclatureItem, OpexMonth, Params, RevenueMonth, ServiceSpec } from './types'
+import { dirCounts } from './revenue'
 
 // Landed cost: цена + MAX(доставка фикс, цена × доставка %) — Номенклатура!J
 export function landedCost(item: NomenclatureItem): number {
@@ -15,12 +16,16 @@ export function fixedOpexMonthly(params: Params): number {
   )
 }
 
-// Переменные расходы статьи = слоты × Σ(норма_слот) + гости × Σ(норма_гость) + Σ(норма_мес)
-// Порт OPEX!C20:C29 (SUMPRODUCT по справочнику).
+// Переменные расходы месяца = нормативные статьи (слоты/гости/мес)
+// + спековое списание: материалы из спецификаций списываются по числу
+// проведённых услуг (та же база counts, что и KPI-труд). Позиция, входящая
+// в любую спецификацию, по норме не списывается — защита от двойного счёта
+// (модель заказчика: «норма 0 у позиций, ушедших в COGS спеки»).
 export function computeOpexMonth(
   params: Params,
   items: NomenclatureItem[],
   rev: RevenueMonth,
+  services: ServiceSpec[],
   k: number,
 ): OpexMonth {
   const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
@@ -39,15 +44,53 @@ export function computeOpexMonth(
     : []
   const itTotal = it.reduce((s, x) => s + x.amount, 0)
 
-  // Позиция списывается в OPEX, если заданы статья и база нормы — независимо
-  // от флага «Учёт» (кроме CAPEX): «Спецификация»-материал со статьёй и нормой
-  // тоже считается расходником, иначе заполненные нормы молча игнорировались бы.
+  // Коды, ушедшие в спецификации, исключаются из норм ВСЕГДА — даже в месяцы
+  // с нулевым count, иначе норма «оживала» бы на месяц без продаж услуги.
+  const specCodes = new Set(
+    services.flatMap((s) =>
+      s.items.filter((i) => i.kind === 'material' && i.code).map((i) => i.code!),
+    ),
+  )
+
+  // Спековое потребление материалов за месяц: Σ по услугам count × qty.
+  const specQty = new Map<string, number>()
+  const dirOrder = [...new Set(services.map((s) => s.direction))]
+  for (const dir of dirOrder) {
+    const dirSpecs = services.filter((s) => s.direction === dir)
+    const counts = dirCounts(rev, dir, dirSpecs, params)
+    dirSpecs.forEach((s, idx) => {
+      const cnt = counts[idx] ?? 0
+      if (cnt <= 0) return
+      for (const it of s.items) {
+        if (it.kind === 'material' && it.code && (it.qty ?? 0) > 0)
+          specQty.set(it.code, (specQty.get(it.code) ?? 0) + cnt * it.qty!)
+      }
+    })
+  }
+  const byCode = new Map(items.map((i) => [i.code, i]))
+
+  // Нормативные позиции: статья+база заданы И код не списывается спеками.
   const opexItems = items.filter(
-    (it) => it.use !== 'CAPEX' && it.opexArticle != null && it.normBase != null,
+    (it) =>
+      it.use !== 'CAPEX' &&
+      it.opexArticle != null &&
+      it.normBase != null &&
+      !specCodes.has(it.code),
   )
   // Статьи — динамически из данных: в UI статья вводится свободным текстом,
   // жёсткий список молча выкидывал бы пользовательские статьи из OPEX.
-  const articles = [...new Set(opexItems.map((it) => it.opexArticle!))]
+  // Спековое списание группируется по opexArticle позиции, иначе по категории.
+  const specRows = [...specQty.entries()].map(([code, qty]) => {
+    const m = byCode.get(code)
+    const article = m?.opexArticle ?? m?.category ?? 'Материалы услуг'
+    return { article, amount: qty * (m ? landedCost(m) : 0) }
+  })
+  const articles = [
+    ...new Set([
+      ...opexItems.map((it) => it.opexArticle!),
+      ...specRows.map((r) => r.article),
+    ]),
+  ]
   const variable = articles.map((article) => {
     const rel = opexItems.filter((it) => it.opexArticle === article)
     const byBase = (base: string) =>
@@ -55,7 +98,13 @@ export function computeOpexMonth(
         .filter((it) => it.normBase === base)
         .reduce((s, it) => s + it.norm * landedCost(it), 0)
     const amount =
-      (rev.slots * byBase('слот') + rev.guests * byBase('гость') + byBase('мес')) * infl
+      (rev.slots * byBase('слот') +
+        rev.guests * byBase('гость') +
+        byBase('мес') +
+        specRows
+          .filter((r) => r.article === article)
+          .reduce((s, r) => s + r.amount, 0)) *
+      infl
     return { article, amount }
   })
   const variableTotal = variable.reduce((s, v) => s + v.amount, 0)
@@ -89,8 +138,9 @@ export function computeOpex(
   params: Params,
   items: NomenclatureItem[],
   revenue: RevenueMonth[],
+  services: ServiceSpec[],
 ): OpexMonth[] {
-  return revenue.map((r, k) => computeOpexMonth(params, items, r, k))
+  return revenue.map((r, k) => computeOpexMonth(params, items, r, services, k))
 }
 
 export function activeModuleCount(params: Params): number {

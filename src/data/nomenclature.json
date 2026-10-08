@@ -1,211 +1,19 @@
 [
   {
-    "code": "NC-002",
-    "name": "Дрова дуб/граб",
-    "category": "Топливо",
-    "type": "Расходник",
-    "unit": "м³",
-    "price": 150,
-    "deliveryFix": 23.61,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Дрова основные",
-    "norm": 0.06,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "€150/м³ bulk Кипр (исследование); розница дуб ~€270–320/м³ с НДС (pyrsos.com). ~€10.42/слот"
-  },
-  {
-    "code": "NC-003",
-    "name": "Дрова акация (очаг)",
-    "category": "Топливо",
-    "type": "Расходник",
-    "unit": "м³",
-    "price": 130,
-    "deliveryFix": 22.78,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Дрова для очага",
-    "norm": 0.02,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "€110/м³ акация для очага (исследование, 6 м³/мес). ~€3.06/слот"
-  },
-  {
-    "code": "NC-004",
-    "name": "Брикеты RUF",
-    "category": "Топливо",
-    "type": "Расходник",
-    "unit": "м³",
-    "price": 170,
-    "deliveryFix": 33.7,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Розжиг",
-    "norm": 0.12,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "~€24.44/слот = €5280/мес @60%"
-  },
-  {
-    "code": "NC-005",
-    "name": "Набор гигиены (шампунь/гель)",
-    "category": "Гигиена и косметика",
-    "type": "Расходник",
-    "unit": "компл",
-    "price": 8,
-    "deliveryFix": 1.98,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Средства гигиены",
-    "norm": 0.116,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "~€1.16/слот = €250/мес @60%"
-  },
-  {
-    "code": "NC-006",
-    "name": "Косметика SPA-процедур",
-    "category": "Гигиена и косметика",
-    "type": "Расходник",
-    "unit": "компл",
-    "price": 40,
-    "deliveryFix": 6.3,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Косметика / SPA",
-    "norm": 0.05,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "~€2.31/слот = €500/мес @60%"
-  },
-  {
-    "code": "NC-007",
-    "name": "Масло массажное",
-    "category": "Гигиена и косметика",
-    "type": "Расходник",
-    "unit": "компл",
-    "price": 40,
-    "deliveryFix": 6.3,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Косметика / массаж",
-    "norm": 0.025,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "~€1.16/слот = €250/мес @60%"
-  },
-  {
     "code": "NC-008",
     "name": "Инвентарь уборочный",
     "category": "Химия и уборка",
     "type": "Расходник",
     "unit": "компл",
-    "price": 8,
-    "deliveryFix": 2.07,
+    "price": 50,
+    "deliveryFix": 0,
     "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Инвентарь / уборка",
-    "norm": 0.023,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "~€0.23/слот = €50/мес @60%"
-  },
-  {
-    "code": "NC-009",
-    "name": "Прачечная/текстиль (услуга)",
-    "category": "Текстиль",
-    "type": "Расходник",
-    "unit": "компл",
-    "price": 16,
-    "deliveryFix": 3.96,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Прачечная / текстиль",
-    "norm": 0.116,
-    "normBase": "слот",
-    "qty": 0,
-    "note": "~€2.31/слот = €500/мес @60%"
-  },
-  {
-    "code": "NC-010",
-    "name": "Представительский набор гостя",
-    "category": "Прочее",
-    "type": "Расходник",
-    "unit": "компл",
-    "price": 5.4,
-    "deliveryFix": 0.5,
-    "deliveryPct": 0,
-    "use": "OPEX",
-    "opexArticle": "Представительские",
-    "norm": 1,
-    "normBase": "гость",
-    "qty": 0,
-    "note": "€5.9/гость — как прежде"
-  },
-  {
-    "code": "NC-101",
-    "name": "Мебель лаунж-зоны (компл)",
-    "category": "Мебель",
-    "type": "Не-расходник",
-    "unit": "компл",
-    "price": 2500,
-    "deliveryFix": 0,
-    "deliveryPct": 0.12,
     "use": "CAPEX",
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
-    "note": "пример: заполнить кол-во"
-  },
-  {
-    "code": "NC-102",
-    "name": "Шезлонг",
-    "category": "Мебель",
-    "type": "Не-расходник",
-    "unit": "шт",
-    "price": 180,
-    "deliveryFix": 0,
-    "deliveryPct": 0.15,
-    "use": "CAPEX",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
-    "qty": 0,
-    "note": "пример: заполнить кол-во"
-  },
-  {
-    "code": "NC-103",
-    "name": "Декор и предметы интерьера",
-    "category": "Интерьер",
-    "type": "Не-расходник",
-    "unit": "компл",
-    "price": 3000,
-    "deliveryFix": 0,
-    "deliveryPct": 0.1,
-    "use": "CAPEX",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
-    "qty": 0,
-    "note": "пример: заполнить кол-во"
-  },
-  {
-    "code": "NC-104",
-    "name": "Посуда и питейный инвентарь",
-    "category": "Инвентарь",
-    "type": "Не-расходник",
-    "unit": "компл",
-    "price": 1500,
-    "deliveryFix": 0,
-    "deliveryPct": 0.1,
-    "use": "CAPEX",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
-    "qty": 0,
-    "note": "пример: заполнить кол-во"
+    "qty": 1,
+    "note": "Разовая закупка комплектом без детализации (tz1). Цена €50 по ТЗ."
   },
   {
     "code": "NC-020",
@@ -217,11 +25,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "Литва, закуп"
+    "note": "Литва, закуп",
+    "initialQty": 150
   },
   {
     "code": "NC-021",
@@ -233,11 +42,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "Литва, закуп"
+    "note": "Литва, закуп",
+    "initialQty": 300
   },
   {
     "code": "NC-022",
@@ -249,11 +59,12 @@
     "deliveryFix": 0.35,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "Литва, закуп"
+    "note": "Литва, закуп",
+    "initialQty": 150
   },
   {
     "code": "NC-023",
@@ -265,11 +76,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "Литва, закуп"
+    "note": "Литва, закуп",
+    "initialQty": 120
   },
   {
     "code": "NC-024",
@@ -281,11 +93,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "Литва, закуп"
+    "note": "Литва, закуп",
+    "initialQty": 80
   },
   {
     "code": "NC-025",
@@ -297,11 +110,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "Литва, закуп"
+    "note": "Литва, закуп",
+    "initialQty": 100
   },
   {
     "code": "NC-026",
@@ -313,11 +127,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 100
   },
   {
     "code": "NC-027",
@@ -329,11 +144,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Веники",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 50
   },
   {
     "code": "NC-030",
@@ -345,11 +161,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-031",
@@ -361,11 +178,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-032",
@@ -377,11 +195,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-033",
@@ -393,11 +212,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-034",
@@ -409,11 +229,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 8
   },
   {
     "code": "NC-035",
@@ -425,11 +246,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 8
   },
   {
     "code": "NC-036",
@@ -441,11 +263,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 8
   },
   {
     "code": "NC-037",
@@ -457,11 +280,12 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 5
   },
   {
     "code": "NC-038",
@@ -473,11 +297,12 @@
     "deliveryFix": 6,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Травы и арома",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 5
   },
   {
     "code": "NC-040",
@@ -489,11 +314,12 @@
     "deliveryFix": 0.6,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 50
   },
   {
     "code": "NC-041",
@@ -505,11 +331,12 @@
     "deliveryFix": 1.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-042",
@@ -521,11 +348,12 @@
     "deliveryFix": 4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-043",
@@ -537,11 +365,12 @@
     "deliveryFix": 1.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 15
   },
   {
     "code": "NC-044",
@@ -553,11 +382,12 @@
     "deliveryFix": 1.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Масла и косметика",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 15
   },
   {
     "code": "NC-045",
@@ -569,11 +399,12 @@
     "deliveryFix": 1.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Масла и косметика",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 15
   },
   {
     "code": "NC-046",
@@ -585,11 +416,12 @@
     "deliveryFix": 2.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Масла и косметика",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-047",
@@ -601,11 +433,12 @@
     "deliveryFix": 1,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-048",
@@ -617,11 +450,12 @@
     "deliveryFix": 0.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 100
   },
   {
     "code": "NC-049",
@@ -637,7 +471,8 @@
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 20
   },
   {
     "code": "NC-050",
@@ -649,11 +484,12 @@
     "deliveryFix": 1,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Материалы SPA",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-051",
@@ -665,11 +501,12 @@
     "deliveryFix": 0.05,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Одноразовое",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 800
   },
   {
     "code": "NC-052",
@@ -681,11 +518,12 @@
     "deliveryFix": 0.05,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Одноразовое",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 400
   },
   {
     "code": "NC-053",
@@ -697,11 +535,12 @@
     "deliveryFix": 0.03,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Одноразовое",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 800
   },
   {
     "code": "NC-054",
@@ -713,11 +552,12 @@
     "deliveryFix": 0.08,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Одноразовое",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 800
   },
   {
     "code": "NC-055",
@@ -728,12 +568,13 @@
     "price": 0.6,
     "deliveryFix": 0.08,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Одноразовое",
+    "norm": 0.05,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 150
   },
   {
     "code": "NC-056",
@@ -744,12 +585,64 @@
     "price": 0.25,
     "deliveryFix": 0.04,
     "deliveryPct": 0,
+    "use": "OPEX",
+    "opexArticle": "Одноразовое",
+    "norm": 0.1,
+    "normBase": "гость",
+    "qty": 0,
+    "note": "",
+    "initialQty": 300
+  },
+  {
+    "code": "NC-057",
+    "name": "Простыни одноразовые в рулонах",
+    "category": "Одноразовое",
+    "type": "Расходник",
+    "unit": "рулон",
+    "price": 15,
+    "deliveryFix": 2,
+    "deliveryPct": 0.0,
     "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
+    "opexArticle": "Одноразовое",
+    "norm": 0.0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "initialQty": 15,
+    "note": "Защита массажных кушеток (Блок 2)."
+  },
+  {
+    "code": "NC-058",
+    "name": "Плёнка для СПА-обёртываний",
+    "category": "Материалы SPA",
+    "type": "Расходник",
+    "unit": "рулон",
+    "price": 8,
+    "deliveryFix": 1,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Материалы SPA",
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "initialQty": 20,
+    "note": "Процедуры обертывания (Блок 2)."
+  },
+  {
+    "code": "NC-059",
+    "name": "Сенный наполнитель для матрасов",
+    "category": "Хозяйственное",
+    "type": "Расходник",
+    "unit": "шт",
+    "price": 25,
+    "deliveryFix": 3,
+    "deliveryPct": 0.0,
+    "use": "OPEX",
+    "opexArticle": "Хозяйственное",
+    "norm": 0.5,
+    "normBase": "мес",
+    "qty": 0,
+    "initialQty": 12,
+    "note": "Замена лугового сена в парных (Блок 2)."
   },
   {
     "code": "NC-060",
@@ -761,11 +654,12 @@
     "deliveryFix": 0.1,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Купели и чаны",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": "200 кг на заправку"
+    "note": "200 кг на заправку",
+    "initialQty": 500
   },
   {
     "code": "NC-061",
@@ -777,11 +671,12 @@
     "deliveryFix": 1,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Купели и чаны",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 20
   },
   {
     "code": "NC-062",
@@ -793,11 +688,12 @@
     "deliveryFix": 1.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Купели и чаны",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-063",
@@ -809,11 +705,12 @@
     "deliveryFix": 0.4,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Купели и чаны",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 60
   },
   {
     "code": "NC-064",
@@ -825,59 +722,63 @@
     "deliveryFix": 3,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Купели и чаны",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-065",
-    "name": "Активный кислород (дезинфекция)",
-    "category": "Водоёмы и химия",
+    "name": "Хлор жидкий 12%",
+    "category": "Химия водоподготовки",
     "type": "Расходник",
     "unit": "л",
-    "price": 9,
-    "deliveryFix": 1.2,
+    "price": 4,
+    "deliveryFix": 0.5,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Химия водоподготовки",
+    "norm": 20,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "~1 канистра 20 л/мес на 6 купелей / 9 м³. Цена — оценка по Кипру.",
+    "initialQty": 20
   },
   {
     "code": "NC-066",
-    "name": "Альгицид",
-    "category": "Водоёмы и химия",
+    "name": "Альгицид беспенный",
+    "category": "Химия водоподготовки",
     "type": "Расходник",
     "unit": "л",
     "price": 10,
     "deliveryFix": 1.2,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Химия водоподготовки",
+    "norm": 2,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "~0.4 канистры 5 л/мес на 6 купелей.",
+    "initialQty": 5
   },
   {
     "code": "NC-067",
-    "name": "Коагулянт/флокулянт",
-    "category": "Водоёмы и химия",
+    "name": "Флокулянт жидкий (коагулянт)",
+    "category": "Химия водоподготовки",
     "type": "Расходник",
     "unit": "л",
     "price": 10,
     "deliveryFix": 1.2,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Химия водоподготовки",
+    "norm": 1.5,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "~0.3 канистры 5 л/мес на 6 купелей.",
+    "initialQty": 5
   },
   {
     "code": "NC-068",
@@ -888,12 +789,13 @@
     "price": 8,
     "deliveryFix": 1,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Химия водоподготовки",
+    "norm": 0.5,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "Ежедневный контроль pH/хлора.",
+    "initialQty": 10
   },
   {
     "code": "NC-070",
@@ -904,12 +806,13 @@
     "price": 6,
     "deliveryFix": 0.8,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.02,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 40
   },
   {
     "code": "NC-071",
@@ -920,12 +823,13 @@
     "price": 7,
     "deliveryFix": 0.9,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.015,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-072",
@@ -936,12 +840,13 @@
     "price": 7,
     "deliveryFix": 0.9,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.015,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-073",
@@ -952,12 +857,13 @@
     "price": 5,
     "deliveryFix": 0.7,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.01,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-074",
@@ -968,12 +874,13 @@
     "price": 15,
     "deliveryFix": 2,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.5,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 6
   },
   {
     "code": "NC-075",
@@ -984,12 +891,13 @@
     "price": 25,
     "deliveryFix": 3,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.5,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 10
   },
   {
     "code": "NC-076",
@@ -1000,12 +908,13 @@
     "price": 2,
     "deliveryFix": 0.3,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 2,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-077",
@@ -1016,12 +925,13 @@
     "price": 0.8,
     "deliveryFix": 0.1,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.1,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 200
   },
   {
     "code": "NC-078",
@@ -1032,12 +942,13 @@
     "price": 4,
     "deliveryFix": 0.6,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 3,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 40
   },
   {
     "code": "NC-079",
@@ -1048,12 +959,13 @@
     "price": 5,
     "deliveryFix": 0.7,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.02,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 50
   },
   {
     "code": "NC-080",
@@ -1064,12 +976,13 @@
     "price": 3,
     "deliveryFix": 0.4,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Гигиена и косметика",
+    "norm": 0.02,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-085",
@@ -1081,11 +994,12 @@
     "deliveryFix": 0.8,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Топливо и розжиг",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 20
   },
   {
     "code": "NC-086",
@@ -1096,12 +1010,63 @@
     "price": 4,
     "deliveryFix": 0.6,
     "deliveryPct": 0,
+    "use": "OPEX",
+    "opexArticle": "Топливо и розжиг",
+    "norm": 0.5,
+    "normBase": "мес",
+    "qty": 0,
+    "note": "",
+    "initialQty": 15
+  },
+  {
+    "code": "NC-087",
+    "name": "Дрова дуб/граб",
+    "category": "Топливо и розжиг",
+    "type": "Расходник",
+    "unit": "м³",
+    "price": 180,
+    "deliveryFix": 30,
+    "deliveryPct": 0.0,
     "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
+    "opexArticle": "Топливо и розжиг",
+    "norm": 0.0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "initialQty": 6,
+    "note": "Растопка бани — только в спеке аренды. Стартовый закуп 6 м³ (Блок 5)."
+  },
+  {
+    "code": "NC-088",
+    "name": "Дрова акация (очаг)",
+    "category": "Топливо и розжиг",
+    "type": "Расходник",
+    "unit": "м³",
+    "price": 160,
+    "deliveryFix": 30,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Топливо и розжиг",
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "initialQty": 3,
+    "note": "Только для очага — очаг в модели пока не включён; позиция на складе, без нормы расхода."
+  },
+  {
+    "code": "NC-089",
+    "name": "Брикеты RUF/Pini-Kay",
+    "category": "Топливо и розжиг",
+    "type": "Расходник",
+    "unit": "т",
+    "price": 320,
+    "deliveryFix": 50,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Топливо и розжиг",
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "note": "Вариация топлива бани: либо граб, либо брикеты. В Base выключены — сценарный рычаг."
   },
   {
     "code": "NC-090",
@@ -1113,11 +1078,12 @@
     "deliveryFix": 5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "F&B / угощения",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 15
   },
   {
     "code": "NC-091",
@@ -1128,12 +1094,13 @@
     "price": 12,
     "deliveryFix": 1.5,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "F&B",
+    "norm": 0.005,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-092",
@@ -1144,12 +1111,13 @@
     "price": 8,
     "deliveryFix": 1,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "F&B",
+    "norm": 0.005,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 20
   },
   {
     "code": "NC-093",
@@ -1160,12 +1128,13 @@
     "price": 10,
     "deliveryFix": 1.2,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "F&B",
+    "norm": 0.01,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-094",
@@ -1177,11 +1146,12 @@
     "deliveryFix": 2,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "F&B / угощения",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-095",
@@ -1192,12 +1162,13 @@
     "price": 8,
     "deliveryFix": 1,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "F&B",
+    "norm": 0.01,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 20
   },
   {
     "code": "NC-096",
@@ -1208,12 +1179,13 @@
     "price": 2,
     "deliveryFix": 0.3,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "F&B",
+    "norm": 0.05,
+    "normBase": "гость",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 120
   },
   {
     "code": "NC-097",
@@ -1225,11 +1197,12 @@
     "deliveryFix": 0.05,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "F&B / угощения",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 1200
   },
   {
     "code": "NC-098",
@@ -1240,12 +1213,77 @@
     "price": 3,
     "deliveryFix": 0.4,
     "deliveryPct": 0,
-    "use": "Спецификация",
+    "use": "OPEX",
+    "opexArticle": "F&B",
+    "norm": 0.03,
+    "normBase": "гость",
+    "qty": 0,
+    "note": "",
+    "initialQty": 30
+  },
+  {
+    "code": "NC-101",
+    "name": "Мебель лаунж-зоны (компл)",
+    "category": "Мебель",
+    "type": "Не-расходник",
+    "unit": "компл",
+    "price": 2500,
+    "deliveryFix": 0,
+    "deliveryPct": 0.12,
+    "use": "CAPEX",
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
-    "note": ""
+    "qty": 3,
+    "note": "пример: заполнить кол-во"
+  },
+  {
+    "code": "NC-102",
+    "name": "Шезлонг",
+    "category": "Мебель",
+    "type": "Не-расходник",
+    "unit": "шт",
+    "price": 180,
+    "deliveryFix": 0,
+    "deliveryPct": 0.15,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0,
+    "normBase": null,
+    "qty": 29,
+    "note": "пример: заполнить кол-во"
+  },
+  {
+    "code": "NC-103",
+    "name": "Декор и предметы интерьера",
+    "category": "Интерьер",
+    "type": "Не-расходник",
+    "unit": "компл",
+    "price": 3000,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0,
+    "normBase": null,
+    "qty": 3,
+    "note": "пример: заполнить кол-во"
+  },
+  {
+    "code": "NC-104",
+    "name": "Посуда и питейный инвентарь",
+    "category": "Инвентарь",
+    "type": "Не-расходник",
+    "unit": "компл",
+    "price": 1500,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0,
+    "normBase": null,
+    "qty": 3,
+    "note": "пример: заполнить кол-во"
   },
   {
     "code": "NC-150",
@@ -1257,11 +1295,12 @@
     "deliveryFix": 1.5,
     "deliveryPct": 0,
     "use": "Спецификация",
-    "opexArticle": null,
+    "opexArticle": "Клининг и дезинфекция",
     "norm": 0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 15
   },
   {
     "code": "NC-151",
@@ -1272,12 +1311,13 @@
     "price": 7,
     "deliveryFix": 0.9,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 0.02,
+    "normBase": "слот",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-152",
@@ -1288,12 +1328,13 @@
     "price": 5,
     "deliveryFix": 0.7,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 2,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 40
   },
   {
     "code": "NC-153",
@@ -1304,12 +1345,13 @@
     "price": 1.5,
     "deliveryFix": 0.2,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 3,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 60
   },
   {
     "code": "NC-154",
@@ -1320,12 +1362,13 @@
     "price": 4,
     "deliveryFix": 0.5,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 1,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 20
   },
   {
     "code": "NC-155",
@@ -1336,12 +1379,13 @@
     "price": 6,
     "deliveryFix": 0.8,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 0.05,
+    "normBase": "слот",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 30
   },
   {
     "code": "NC-156",
@@ -1352,12 +1396,13 @@
     "price": 3,
     "deliveryFix": 0.4,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 2,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 25
   },
   {
     "code": "NC-157",
@@ -1368,12 +1413,13 @@
     "price": 5,
     "deliveryFix": 0.7,
     "deliveryPct": 0,
-    "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
-    "normBase": null,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 1,
+    "normBase": "мес",
     "qty": 0,
-    "note": ""
+    "note": "",
+    "initialQty": 15
   },
   {
     "code": "NC-158",
@@ -1384,12 +1430,29 @@
     "price": 4,
     "deliveryFix": 0.5,
     "deliveryPct": 0,
+    "use": "OPEX",
+    "opexArticle": "Клининг и дезинфекция",
+    "norm": 0.3,
+    "normBase": "мес",
+    "qty": 0,
+    "note": "",
+    "initialQty": 10
+  },
+  {
+    "code": "NC-159",
+    "name": "Прачечная — гостевой набор (халат+2 простыни)",
+    "category": "Прачечная / текстиль",
+    "type": "Расходник",
+    "unit": "компл",
+    "price": 4.99,
+    "deliveryFix": 0,
+    "deliveryPct": 0.0,
     "use": "Спецификация",
-    "opexArticle": null,
-    "norm": 0,
+    "opexArticle": "Прачечная / текстиль",
+    "norm": 0.0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "note": "Аутсорс ~€1.8/кг × ~2.8 кг набора. 1 набор на гостя аренды."
   },
   {
     "code": "NC-160",
@@ -1404,7 +1467,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 6,
     "note": ""
   },
   {
@@ -1420,7 +1483,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 12,
     "note": ""
   },
   {
@@ -1436,7 +1499,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 3,
     "note": ""
   },
   {
@@ -1452,7 +1515,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 9,
     "note": ""
   },
   {
@@ -1468,7 +1531,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 31,
     "note": ""
   },
   {
@@ -1484,7 +1547,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 3,
     "note": ""
   },
   {
@@ -1500,7 +1563,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 9,
     "note": ""
   },
   {
@@ -1516,7 +1579,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 18,
     "note": ""
   },
   {
@@ -1532,7 +1595,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 3,
     "note": ""
   },
   {
@@ -1548,7 +1611,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 3,
     "note": ""
   },
   {
@@ -1564,7 +1627,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 180,
     "note": "обменный фонд"
   },
   {
@@ -1580,7 +1643,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 360,
     "note": ""
   },
   {
@@ -1596,7 +1659,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 180,
     "note": ""
   },
   {
@@ -1612,7 +1675,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 360,
     "note": ""
   },
   {
@@ -1628,7 +1691,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 180,
     "note": ""
   },
   {
@@ -1644,7 +1707,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 150,
     "note": ""
   },
   {
@@ -1660,7 +1723,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 9,
     "note": ""
   },
   {
@@ -1676,7 +1739,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 4,
     "note": ""
   },
   {
@@ -1692,7 +1755,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 58,
     "note": ""
   },
   {
@@ -1708,7 +1771,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 600,
     "note": "сменный фонд, перекладка раз в год"
   },
   {
@@ -1724,7 +1787,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 12,
     "note": ""
   },
   {
@@ -1740,7 +1803,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 6,
     "note": ""
   },
   {
@@ -1756,7 +1819,7 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 3,
     "note": ""
   },
   {
@@ -1772,55 +1835,524 @@
     "opexArticle": null,
     "norm": 0,
     "normBase": null,
-    "qty": 0,
+    "qty": 3,
     "note": ""
   },
   {
     "code": "NC-184",
-    "name": "Сертификаты подарочные (конверты)",
-    "category": "Retail",
-    "type": "Не-расходник",
+    "name": "Печь банная профессиональная в облицовке",
+    "category": "Печной узел",
+    "type": "Не-расходник (ОС)",
     "unit": "шт",
-    "price": 1.5,
-    "deliveryFix": 0.2,
-    "deliveryPct": 0,
+    "price": 4500,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
     "use": "CAPEX",
     "opexArticle": null,
-    "norm": 0,
+    "norm": 0.0,
     "normBase": null,
-    "qty": 0,
-    "note": ""
+    "qty": 3,
+    "note": "По 1 в каждую парную (ТЗ-2)."
   },
   {
     "code": "NC-185",
-    "name": "Тубусы/сетки для веников (сувенир)",
-    "category": "Retail",
-    "type": "Не-расходник",
-    "unit": "шт",
-    "price": 3,
-    "deliveryFix": 0.4,
+    "name": "Дымоходная система / комплект монтажа",
+    "category": "Печной узел",
+    "type": "Не-расходник (ОС)",
+    "unit": "компл",
+    "price": 1200,
+    "deliveryFix": 120,
     "deliveryPct": 0,
     "use": "CAPEX",
     "opexArticle": null,
-    "norm": 0,
+    "norm": 0.0,
     "normBase": null,
-    "qty": 0,
-    "note": ""
+    "qty": 3,
+    "note": null
   },
   {
     "code": "NC-186",
-    "name": "Чай фирменный в банках (retail)",
-    "category": "Retail",
-    "type": "Не-расходник",
+    "name": "Пульт управления печью и автоматика пароподачи",
+    "category": "Печной узел",
+    "type": "Не-расходник (ОС)",
     "unit": "шт",
-    "price": 8,
-    "deliveryFix": 1,
+    "price": 800,
+    "deliveryFix": 50,
     "deliveryPct": 0,
     "use": "CAPEX",
     "opexArticle": null,
-    "norm": 0,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-187",
+    "name": "Защитные экраны и ограждения печи",
+    "category": "Печной узел",
+    "type": "Не-расходник (ОС)",
+    "unit": "компл",
+    "price": 400,
+    "deliveryFix": 40,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-188",
+    "name": "Купель с охлаждающей установкой (чиллером)",
+    "category": "Гидротермальная зона",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 4500,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": "По 1 на комплекс (ТЗ-2)."
+  },
+  {
+    "code": "NC-189",
+    "name": "Ледогенератор чешуйчатого льда",
+    "category": "Гидротермальная зона",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 2200,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-190",
+    "name": "Банный чан уличный на дровах",
+    "category": "Гидротермальная зона",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 3500,
+    "deliveryFix": 0,
+    "deliveryPct": 0.12,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-191",
+    "name": "Стол влажный (с подогревом) для мыльного массажа",
+    "category": "Массажные кабинеты",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 2800,
+    "deliveryFix": 0,
+    "deliveryPct": 0.12,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-192",
+    "name": "Стул мастера + лампа-лупа косметологическая",
+    "category": "Массажные кабинеты",
+    "type": "Не-расходник (ОС)",
+    "unit": "компл",
+    "price": 250,
+    "deliveryFix": 25,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-193",
+    "name": "Подогреватель масел/грязей/полотенец (Hot cabi)",
+    "category": "Массажные кабинеты",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 300,
+    "deliveryFix": 30,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-194",
+    "name": "Чайная станция / термопот профессиональный",
+    "category": "Лаунж и интерьер",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 180,
+    "deliveryFix": 15,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-195",
+    "name": "Мини-холодильник / винный шкаф",
+    "category": "Лаунж и интерьер",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 320,
+    "deliveryFix": 30,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-196",
+    "name": "Тележка сервировочная для подачи чая",
+    "category": "Лаунж и интерьер",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 150,
+    "deliveryFix": 15,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-197",
+    "name": "Влагостойкая акустическая система",
+    "category": "Лаунж и интерьер",
+    "type": "Не-расходник (ОС)",
+    "unit": "компл",
+    "price": 500,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-198",
+    "name": "Шкафы для раздевалок с электронными замками",
+    "category": "Раздевалки и гигиена",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 250,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 31,
+    "note": "Верх диапазона 24–31 (ТЗ-2)."
+  },
+  {
+    "code": "NC-199",
+    "name": "Скамейки/пуфы для раздевалок",
+    "category": "Раздевалки и гигиена",
+    "type": "Не-расходник (ОС)",
+    "unit": "компл",
+    "price": 120,
+    "deliveryFix": 0,
+    "deliveryPct": 0.1,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-200",
+    "name": "Фены профессиональные настенные",
+    "category": "Раздевалки и гигиена",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 150,
+    "deliveryFix": 15,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 6,
+    "note": "Верх диапазона 3–6."
+  },
+  {
+    "code": "NC-201",
+    "name": "Зеркало с LED-подсветкой",
+    "category": "Раздевалки и гигиена",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 180,
+    "deliveryFix": 18,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-202",
+    "name": "Холодильник для веников и СПА-косметики",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 450,
+    "deliveryFix": 45,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": "Верх диапазона 1–3."
+  },
+  {
+    "code": "NC-203",
+    "name": "УФ-стерилизатор и сушильный шкаф",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 350,
+    "deliveryFix": 30,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": "Верх диапазона 1–3."
+  },
+  {
+    "code": "NC-204",
+    "name": "Пароочиститель профессиональный",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 650,
+    "deliveryFix": 50,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 2,
+    "note": "Верх диапазона 1–2."
+  },
+  {
+    "code": "NC-205",
+    "name": "Пылесос водосборный для влажной уборки",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 280,
+    "deliveryFix": 25,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 2,
+    "note": "Верх диапазона 1–2."
+  },
+  {
+    "code": "NC-206",
+    "name": "Тележка клининговая многофункциональная",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 140,
+    "deliveryFix": 15,
+    "deliveryPct": 0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 3,
+    "note": null
+  },
+  {
+    "code": "NC-207",
+    "name": "Мыло натуральное травяное",
+    "category": "Материалы SPA",
+    "type": "Расходник",
+    "unit": "кг",
+    "price": 10,
+    "deliveryFix": 1.5,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Материалы SPA",
+    "norm": 0.0,
     "normBase": null,
     "qty": 0,
-    "note": ""
+    "initialQty": 10,
+    "note": "Мыльно-веничный массаж (спека M5)."
+  },
+  {
+    "code": "NC-208",
+    "name": "Мочало лыковое",
+    "category": "Материалы SPA",
+    "type": "Расходник",
+    "unit": "шт",
+    "price": 1.6,
+    "deliveryFix": 0.2,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Материалы SPA",
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "initialQty": 30,
+    "note": "Мыльно-веничный массаж, ~4 применения (коэф. 0.25 в спеке)."
+  },
+  {
+    "code": "NC-209",
+    "name": "Рукавица Кесе",
+    "category": "Материалы SPA",
+    "type": "Расходник",
+    "unit": "шт",
+    "price": 0.8,
+    "deliveryFix": 0.1,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Материалы SPA",
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "initialQty": 50,
+    "note": "Пилинг Кесе — одноразовая выдача (спека M6)."
+  },
+  {
+    "code": "NC-210",
+    "name": "Прачечная — процедурный набор",
+    "category": "Прачечная / текстиль",
+    "type": "Расходник",
+    "unit": "шт",
+    "price": 1.5,
+    "deliveryFix": 0,
+    "deliveryPct": 0.0,
+    "use": "Спецификация",
+    "opexArticle": "Прачечная / текстиль",
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "note": "Стирка текстиля после парения/массажа — 1 набор на процедуру."
+  },
+  {
+    "code": "NC-211",
+    "name": "pH-минус жидкий 37%",
+    "category": "Химия водоподготовки",
+    "type": "Расходник",
+    "unit": "л",
+    "price": 4,
+    "deliveryFix": 0.5,
+    "deliveryPct": 0.0,
+    "use": "OPEX",
+    "opexArticle": "Химия водоподготовки",
+    "norm": 22,
+    "normBase": "мес",
+    "qty": 0,
+    "initialQty": 20,
+    "note": "~1 канистра 20 л/мес на 6 купелей. Цена — оценка по Кипру."
+  },
+  {
+    "code": "NC-212",
+    "name": "Шок-хлор (гранулы)",
+    "category": "Химия водоподготовки",
+    "type": "Расходник",
+    "unit": "кг",
+    "price": 9,
+    "deliveryFix": 1.0,
+    "deliveryPct": 0.0,
+    "use": "OPEX",
+    "opexArticle": "Химия водоподготовки",
+    "norm": 2,
+    "normBase": "мес",
+    "qty": 0,
+    "initialQty": 5,
+    "note": "~0.4 ведра 5 кг/мес на 6 купелей. Цена — оценка по Кипру."
+  },
+  {
+    "code": "NC-220",
+    "name": "Сертификаты подарочные (конверты)",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 1.5,
+    "deliveryFix": 0.2,
+    "deliveryPct": 0.0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "note": "Было NC-184 — код уступил печному узлу ТЗ-2."
+  },
+  {
+    "code": "NC-221",
+    "name": "Тубусы/сетки для веников (сувенир)",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 3,
+    "deliveryFix": 0.4,
+    "deliveryPct": 0.0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "note": "Было NC-185."
+  },
+  {
+    "code": "NC-222",
+    "name": "Чай фирменный в банках (retail)",
+    "category": "Склад и клининг",
+    "type": "Не-расходник (ОС)",
+    "unit": "шт",
+    "price": 8,
+    "deliveryFix": 1,
+    "deliveryPct": 0.0,
+    "use": "CAPEX",
+    "opexArticle": null,
+    "norm": 0.0,
+    "normBase": null,
+    "qty": 0,
+    "note": "Было NC-186."
   }
 ]

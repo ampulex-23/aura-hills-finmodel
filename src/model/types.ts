@@ -64,6 +64,10 @@ export interface ServiceSpec {
   direction: string // Аренда бани / Парения / Массаж / Доп. услуги
   name: string
   price: number
+  /** Для направления «Аренда бани»: вместимость бани (гостей). Спека
+   *  сопоставляется модулю по capacity — модуль попадает в наименьший
+   *  тариф, который его вмещает (резервные бани тоже покрываются). */
+  capacity?: number
   items: SpecItem[]
 }
 export interface ServiceCost {
@@ -206,7 +210,8 @@ export interface RevenueMonth {
   bathsLoad: number
   slots: number
   guests: number
-  slotCounts: number[] // по типам слотов
+  slotCounts: number[] // по типам слотов (время суток — аналитика, цена одинакова в бане)
+  bathCounts: number[] // проданные слоты по каждой бане-модулю (индекс = params.modules)
   rental: number
   steam: number[]
   steamTotal: number

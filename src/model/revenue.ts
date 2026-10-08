@@ -1,4 +1,33 @@
-import type { Params, RevenueMonth, ResolvedScenario } from './types'
+import type { Params, RevenueMonth, ResolvedScenario, ServiceSpec } from './types'
+
+// Направление спецификации → вектор проданных услуг месяца, выровненный
+// по порядку спек этого направления. Парения/массаж/доп. услуги — по ценовым
+// ступеням; аренда — по баням: слоты модуля идут в наименьший тариф спеки,
+// чей capacity вмещает вместимость бани (резервные бани попадают в ближайший
+// больший тариф, а не теряются).
+export function dirCounts(
+  rev: RevenueMonth,
+  direction: string,
+  dirSpecs: ServiceSpec[],
+  params: Params,
+): number[] {
+  if (direction === 'Аренда бани') {
+    const caps = dirSpecs.map((s) => s.capacity ?? Infinity)
+    const counts = dirSpecs.map(() => 0)
+    params.modules.forEach((m, i) => {
+      const s = rev.bathCounts[i] ?? 0
+      if (s <= 0) return
+      let t = caps.findIndex((c) => m.capacity <= c)
+      if (t < 0) t = counts.length - 1
+      counts[t] += s
+    })
+    return counts
+  }
+  if (direction === 'Парения') return rev.steamCounts
+  if (direction === 'Массаж') return rev.massageCounts
+  if (direction === 'Доп. услуги') return rev.extraCounts
+  return []
+}
 
 // Выручка за операционный месяц k (0-based; k=0 — первый месяц работы).
 // Порт листа «Выручка»: загрузка × сезонность × ramp-up × годовой индекс цен.
@@ -37,20 +66,24 @@ export function computeRevenueMonth(
   let capSum = 0 // ёмкость гостей активных ЭТОГО месяца модулей (не всех «Активен»)
   let capN = 0
   const slotCounts = params.slotMix.map(() => 0)
-  for (const m of params.modules) {
-    if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) continue
+  const bathCounts = params.modules.map(() => 0) // слоты по баням — база спек аренды
+  params.modules.forEach((m, i) => {
+    if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) return
     capSum += m.capacity
     capN++
     capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK
     const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad
     slots += s
     guests += s * m.capacity
+    bathCounts[i] = s
+    // Цена слота фиксирована баней — временной микс (slotMix) на деньги
+    // не влияет, только на разложение slotCounts по слотам суток.
     const avgPrice = m.prices.reduce((acc, p, j) => acc + p * params.slotMix[j], 0)
     rental += s * avgPrice * growth
     params.slotMix.forEach((mix, j) => {
       slotCounts[j] += s * mix
     })
-  }
+  })
 
   // Члены клуба занимают ёмкость: активные члены × визиты/мес × гостей/визит.
   // Слоты членов вычитаются из доступной ёмкости до платных продаж —
@@ -72,6 +105,7 @@ export function computeRevenueMonth(
     guests = guests * scale + memberGuests
     rental *= scale
     for (let j = 0; j < slotCounts.length; j++) slotCounts[j] *= scale
+    for (let j = 0; j < bathCounts.length; j++) bathCounts[j] *= scale
   }
 
   const up = sc.effectiveUptake
@@ -148,6 +182,7 @@ export function computeRevenueMonth(
     slots,
     guests,
     slotCounts,
+    bathCounts,
     rental,
     steam,
     steamTotal,

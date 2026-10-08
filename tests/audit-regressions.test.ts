@@ -5,7 +5,8 @@ import nomenclatureJson from '../src/data/nomenclature.json'
 import servicesJson from '../src/data/services.json'
 import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../src/model/types'
 import { runModel } from '../src/model/run'
-import { costService } from '../src/model/spec'
+import { dirCounts } from '../src/model/revenue'
+import { costService, serviceLaborShare } from '../src/model/spec'
 
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
@@ -92,14 +93,16 @@ describe('аудит-регрессии', () => {
   it('начальный запас (initialQty) уходит в CAPEX и не трогает OPEX', () => {
     const base = runModel(clone(), matrix, items, services, 'Base')
     const items2 = items.map((it) =>
-      it.code === 'NC-002' ? { ...it, initialQty: 100 } : it,
+      it.code === 'NC-087' ? { ...it, initialQty: 100 } : it,
     )
     const r = runModel(clone(), matrix, items2, services, 'Base')
-    const robe = items2.find((x) => x.code === 'NC-002')!
+    const robe = items2.find((x) => x.code === 'NC-087')!
     const landed = robe.price + Math.max(robe.deliveryFix, robe.price * robe.deliveryPct)
     const capexRow = r.capex.items.find((i) => i.name.includes('Наполнение'))!
-    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + landed * 100, 2)
-    expect(capexRow.detail!.some((d) => d.code === 'NC-002' && d.qty === 100)).toBe(true)
+    // у NC-087 уже есть initialQty 6 из Блока 5 — дельта считается от неё
+    const prevQty = items.find((x) => x.code === 'NC-087')!.initialQty ?? 0
+    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + landed * (100 - prevQty), 2)
+    expect(capexRow.detail!.some((d) => d.code === 'NC-087' && d.qty === 100)).toBe(true)
     // помесячный OPEX не изменился — норма та же
     expect(r.opex[5].variableTotal).toBeCloseTo(base.opex[5].variableTotal, 6)
   })
@@ -112,7 +115,8 @@ describe('аудит-регрессии', () => {
     expect(r.capex.deferred).toHaveLength(1)
     expect(r.capex.deferred[0].eur).toBeCloseTo(100_000 * (1 + r.scenario.capexAdj), 2)
     // общий CAPEX вырос на полную помодульную сумму (раньше добавлялся только корпус €70k)
-    expect(r.capex.totalEur).toBeCloseTo(1_530_180 + 100_000, 0)
+    const base = runModel(clone(), matrix, items, services, 'Base')
+    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + 100_000 * (1 + r.scenario.capexAdj), 0)
   })
 })
 
@@ -131,11 +135,16 @@ describe('KPI по спецификациям (не глобальный пул)
   it('бонус месяца = Σ продано услуг × прайс спеки × Σ% ролей', () => {
     const r = runModel(clone(), matrix, items, services, 'Base')
     const k = 24 // устаканенный месяц
-    const byDir = (dir: string) => services.filter((s) => s.direction === dir)
-    const expected =
-      byDir('Парения').reduce((s, sv, i) => s + r.revenue[k].steamCounts[i] * sv.price * 0.3, 0) +
-      byDir('Массаж').reduce((s, sv, i) => s + r.revenue[k].massageCounts[i] * sv.price * 0.3, 0) +
-      byDir('Доп. услуги').reduce((s, sv, i) => s + r.revenue[k].extraCounts[i] * sv.price * (sv.items.reduce((a, it) => a + (it.pct ?? 0), 0)), 0)
+    const p = clone()
+    const r2 = runModel(p, matrix, items, services, 'Base')
+    const dirOrder = [...new Set(services.map((s) => s.direction))]
+    const expected = dirOrder.reduce((tot, dir) => {
+      const dirSpecs = services.filter((s) => s.direction === dir)
+      const counts = dirCounts(r2.revenue[k], dir, dirSpecs, p)
+      return tot + dirSpecs.reduce(
+        (s, sv, i) => s + counts[i] * sv.price * serviceLaborShare(sv, p), 0,
+      )
+    }, 0)
     expect(r.fot[k].bonuses).toBeCloseTo(expected, 6)
   })
 
@@ -160,10 +169,11 @@ describe('KPI по спецификациям (не глобальный пул)
   it('несервисные роли (клинеры) отсутствуют в спеках', () => {
     const labor = services.flatMap((s) => s.items.filter((i) => i.kind === 'labor'))
     expect(labor.every((i) => i.role !== 'Клинер (горничная)')).toBe(true)
-    // и у аренды вообще нет трудовых строк — аренда не несёт KPI
+    // у аренды KPI есть только гарантированные 3% пармастеру (за ведение слота)
     expect(
       services.filter((s) => s.direction === 'Аренда бани')
-        .every((s) => s.items.every((i) => i.kind !== 'labor')),
+        .every((s) => s.items.filter((i) => i.kind === 'labor')
+          .every((i) => i.role === 'Пармастер' && i.pct === 0.03)),
     ).toBe(true)
   })
 

@@ -1,4 +1,5 @@
 import type { FotMonth, Params, RevenueMonth, ServiceSpec } from './types'
+import { dirCounts } from './revenue'
 import { serviceLaborShare } from './spec'
 
 // Базовый фонд окладов месяца 0 (без бонусов и индексации) — штат + IT-куратор + повар
@@ -10,20 +11,11 @@ export function baseSalariesMonthly(params: Params): number {
   )
 }
 
-// Направление спецификации → вектор количества проданных услуг месяца.
-// Роли с окладом (клинер, охрана) в спеки не входят — KPI получают только
-// роли, явно указанные в составе услуги с долей pct от её прайса.
-const dirCounts = (rev: RevenueMonth, direction: string): number[] => {
-  if (direction === 'Аренда бани') return rev.slotCounts
-  if (direction === 'Парения') return rev.steamCounts
-  if (direction === 'Массаж') return rev.massageCounts
-  if (direction === 'Доп. услуги') return rev.extraCounts
-  return []
-}
-
 // ФОТ: оклады × инфляция^год + KPI-бонусы из спецификаций услуг.
 // Бонус услуги за месяц = продано услуг × прайс спецификации × Σ долей ролей.
 // Не провёл ни одной услуги → бонус 0, роль получает голый оклад.
+// Роли с окладом (клинер, охрана) в спеки не входят — KPI получают только
+// роли, явно указанные в составе услуги с долей pct от её прайса.
 export function computeFotMonth(
   params: Params,
   rev: RevenueMonth,
@@ -37,16 +29,15 @@ export function computeFotMonth(
   const byDir = new Map<string, number>()
   const dirOrder = [...new Set(services.map((s) => s.direction))]
   for (const dir of dirOrder) {
-    const counts = dirCounts(rev, dir)
-    services
-      .filter((s) => s.direction === dir)
-      .forEach((s, idx) => {
-        const amt = (counts[idx] ?? 0) * s.price * serviceLaborShare(s, params)
-        if (amt > 0) {
-          bonuses += amt
-          byDir.set(dir, (byDir.get(dir) ?? 0) + amt)
-        }
-      })
+    const dirSpecs = services.filter((s) => s.direction === dir)
+    const counts = dirCounts(rev, dir, dirSpecs, params)
+    dirSpecs.forEach((s, idx) => {
+      const amt = (counts[idx] ?? 0) * s.price * serviceLaborShare(s, params)
+      if (amt > 0) {
+        bonuses += amt
+        byDir.set(dir, (byDir.get(dir) ?? 0) + amt)
+      }
+    })
   }
   const bonusDetail = [...byDir.entries()]
     .map(([d, v]) => `${d.toLowerCase()} €${Math.round(v).toLocaleString('ru-RU')}`)
