@@ -188,7 +188,8 @@ export const useModel = create<ModelState>()(
       // спек) несовместимы → migrate сбрасывает к новым дефолтам.
       // v5: аудит 14 — новая форма матрицы сценариев (полные 5-летние векторы),
       // CAPM/WACC, members.peakShare, capexMaint и т.д. → сброс к дефолтам.
-      version: 5,
+      // v6: смета CAPEX переведена с ₽ на € (priceRub → priceEur, курса нет) → сброс.
+      version: 6,
       storage: createJSONStorage(() => debouncedLocalStorage),
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>

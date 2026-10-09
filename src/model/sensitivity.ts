@@ -7,14 +7,14 @@ import { resolveScenario } from './scenario'
 // Таблица 2: рост цен × буфер CAPEX → NPV + IRR
 // Таблица 3: уровень всех цен × → NPV + IRR
 // Таблица 4: доля гостей с пакетом (uptake, непакетный режим) × загрузка → NPV
-// Таблица 5: курс RUB/EUR × буфер CAPEX → NPV
+// Таблица 5: задержка стройки × буфер CAPEX → NPV
 
 export interface SensPoint { npv: number; irr: number; discPayback: number }
 export interface SensTable1Row { demand: number; cells: { wacc: number; npv: number; discPayback: number }[] }
 export interface SensTable2Row { priceGrowth: number; cells: { capexAdj: number; npv: number; irr: number }[] }
 export interface SensTable3Row { priceMult: number; npv: number; irr: number }
 export interface SensTable4Row { uptake: number; cells: { loadMult: number; npv: number; irr: number }[] }
-export interface SensTable5Row { rubEur: number; cells: { capexAdj: number; npv: number; irr: number }[] }
+export interface SensTable5Row { delayMonths: number; cells: { capexAdj: number; npv: number; irr: number }[] }
 
 export interface SensitivityResult {
   t1: { waccAxis: number[]; rows: SensTable1Row[] }
@@ -33,7 +33,7 @@ export const T2_CAPEX = [0, 0.1, 0.15, 0.2, 0.3]
 export const T3_PRICE = [0.8, 0.9, 1.0, 1.1, 1.2]
 export const T4_UPTAKE = [0.3, 0.5, 0.7, 0.85, 1.0]
 export const T4_LOAD = [0.8, 0.9, 1.0, 1.1, 1.2]
-export const T5_RATE = [80, 90, 100, 110, 120]
+export const T5_DELAY = [0, 3, 6, 9, 12]
 export const T5_CAPEX = [0, 0.1, 0.2, 0.3]
 
 export function computeSensitivity(
@@ -76,12 +76,18 @@ export function computeSensitivity(
     }),
   }))
 
-  // T5: валютный риск рублёвой сметы × буфер CAPEX (аудит 14, I-9)
-  const t5: SensTable5Row[] = T5_RATE.map((rubEur) => ({
-    rubEur,
+  // T5: задержка стройки (месяцы к constructionStart→opening) × буфер CAPEX
+  const t5: SensTable5Row[] = T5_DELAY.map((delayMonths) => ({
+    delayMonths,
     cells: T5_CAPEX.map((capexAdj) => {
       const r = runModel(params, matrix, items, services, scenario, {
-        capexAdj, mutate: (p) => { p.general.rubEurRate = rubEur },
+        capexAdj,
+        mutate: (p) => {
+          p.meta.capexMonths += delayMonths
+          const [y, m] = p.meta.openingDate.slice(0, 7).split('-').map(Number)
+          const t = y * 12 + (m - 1) + delayMonths
+          p.meta.openingDate = `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-01`
+        },
       })
       return { capexAdj, npv: r.kpis.npv, irr: r.kpis.irrAnnual }
     }),

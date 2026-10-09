@@ -148,16 +148,16 @@ export function Sensitivity({ r }: { r: ModelResult }) {
         </div>
 
         <div>
-          <h3>Курс RUB/EUR × буфер CAPEX → NPV (IRR)</h3>
+          <h3>Задержка стройки × буфер CAPEX → NPV (IRR)</h3>
           <div className="table-wrap">
             <table className="month-table sens">
               <thead>
-                <tr><th className="sticky">Курс \ CAPEX</th>{s.t5.capexAxis.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
+                <tr><th className="sticky">Задержка \ CAPEX</th>{s.t5.capexAxis.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
               </thead>
               <tbody>
                 {s.t5.rows.map((row) => (
-                  <tr key={row.rubEur}>
-                    <td className="sticky">{row.rubEur} ₽/€</td>
+                  <tr key={row.delayMonths}>
+                    <td className="sticky">{row.delayMonths > 0 ? `+${row.delayMonths}` : '0'} мес</td>
                     {row.cells.map((c) => (
                       <td key={c.capexAdj}>
                         {fmt(c.npv / 1e6, 2)}M <small>({fmt(c.irr * 100)}%)</small>
@@ -169,7 +169,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
             </table>
           </div>
           <small className="note">
-            Смета модулей и СМР хранится в рублях (курс {params.general.rubEurRate} ₽/€ в Допущениях) — валютный риск контрактов с РФ-подрядчиками.
+            Задержка сдвигает открытие и удлиняет стройку: +N мес CAPEX-графика, аренды и pre-opening до первой выручки.
           </small>
         </div>
       </div>

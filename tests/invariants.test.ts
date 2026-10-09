@@ -141,7 +141,7 @@ describe('инварианты расчёта', () => {
     const out = runModel(params, matrix, items, services, 'Base')
     const laundryEur = params.capexItems
       .filter((i) => i.ifLaundry)
-      .reduce((s, i) => s + (Number(i.priceRub ?? 0) / params.general.rubEurRate) * Number(i.qty), 0)
+      .reduce((s, i) => s + Number(i.priceEur ?? 0) * Number(i.qty), 0)
     expect(own.capex.totalEur - out.capex.totalEur).toBeCloseTo(laundryEur, 4)
     const laundryCost = (r: typeof out) =>
       sum(r.opex.map((m) => m.variable.filter((v) => v.article === 'Прачечная / текстиль').reduce((s, v) => s + v.amount, 0)))

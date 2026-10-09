@@ -104,7 +104,7 @@ export interface CapexItem {
   unit: string
   // qty: число | 'MODULES_COUNT' (1 шт на активный модуль) | 'MODULES_COUNT:N' (N шт на модуль)
   qty: number | string
-  priceRub: number | null
+  priceEur: number | null
   row: number
   /** Раздел сметы для группировки в отчёте CAPEX */
   group?: string
@@ -126,7 +126,6 @@ export interface CapmInputs {
 export interface Params {
   meta: ModelMeta
   general: {
-    rubEurRate: number
     inflation: number
     /** Ставка дисконтирования (эффективная годовая). При waccMode='capm' перезаписывается расчётом */
     wacc: number

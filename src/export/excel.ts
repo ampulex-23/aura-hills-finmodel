@@ -182,7 +182,7 @@ export async function exportWorkbook(
       A.wacc = put('WACC, годовых', params.general.wacc, 'эффективная годовая; помесячно (1+WACC)^(1/12)−1', FMT_PCT)
     }
     put('Инфляция, годовых', params.general.inflation, '', FMT_PCT)
-    put('Курс RUB/EUR', params.general.rubEurRate, 'смета CAPEX хранится в ₽')
+    put('CAPEX смета', 'EUR', 'все позиции сметы в евро')
     A.capexAdj = put('Буфер CAPEX сценария', scen.capexAdj, `сценарий «${params.meta.scenario}»`, FMT_PCT)
     put('CIT', params.taxes.cit, 'реформа Кипра 2026: 15%', FMT_PCT)
     put('SDC на дивиденды', params.taxes.sdc, 'реформа 2026: 5% резидентам-домицилам', FMT_PCT)
@@ -768,10 +768,10 @@ export async function exportWorkbook(
         rw.eachCell((c, i) => { if (i > 1) { c.numFmt = FMT_EUR; c.font = { ...ARIAL } } })
       }
       ws.addRow([])
-      ws.addRow(['Курс ₽/€ \\ CAPEX', ...s.t5.capexAxis.map((c) => `+${c * 100}%`)])
+      ws.addRow(['Задержка стройки \\ CAPEX', ...s.t5.capexAxis.map((c) => `+${c * 100}%`)])
       headerRow(ws, ws.rowCount)
       for (const row of s.t5.rows) {
-        const rw = ws.addRow([`${row.rubEur}`, ...row.cells.map((c) => Math.round(c.npv))])
+        const rw = ws.addRow([`+${row.delayMonths} мес`, ...row.cells.map((c) => Math.round(c.npv))])
         rw.eachCell((c, i) => { if (i > 1) { c.numFmt = FMT_EUR; c.font = { ...ARIAL } } })
       }
     }

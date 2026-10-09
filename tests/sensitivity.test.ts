@@ -50,8 +50,8 @@ describe('sensitivity: 100 точек реального пересчёта', ()
     expect(s.t4.rows[0].cells[2].npv).toBeLessThan(s.t4.rows[0].cells[4].npv) // загрузка помогает
   })
 
-  it('таблица 5: дороже рубль → дороже CAPEX → меньше NPV', () => {
-    expect(s.t5.rows[0].cells[0].npv).toBeLessThan(s.t5.rows[4].cells[0].npv) // 80 ₽/€ хуже 120
+  it('таблица 5: задержка стройки → меньше NPV', () => {
+    expect(s.t5.rows[0].cells[0].npv).toBeGreaterThan(s.t5.rows[4].cells[0].npv) // без задержки лучше +12 мес
     expect(s.t5.rows[2].cells[3].npv).toBeLessThan(s.t5.rows[2].cells[0].npv) // +30% буфер хуже 0
   })
 

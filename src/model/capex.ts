@@ -1,7 +1,7 @@
 import type { CapexItem, NomenclatureItem, Params, WbsSection } from './types'
 import { activeModuleCount, landedCost, nomenclatureCapexEur } from './opex'
 
-// CAPEX: qty × ценаRUB / курс = EUR; строка «Наполнение» = справочник; итог × (1+capexAdj)
+// CAPEX: qty × цена EUR = EUR; строка «Наполнение» = справочник; итог × (1+capexAdj)
 // qty 'MODULES_COUNT[:N]' → N единиц на каждый активный модуль (N по умолчанию 1).
 function perModuleUnits(qty: CapexItem['qty']): number | null {
   const m = /^MODULES_COUNT(?::(\d+))?$/.exec(String(qty))
@@ -20,7 +20,6 @@ export function computeCapex(
   monthlyTaxDepr: number
   deferred: { month: number; eur: number }[]
 } {
-  const rate = params.general.rubEurRate
   type Item = {
     name: string
     eur: number
@@ -58,7 +57,7 @@ export function computeCapex(
       // Так оборудование модулей (печи, купели, ванны) масштабируется при активации
       // резервных модулей, а не остаётся захардкоженным под стартовый контур.
       const perModule = perModuleUnits(it.qty)
-      const unitEur = Number(it.priceRub ?? 0) / rate
+      const unitEur = Number(it.priceEur ?? 0)
       qty = perModule !== null ? perModule * activeModuleCount(params) : Number(it.qty ?? 0)
       rateEur = unitEur
       eur = qty * unitEur
@@ -112,7 +111,7 @@ export function computeCapex(
   // Амортизация упрощённо идёт с общей даты открытия — отмечено в аудите.
   const unitEur = params.capexItems.reduce((s, it) => {
     const n = perModuleUnits(it.qty)
-    return n === null ? s : s + (Number(it.priceRub ?? 0) / rate) * n
+    return n === null ? s : s + Number(it.priceEur ?? 0) * n
   }, 0)
   const ym = (iso: string) => {
     const [y, m] = iso.slice(0, 7).split('-').map(Number)

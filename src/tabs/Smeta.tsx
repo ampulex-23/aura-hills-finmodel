@@ -15,8 +15,8 @@ const COL = {
     'Так оборудование резервных модулей попадает в смету при их активации, ' +
     'а не остаётся захардкоженным под стартовый контур.',
   qty: 'Количество единиц. Для помодульной строки — единиц НА каждый модуль.',
-  price: 'Цена за единицу в рублях — смета подрядчиков хранится в ₽ и конвертируется по курсу из Допущений (валютный риск курса отдельно в Sensitivity).',
-  eur: 'Сумма в евро: кол-во × цена ₽ / курс. Помодульные строки — по текущему числу активных модулей.',
+  price: 'Цена за единицу в евро — смета хранится в EUR.',
+  eur: 'Сумма в евро: кол-во × цена €. Помодульные строки — по текущему числу активных модулей.',
   group: 'Раздел сметы для группировки в отчёте CAPEX.',
   cond: 'Условная строка: входит в CAPEX только при включённой опции «Прачечная: своя» (Допущения).',
   wbs: 'У строки есть WBS-детализация сметчика (эталон в €). При изменении суммы строки детали масштабируются коэффициентом автоматически.',
@@ -35,7 +35,7 @@ const qtyFor = (perModule: boolean, n: number): number | string =>
   perModule ? (n > 1 ? `MODULES_COUNT:${n}` : 'MODULES_COUNT') : n
 
 const emptyRow = (row: number): CapexItem => ({
-  name: '', unit: 'общ', qty: 1, priceRub: 0, row, group: 'Прочее',
+  name: '', unit: 'общ', qty: 1, priceEur: 0, row, group: 'Прочее',
 })
 
 // Смета строительного CAPEX — редактируемый грид, сгруппированный по разделам.
@@ -50,7 +50,6 @@ export function Smeta() {
   const [deleteAsk, setDeleteAsk] = useState<{ it: CapexItem; index: number } | null>(null)
 
   const rows = params.capexItems
-  const rate = params.general.rubEurRate
   const modulesNow = activeModuleCount(params)
   const fillerEur = nomenclatureCapexEur(items)
   const laundryOn = !!params.laundry?.enabled
@@ -59,7 +58,7 @@ export function Smeta() {
     if (it.row === FILLER_ROW) return fillerEur
     const n = perModuleN(it.qty)
     const qty = n !== null ? n * modulesNow : Number(it.qty ?? 0)
-    return (qty * Number(it.priceRub ?? 0)) / rate
+    return qty * Number(it.priceEur ?? 0)
   }
 
   const groups = useMemo(() => {
@@ -126,7 +125,7 @@ export function Smeta() {
       <p className="note">
         {rows.length} строк · смета: <b>€{fmt(totalEur)}</b>
         {condEur > 0 && <> (+ €{fmt(condEur)} условных строк — «Прачечная: своя» выключена)</>}
-        {' '}· курс {fmt(rate)} ₽/€ · итог отчёта = смета × (1 + буфер CAPEX сценария).
+        {' '}· итог отчёта = смета × (1 + буфер CAPEX сценария).
         IT-пакет, земля и наполнение номенклатуры правятся на своих вкладках.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
@@ -147,7 +146,7 @@ export function Smeta() {
               <th><Hint hint={{ text: COL.unit }}><span>Ед.</span></Hint></th>
               <th><Hint hint={{ text: COL.perModule }}><span>на мод.</span></Hint></th>
               <th><Hint hint={{ text: COL.qty }}><span>Кол-во</span></Hint></th>
-              <th><Hint hint={{ text: COL.price }}><span>Цена ₽</span></Hint></th>
+              <th><Hint hint={{ text: COL.price }}><span>Цена €</span></Hint></th>
               <th><Hint hint={{ text: COL.eur }}><span>Сумма €</span></Hint></th>
               <th><Hint hint={{ text: COL.group }}><span>Раздел</span></Hint></th>
               <th><Hint hint={{ text: COL.cond }}><span>Усл.</span></Hint></th>
@@ -209,7 +208,7 @@ export function Smeta() {
                             {it.row === FILLER_ROW ? (
                               <span className="note">—</span>
                             ) : (
-                              <NumField value={Number(it.priceRub ?? 0)} onChange={(v) => set(i, { priceRub: v })} step={50000} />
+                              <NumField value={Number(it.priceEur ?? 0)} onChange={(v) => set(i, { priceEur: v })} step={500} />
                             )}
                           </td>
                           <td><b>€{fmt(rowEur(it))}</b></td>
@@ -260,7 +259,7 @@ export function Smeta() {
             </Group>
             <Group grow>
               <NumberInput label="Кол-во" value={Number(draft.qty) || 0} min={0} onChange={(v) => setD({ qty: Number(v) || 0 })} />
-              <NumberInput label="Цена ₽" value={Number(draft.priceRub) || 0} min={0} step={50000} onChange={(v) => setD({ priceRub: Number(v) || 0 })} />
+              <NumberInput label="Цена €" value={Number(draft.priceEur) || 0} min={0} step={500} onChange={(v) => setD({ priceEur: Number(v) || 0 })} />
             </Group>
             <Group grow>
               <Checkbox label="Помодульная (кол-во на каждый активный модуль)" checked={!!draft._perModule} onChange={(e) => setD({ _perModule: e.currentTarget.checked })} />

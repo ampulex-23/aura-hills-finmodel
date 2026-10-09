@@ -26,7 +26,6 @@ export function Assumptions() {
       <div className="form-row">
       <fieldset>
         <legend>Общие</legend>
-        <Row label="Курс RUB/EUR" path="general.rubEurRate" value={P.general.rubEurRate} />
         <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
         <div className="field">
           <span>Ставка дисконтирования</span>
