@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react'
+import { Button, TextInput } from '@mantine/core'
 import type { ModelResult, ModuleSpec, NomenclatureItem, Params } from '../model/types'
 import { landedCost, activeModuleCount } from '../model/opex'
 import { useModel } from '../store'
@@ -340,6 +341,20 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
 export function Capex({ r }: { r: ModelResult }) {
   const { params } = useModel()
   const { capex } = r
+  const [q, setQ] = useState('')
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const qq = q.trim().toLowerCase()
+  const filtering = qq.length > 0
+  const hit = (...s: (string | undefined)[]) =>
+    s.some((x) => x != null && x.toLowerCase().includes(qq))
+  const toggle = (k: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  const isOpen = (k: string) => filtering || !collapsed.has(k)
   const amortTex = String.raw`\mathrm{аморт}=\sum_{групп}\frac{\mathrm{CAPEX}\cdot\mathrm{доля}_{группы}}{\mathrm{срок}_{лет}\cdot 12}`
   // Разделы сметы: строки с одинаковой группой собираются в один блок
   // (порядок разделов = порядок первого появления в capexItems, IT и земля в конце)
@@ -357,13 +372,24 @@ export function Capex({ r }: { r: ModelResult }) {
     }
   }
   const qty2 = (v?: number) => (v == null ? '' : fmt(v, 2))
-  const ItemRows = ({ it }: { it: (typeof capex.items)[number] }) => {
-    // Наполнение: детали группируем по категориям номенклатуры
+  // Отфильтрованная структура строки: совпадение ищем по названию позиции,
+  // кодам/названиям WBS, категориям затрат и SKU наполнения
+  const itemView = (it: (typeof capex.items)[number]) => {
+    const itemHit = !filtering || hit(it.name, it.group)
     const isNomenclature = it.detail?.some((d) => d.category)
+    const wbsOut = (it.wbs ?? [])
+      .map((sec) => {
+        const secHit = itemHit || hit(sec.code, sec.title)
+        const lines = secHit ? sec.items : sec.items.filter((l) => hit(l.code, l.name, l.tag))
+        return { sec, lines }
+      })
+      .filter((x) => x.lines.length > 0)
+    const detailOut =
+      itemHit || !filtering ? (it.detail ?? []) : (it.detail ?? []).filter((d) => hit(d.code, d.name, d.category))
     const catGroups: { name: string; rows: NonNullable<typeof it.detail>; total: number }[] = []
     if (isNomenclature) {
       const cix = new Map<string, number>()
-      for (const d of it.detail!) {
+      for (const d of detailOut) {
         const c = d.category ?? 'Прочее'
         const ix = cix.get(c)
         if (ix === undefined) {
@@ -375,6 +401,11 @@ export function Capex({ r }: { r: ModelResult }) {
         }
       }
     }
+    const visible = itemHit || wbsOut.length > 0 || detailOut.length > 0
+    return { it, itemHit, isNomenclature, wbsOut, detailOut, catGroups, visible }
+  }
+  const ItemRows = ({ v }: { v: ReturnType<typeof itemView> }) => {
+    const { it, isNomenclature, wbsOut, detailOut, catGroups } = v
     return (
       <Fragment>
         <tr>
@@ -384,29 +415,37 @@ export function Capex({ r }: { r: ModelResult }) {
           <td>{qty2(it.rate)}</td>
           <td><b>{fmt(it.eur)}</b></td>
         </tr>
-        {it.wbs?.map((sec) => (
-          <Fragment key={sec.code}>
-            <tr className="wbs-sec">
-              <td className="sticky">{sec.code} {sec.title}</td>
-              <td /><td /><td />
-              <td>{fmt(sec.total)}</td>
-            </tr>
-            {sec.items.map((l) => (
-              <tr key={l.code} className="wbs-line">
+        {wbsOut.map(({ sec, lines }) => {
+          const k = `s:${it.name}:${sec.code}`
+          const open = isOpen(k)
+          return (
+            <Fragment key={sec.code}>
+              <tr className="wbs-sec spec-head" onClick={() => toggle(k)}>
                 <td className="sticky">
-                  {l.code} {l.name}
-                  {l.tag && <span className="wbs-tag">{l.tag}</span>}
+                  <span className="spec-caret">{open ? '▾' : '▸'}</span>
+                  {sec.code} {sec.title}
                 </td>
-                <td>{l.unit ?? ''}</td>
-                <td>{qty2(l.qty)}</td>
-                <td>{qty2(l.rate)}</td>
-                <td>{fmt(l.eur)}</td>
+                <td /><td /><td />
+                <td>{fmt(lines.reduce((s, l) => s + l.eur, 0))}</td>
               </tr>
-            ))}
-          </Fragment>
-        ))}
+              {open &&
+                lines.map((l) => (
+                  <tr key={l.code} className="wbs-line">
+                    <td className="sticky">
+                      {l.code} {l.name}
+                      {l.tag && <span className="wbs-tag">{l.tag}</span>}
+                    </td>
+                    <td>{l.unit ?? ''}</td>
+                    <td>{qty2(l.qty)}</td>
+                    <td>{qty2(l.rate)}</td>
+                    <td>{fmt(l.eur)}</td>
+                  </tr>
+                ))}
+            </Fragment>
+          )
+        })}
         {!isNomenclature &&
-          it.detail?.map((d) => (
+          detailOut.map((d) => (
             <tr key={`${it.name}-${d.code}`} className="sub-detail">
               <td className="sticky"><small>{d.code} · {d.name}</small></td>
               <td><small>{d.unit ?? ''}</small></td>
@@ -415,50 +454,94 @@ export function Capex({ r }: { r: ModelResult }) {
               <td><small>{fmt(d.eur)}</small></td>
             </tr>
           ))}
-        {catGroups.map((cg) => (
-          <Fragment key={cg.name}>
-            <tr className="wbs-sec">
-              <td className="sticky">{cg.name}</td>
-              <td /><td /><td />
-              <td>{fmt(cg.total)}</td>
-            </tr>
-            {cg.rows.map((d) => (
-              <tr key={d.code} className="wbs-line">
-                <td className="sticky"><small>{d.code} {d.name}</small></td>
-                <td><small>{d.unit ?? ''}</small></td>
-                <td><small>{qty2(d.qty)}</small></td>
-                <td><small>{fmt(d.landed, 2)}</small></td>
-                <td><small>{fmt(d.eur)}</small></td>
+        {catGroups.map((cg) => {
+          const k = `c:${it.name}:${cg.name}`
+          const open = isOpen(k)
+          return (
+            <Fragment key={cg.name}>
+              <tr className="wbs-sec spec-head" onClick={() => toggle(k)}>
+                <td className="sticky">
+                  <span className="spec-caret">{open ? '▾' : '▸'}</span>
+                  {cg.name}
+                </td>
+                <td /><td /><td />
+                <td>{fmt(cg.total)}</td>
               </tr>
-            ))}
-          </Fragment>
-        ))}
+              {open &&
+                cg.rows.map((d) => (
+                  <tr key={d.code} className="wbs-line">
+                    <td className="sticky"><small>{d.code} {d.name}</small></td>
+                    <td><small>{d.unit ?? ''}</small></td>
+                    <td><small>{qty2(d.qty)}</small></td>
+                    <td><small>{fmt(d.landed, 2)}</small></td>
+                    <td><small>{fmt(d.eur)}</small></td>
+                  </tr>
+                ))}
+            </Fragment>
+          )
+        })}
       </Fragment>
     )
   }
+  // Ключи всех сворачиваемых блоков — для «Свернуть всё»
+  const allKeys: string[] = []
+  for (const g of groups) {
+    allKeys.push(`g:${g.name}`)
+    for (const it of g.items) {
+      for (const sec of it.wbs ?? []) allKeys.push(`s:${it.name}:${sec.code}`)
+      if (it.detail?.some((d) => d.category))
+        for (const c of new Set(it.detail.map((d) => d.category ?? 'Прочее'))) allKeys.push(`c:${it.name}:${c}`)
+    }
+  }
+  const views = groups.map((g) => ({
+    ...g,
+    items: g.items.map(itemView).filter((v) => v.visible),
+  }))
   return (
-    <div className="table-wrap">
-      <table className="month-table scen capex-table">
-        <thead>
-          <tr>
-            <th className="sticky">Статья затрат / элемент работ</th>
-            <th>Ед.</th>
-            <th>Кол-во</th>
-            <th>Ставка, €</th>
-            <th>Сумма, €</th>
-          </tr>
-        </thead>
-        <tbody>
-          {groups.map((g, gi) => (
-            <Fragment key={g.name}>
-              <tr className="capex-group">
-                <td className="sticky">Раздел {gi + 1}. {g.name}</td>
-                <td /><td /><td />
-                <td>{fmt(g.total)}</td>
-              </tr>
-              {g.items.map((it) => <ItemRows key={it.name} it={it} />)}
-            </Fragment>
-          ))}
+    <div>
+      <div className="controls" style={{ marginBottom: 10 }}>
+        <TextInput
+          placeholder="Фильтр по статье, коду WBS, категории или SKU…"
+          value={q}
+          onChange={(e) => setQ(e.currentTarget.value)}
+          w={400}
+          size="sm"
+        />
+        {filtering && <span className="note">позиций: {views.reduce((s, g) => s + g.items.length, 0)}</span>}
+        <Button size="sm" variant="light" onClick={() => setCollapsed(new Set(allKeys))}>Свернуть всё</Button>
+        <Button size="sm" variant="light" onClick={() => setCollapsed(new Set())}>Развернуть всё</Button>
+      </div>
+      <div className="table-wrap">
+        <table className="month-table scen capex-table">
+          <thead>
+            <tr>
+              <th className="sticky">Статья затрат / элемент работ</th>
+              <th>Ед.</th>
+              <th>Кол-во</th>
+              <th>Ставка, €</th>
+              <th>Сумма, €</th>
+            </tr>
+          </thead>
+          <tbody>
+            {views.map((g, gi) => {
+              if (g.items.length === 0) return null
+              const gk = `g:${g.name}`
+              const gOpen = isOpen(gk)
+              const gTotal = g.items.reduce((s, v) => s + v.it.eur, 0)
+              return (
+                <Fragment key={g.name}>
+                  <tr className="capex-group spec-head" onClick={() => toggle(gk)}>
+                    <td className="sticky">
+                      <span className="spec-caret">{gOpen ? '▾' : '▸'}</span>
+                      Раздел {gi + 1}. {g.name}
+                    </td>
+                    <td /><td /><td />
+                    <td>{fmt(gTotal)}</td>
+                  </tr>
+                  {gOpen && g.items.map((v) => <ItemRows key={v.it.name} v={v} />)}
+                </Fragment>
+              )
+            })}
           <tr className="bold">
             <td className="sticky">ИТОГО CAPEX</td>
             <td /><td /><td />
@@ -493,8 +576,9 @@ export function Capex({ r }: { r: ModelResult }) {
               </Hint>
             </td>
           </tr>
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
