@@ -174,6 +174,9 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 }
 /* Номенклатура — компактнее: узкие инпуты/селекты */
 .month-table.nom .num input { width: 50px; }
+/* Смета: поле цены в рублях — шире (миллионы), кол-во — по-прежнему узкое */
+.month-table.smeta td.price .num input { width: 104px; text-align: right; }
+.month-table.smeta td.qty .num input { width: 56px; }
 .month-table.nom .mantine-Select-input, .month-table.nom .mantine-Autocomplete-input { padding-left: 6px; padding-right: 20px; }
 /* Строка добавления в состав спецификации */
 .month-table tr.spec-add td { background: rgba(91,141,217,.05); border-top: 1px dashed #2a3548; }

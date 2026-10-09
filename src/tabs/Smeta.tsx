@@ -139,7 +139,7 @@ export function Smeta() {
         <Button size="sm" variant="light" onClick={openAdd}>+ Строка</Button>
       </div>
       <div className="table-wrap">
-        <table className="month-table nom">
+        <table className="month-table nom smeta">
           <thead>
             <tr>
               <th className="sticky"><Hint hint={{ text: COL.name }}><span>Наименование</span></Hint></th>
@@ -189,7 +189,7 @@ export function Smeta() {
                               onChange={(e) => set(i, { qty: qtyFor(e.currentTarget.checked, n ?? (Number(it.qty) || 1)) })}
                             />
                           </td>
-                          <td>
+                          <td className="qty">
                             {it.row === FILLER_ROW ? (
                               <span className="note">справ.</span>
                             ) : (
@@ -200,7 +200,7 @@ export function Smeta() {
                               />
                             )}
                           </td>
-                          <td>
+                          <td className="price">
                             {it.row === FILLER_ROW ? (
                               <span className="note">—</span>
                             ) : (

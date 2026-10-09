@@ -50,6 +50,7 @@ export function NumField({
       className="num"
       size="xs"
       hideControls
+      thousandSeparator=" "
       disabled={disabled}
       step={step ?? (pct ? 1 : 0.01)}
       suffix={suffix ? ` ${suffix}` : undefined}
