@@ -1,5 +1,5 @@
 import type { CapexItem, NomenclatureItem, Params, WbsSection } from './types'
-import { activeModuleCount, landedCost, nomenclatureCapexEur } from './opex'
+import { activeModuleCount, landedCost, nomenclatureEquipEur, nomenclatureStockEur } from './opex'
 
 // CAPEX: qty × цена EUR = EUR; строка «Наполнение» = справочник; итог × (1+capexAdj)
 // qty 'MODULES_COUNT[:N]' → N единиц на каждый активный модуль (N по умолчанию 1).
@@ -41,17 +41,14 @@ export function computeCapex(
     let rateEur: number | undefined
     let detail: Item['detail']
     if (it.row === 30) {
-      eur = nomenclatureCapexEur(items) // наполнение — из справочника, уже в EUR
+      eur = nomenclatureEquipEur(items) // наполнение — оборудование из справочника
       unit = 'справ.'
       detail = items
-        .filter((x) => x.use === 'CAPEX' || (x.initialQty ?? 0) > 0)
-        .map((x) => {
-          const qty = x.use === 'CAPEX' ? x.qty : (x.initialQty ?? 0)
-          return {
-            code: x.code, name: x.name + (x.use === 'CAPEX' ? '' : ' (нач. запас)'),
-            qty, landed: landedCost(x), eur: landedCost(x) * qty, category: x.category, unit: x.unit,
-          }
-        })
+        .filter((x) => x.use === 'CAPEX')
+        .map((x) => ({
+          code: x.code, name: x.name,
+          qty: x.qty, landed: landedCost(x), eur: landedCost(x) * x.qty, category: x.category, unit: x.unit,
+        }))
     } else {
       // 'MODULES_COUNT' = 1 ед. на активный модуль; 'MODULES_COUNT:N' = N ед. на модуль.
       // Так оборудование модулей (печи, купели, ванны) масштабируется при активации
@@ -84,6 +81,24 @@ export function computeCapex(
     }
     return { name: it.name ?? '', eur, group: it.group, unit, qty, rate: rateEur, wbs, detail }
   })
+  // Смета закупа: стартовые запасы расходников (initialQty) — отдельной группой
+  // в CAPEX, правится на вкладке «Смета закупа».
+  const stockEur = nomenclatureStockEur(items)
+  if (stockEur > 0) {
+    out.push({
+      name: 'Закуп: стартовые запасы',
+      eur: stockEur,
+      group: 'Смета закупа',
+      unit: 'справ.',
+      detail: items
+        .filter((x) => x.use !== 'CAPEX' && (x.initialQty ?? 0) > 0)
+        .map((x) => ({
+          code: x.code, name: x.name,
+          qty: x.initialQty ?? 0, landed: landedCost(x), eur: landedCost(x) * (x.initialQty ?? 0),
+          category: x.category, unit: x.unit,
+        })),
+    })
+  }
   // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
   if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur, group: 'IT и автоматизация' })))
   // Земля (режим purchase): входит в CAPEX, но НЕ амортизируется — земля не изнашивается

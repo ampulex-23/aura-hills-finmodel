@@ -141,7 +141,7 @@ describe('аудит-регрессии', () => {
     const r = runModel(clone(), matrix, items2, services, 'Base')
     const robe = items2.find((x) => x.code === 'NC-087')!
     const landed = robe.price + Math.max(robe.deliveryFix, robe.price * robe.deliveryPct)
-    const capexRow = r.capex.items.find((i) => i.name.includes('Наполнение'))!
+    const capexRow = r.capex.items.find((i) => i.name.includes('Закуп'))!
     // у NC-087 уже есть initialQty 6 из Блока 5 — дельта считается от неё
     const prevQty = items.find((x) => x.code === 'NC-087')!.initialQty ?? 0
     expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + landed * (100 - prevQty), 2)

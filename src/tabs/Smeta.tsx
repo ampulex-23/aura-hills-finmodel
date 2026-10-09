@@ -5,7 +5,7 @@ import {
 } from '@mantine/core'
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt } from '../components/ui'
-import { activeModuleCount, nomenclatureCapexEur } from '../model/opex'
+import { activeModuleCount, nomenclatureEquipEur } from '../model/opex'
 import type { CapexItem } from '../model/types'
 
 const COL = {
@@ -51,7 +51,7 @@ export function Smeta() {
 
   const rows = params.capexItems
   const modulesNow = activeModuleCount(params)
-  const fillerEur = nomenclatureCapexEur(items)
+  const fillerEur = nomenclatureEquipEur(items)
   const laundryOn = !!params.laundry?.enabled
 
   const rowEur = (it: CapexItem): number => {
@@ -284,7 +284,7 @@ export function Smeta() {
               <p className="note">⚠ Помодульная строка — её сумма масштабируется числом активных модулей.</p>
             )}
             {deleteAsk.it.row === FILLER_ROW && (
-              <p className="note">⚠ Это строка «Наполнение» — без неё CAPEX-позиции номенклатуры не попадут в смету.</p>
+              <p className="note">⚠ Это строка «Наполнение» — без неё оборудование и мебель из Номенклатуры не попадут в смету. Стартовые запасы — на вкладке «Смета закупа».</p>
             )}
             <Group justify="flex-end" mt="md">
               <Button variant="default" onClick={() => setDeleteAsk(null)}>Отмена</Button>

@@ -5,7 +5,7 @@ import {
   IconAdjustmentsHorizontal, IconArrowsExchange, IconBook2, IconChartLine,
   IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCpu,
   IconFlask2, IconLayoutDashboard, IconListDetails, IconMenu2,
-  IconPercentage, IconReceipt2, IconReportMoney, IconSparkles, IconUserCog, IconUsers, IconVersions,
+  IconPercentage, IconReceipt2, IconReportMoney, IconShoppingCart, IconSparkles, IconUserCog, IconUsers, IconVersions,
 } from '@tabler/icons-react'
 import { useModel } from './store'
 import { runModel } from './model/run'
@@ -17,6 +17,7 @@ import { Scenarios } from './tabs/Scenarios'
 import { CashFlow, Capex, Fot, Opex, Pnl, Revenue, Taxes } from './tabs/Reports'
 import { Nomenclature } from './tabs/Nomenclature'
 import { Smeta } from './tabs/Smeta'
+import { Zakup } from './tabs/Zakup'
 import { Specs } from './tabs/Specs'
 import { It } from './tabs/It'
 import { Staff } from './tabs/Staff'
@@ -27,14 +28,14 @@ import { AiChat, useChat } from './components/AiChat'
 import { DOCS, getDoc } from './docs'
 
 type Tab =
-  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Смета' | 'Спецификации' | 'IT'
+  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Смета стройки' | 'Смета закупа' | 'Спецификации' | 'IT'
   | 'Выручка' | 'OPEX' | 'ФОТ' | 'CAPEX' | 'Налоги' | 'P&L' | 'Cash-Flow' | 'Sensitivity'
 
 // Hash-роутинг: #/dashboard … #/sensitivity — вкладка переживает F5, ссылки шарятся.
 const TAB_SLUGS: Record<Tab, string> = {
   'Дашборд': 'dashboard', 'Допущения': 'assumptions', 'Сценарии': 'scenarios',
   'Штат': 'staff',
-  'Номенклатура': 'nomenclature', 'Смета': 'smeta', 'Спецификации': 'specs', 'IT': 'it',
+  'Номенклатура': 'nomenclature', 'Смета стройки': 'smeta', 'Смета закупа': 'zakup', 'Спецификации': 'specs', 'IT': 'it',
   'Выручка': 'revenue', 'OPEX': 'opex', 'ФОТ': 'fot', 'CAPEX': 'capex',
   'Налоги': 'taxes', 'P&L': 'pnl', 'Cash-Flow': 'cashflow', 'Sensitivity': 'sensitivity',
 }
@@ -61,7 +62,8 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { id: 'Сценарии', label: 'Сценарии', icon: IconVersions },
       { id: 'Штат', label: 'Штат', icon: IconUserCog },
       { id: 'Номенклатура', label: 'Номенклатура', icon: IconListDetails },
-      { id: 'Смета', label: 'Смета', icon: IconCoins },
+      { id: 'Смета стройки', label: 'Смета стройки', icon: IconCoins },
+      { id: 'Смета закупа', label: 'Смета закупа', icon: IconShoppingCart },
       { id: 'Спецификации', label: 'Спецификации', icon: IconClipboardList },
       { id: 'IT', label: 'IT', icon: IconCpu },
     ],
@@ -276,7 +278,8 @@ export default function App() {
           {tab === 'P&L' && <Pnl r={result} labels={opsLabels} />}
           {tab === 'Cash-Flow' && <CashFlow r={result} />}
           {tab === 'Номенклатура' && <Nomenclature />}
-          {tab === 'Смета' && <Smeta />}
+          {tab === 'Смета стройки' && <Smeta />}
+          {tab === 'Смета закупа' && <Zakup />}
           {tab === 'Спецификации' && <Specs />}
           {tab === 'IT' && <It />}
           {tab === 'Sensitivity' && <Sensitivity r={result} />}

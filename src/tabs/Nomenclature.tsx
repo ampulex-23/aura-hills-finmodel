@@ -22,7 +22,7 @@ const COL = {
   norm: 'Расход единиц позиции на единицу базы: 0.25 веника на слот, 0.1 л масла на гостя, 2 баллона в месяц.',
   base: 'На что умножается норма: оплаченные слоты месяца, гости (включая членов), или просто месяц.',
   qty: 'Единиц, закупаемых в стройке: landed × кол-во → строка «Наполнение» CAPEX.',
-  initial: 'Стартовый комплект на открытие: landed × кол-во → «Наполнение» CAPEX, а норма продолжает пополнять запас помесячно. Для халатов, полотенец и т.п.',
+  initial: 'Стартовый комплект на открытие — правится на вкладке «Смета закупа».',
   use: 'Режим учёта — переносит позицию между вкладками. OPEX — списание по норме; CAPEX — разовая закупка «Кол-во»; Спецификация — материал себестоимости услуг: расход задаётся в спеке услуги, поле «Норма» здесь НЕ применяется (иначе двойное списание).',
 }
 
@@ -107,9 +107,9 @@ export function Nomenclature() {
   return (
     <div>
       <p className="note">
-        {items.length} позиций · наполнение CAPEX: €{fmt(capexEur)} ·
+        {items.length} позиций · закупка в CAPEX (оборудование + запасы): €{fmt(capexEur)} ·
         landed cost = цена + max(доставка €/ед, цена × доставка %).
-        «Нач. запас» — разовая закупка в стройке для OPEX/Спецификация-позиций: стартовый комплект, который дальше пополняется нормой (халаты, полотенца). У CAPEX-позиций «Кол-во» само является закупкой на открытие.
+        Стартовый запас расходников на открытие правится на вкладке «Смета закупа». У CAPEX-позиций «Кол-во» само является закупкой на открытие.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
         <SegmentedControl
@@ -154,7 +154,6 @@ export function Nomenclature() {
                   <th><Hint hint={{ text: COL.article }}><span>Статья OPEX</span></Hint></th>
                   <th><Hint hint={{ text: COL.norm }}><span>Норма</span></Hint></th>
                   <th><Hint hint={{ text: COL.base }}><span>База</span></Hint></th>
-                  <th><Hint hint={{ text: COL.initial }}><span>Нач. запас</span></Hint></th>
                 </>
               )}
               <th><Hint hint={{ text: COL.use }}><span>Учёт</span></Hint></th><th></th>
@@ -169,7 +168,7 @@ export function Nomenclature() {
                   className="section spec-head"
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={tab === 'CAPEX' ? 11 : 14} className="sticky">
+                  <td colSpan={tab === 'CAPEX' ? 11 : 13} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
@@ -221,9 +220,6 @@ export function Nomenclature() {
                               />
                             </td>
                           </>
-                        )}
-                        {tab !== 'CAPEX' && (
-                          <td><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></td>
                         )}
                         <td>
                           <Select
@@ -283,7 +279,6 @@ export function Nomenclature() {
             </Group>
             <Group grow>
               <NumberInput label="Кол-во (CAPEX)" value={draft.qty} min={0} disabled={draft.use !== 'CAPEX'} onChange={(v) => setD({ qty: Number(v) || 0 })} />
-              <NumberInput label="Нач. запас (закупка на открытие)" value={draft.initialQty ?? 0} min={0} onChange={(v) => setD({ initialQty: Number(v) || 0 })} />
               <TextInput label="Примечание" value={draft.note ?? ''} onChange={(e) => setD({ note: e.currentTarget.value || null })} />
             </Group>
             <Group justify="flex-end" mt="md">
