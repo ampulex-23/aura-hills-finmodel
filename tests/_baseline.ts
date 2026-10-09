@@ -43,6 +43,8 @@ export function baselineParams(): Params {
   p.fot.count = [6, 4, 2, 2, 1, 1, 2, 1, 2]
   p.fot.phases = []
   for (const m of p.modules) if (m.status !== 'Активен') m.launchDate = '2029-01-01'
+  // Строки CAPEX, добавленные после эталонов (здание персонала, пожарка; прачечная выкл.)
+  p.capexItems = p.capexItems.filter((it) => ![32, 33].includes(it.row ?? -1))
   return p
 }
 

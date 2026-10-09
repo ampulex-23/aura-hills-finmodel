@@ -251,6 +251,27 @@ export function Assumptions() {
         <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5} />
         <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%). Ставка повара отображается во вкладке «Штат».</small>
       </fieldset>
+
+      <fieldset>
+        <legend>Прачечная</legend>
+        <label className="field">
+          <span>Своё оборудование (иначе — аутсорс)</span>
+          <SegmentedControl
+            size="xs"
+            data={[{ value: 'on', label: 'Вкл' }, { value: 'off', label: 'Выкл' }]}
+            value={P.laundry?.enabled ? 'on' : 'off'}
+            onChange={(v) => setParam('laundry.enabled', v === 'on')}
+          />
+        </label>
+        {(P.laundry?.capex ?? []).map((c, i) => (
+          <Row key={i} label={c.name} path={`laundry.capex.${i}.eur`} value={c.eur} step={100} />
+        ))}
+        <small className="note">
+          Базовый режим — аутсорсинг стирки (расходники уже в номенклатуре OPEX).
+          «Вкл» добавляет разовый CAPEX оборудования прачечной (Китай) в период стройки
+          — размещается в здании для персонала. Расходники в OPEX не отключаются.
+        </small>
+      </fieldset>
       </div>
 
       <div className="form-row">

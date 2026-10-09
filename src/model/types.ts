@@ -220,6 +220,13 @@ export interface Params {
     opex: { name: string; base: number }[]
     capex: { name: string; eur: number }[]
   }
+  // Прачечная: базовый режим — аутсорсинг (расходники уже в номенклатуре OPEX).
+  // Опция enabled добавляет разовый CAPEX собственного оборудования (Китай)
+  // в период стройки; OPEX-расходники при этом не отключаются автоматически.
+  laundry?: {
+    enabled: boolean
+    capex: { name: string; eur: number }[]
+  }
   fot: {
     roles: string[]
     count: number[]

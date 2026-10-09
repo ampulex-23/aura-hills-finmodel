@@ -83,6 +83,8 @@ export function computeCapex(
   })
   // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
   if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur, group: 'IT и автоматизация' })))
+  // Прачечная — опция «своё оборудование» (база: аутсорсинг). Уже в EUR.
+  if (params.laundry?.enabled) out.push(...params.laundry.capex.map((c) => ({ name: c.name, eur: c.eur, group: 'Прачечная (опция)' })))
   // Земля (режим purchase): входит в CAPEX, но НЕ амортизируется — земля не изнашивается
   const landEur = params.land.mode === 'purchase' ? params.land.purchaseCost : 0
   if (landEur) out.push({ name: 'Земля / участок', eur: landEur, group: 'Земля' })
