@@ -17,7 +17,7 @@ const growthAt = (g: number, k: number) => Math.pow(1 + g, Math.floor(k / 12))
 function modulesAt(params: Params, k: number): ModuleSpec[] {
   const [y0, m0] = params.meta.openingDate.slice(0, 7).split('-').map(Number)
   const t = y0 * 12 + (m0 - 1) + k
-  const at = Math.floor(t / 12) * 12 + (t % 12) + 1
+  const at = Math.floor(t / 12) * 100 + (t % 12) + 1 // YYYYMM для сравнения с launchDate
   return params.modules.filter(
     (m) => m.status === 'Активен' && Number(m.launchDate.replace('-', '')) <= at,
   )
@@ -67,7 +67,7 @@ function revenueHints(params: Params, r: ModelResult) {
       const avgPrice = m.slots ? m.rental / (m.slots * g) : 0
       return {
         title: 'Аренда бань',
-        text: 'Проданные слоты × средняя цена слота (микс утро/день/вечер по модулю) × годовой рост цен.',
+        text: 'Проданные слоты × средняя цена слота (фикс-цена бани 250/500/750, доли бань равные) × годовой рост цен.',
         tex: String.raw`\mathrm{rental}=\mathrm{slots}\cdot\overline{\mathrm{цена}}_{\mathrm{микс}}\cdot(1+\mathrm{рост})^{\mathrm{год}}`,
         calc: `${fmt(m.slots)} слот × ${e1(avgPrice)} × рост ${g.toFixed(2)} = ${e0(m.rental)}`,
       }
