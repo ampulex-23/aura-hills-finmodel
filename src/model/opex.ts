@@ -6,6 +6,12 @@ export function landedCost(item: NomenclatureItem): number {
   return item.price + Math.max(item.deliveryFix, item.price * item.deliveryPct)
 }
 
+// Себестоимость спекового материала: при своей прачечной позиции с ownPrice
+// (комплекты стирки) списываются по расходникам цикла, а не по аутсорс-тарифу.
+function specMaterialCost(item: NomenclatureItem, params: Params): number {
+  return params.laundry?.enabled && item.ownPrice != null ? item.ownPrice : landedCost(item)
+}
+
 // Постоянные + IT расходы месяца 0 (без инфляции) — для pre-opening burn в стройке
 export function fixedOpexMonthly(params: Params): number {
   return (
@@ -86,7 +92,7 @@ export function computeOpexMonth(
   const specRows = [...specQty.entries()].map(([code, qty]) => {
     const m = byCode.get(code)
     const article = m?.opexArticle ?? m?.category ?? 'Материалы услуг'
-    return { article, amount: qty * (m ? landedCost(m) : 0) }
+    return { article, amount: qty * (m ? specMaterialCost(m, params) : 0) }
   })
 
   // Помесячная детализация по позициям (для раскрытия статей в отчёте):
@@ -104,7 +110,7 @@ export function computeOpexMonth(
   for (const [code, qty] of specQty) {
     const m = byCode.get(code)
     if (!m || qty <= 0) continue
-    const landed = landedCost(m)
+    const landed = specMaterialCost(m, params)
     variableDetail.push({
       article: m.opexArticle ?? m.category ?? 'Материалы услуг', code,
       name: m.name, unit: m.unit, basis: 'спека', qty, landed, amount: qty * landed * infl,

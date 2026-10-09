@@ -31,7 +31,11 @@ export function computeCapex(
     wbs?: (WbsSection & { total: number })[]
     detail?: { code: string; name: string; qty: number; landed: number; eur: number; category?: string; unit?: string }[]
   }
-  const out: Item[] = params.capexItems.map((it) => {
+  const out: Item[] = params.capexItems
+    // Условные строки (своя прачечная) входят в смету только при включённом режиме —
+    // оборудование амортизируется в общем графике amort.shares.
+    .filter((it) => !it.ifLaundry || params.laundry?.enabled)
+    .map((it) => {
     let eur: number
     let unit: string | undefined = it.unit
     let qty: number | undefined
@@ -83,8 +87,6 @@ export function computeCapex(
   })
   // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
   if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur, group: 'IT и автоматизация' })))
-  // Прачечная — опция «своё оборудование» (база: аутсорсинг). Уже в EUR.
-  if (params.laundry?.enabled) out.push(...params.laundry.capex.map((c) => ({ name: c.name, eur: c.eur, group: 'Прачечная (опция)' })))
   // Земля (режим purchase): входит в CAPEX, но НЕ амортизируется — земля не изнашивается
   const landEur = params.land.mode === 'purchase' ? params.land.purchaseCost : 0
   if (landEur) out.push({ name: 'Земля / участок', eur: landEur, group: 'Земля' })

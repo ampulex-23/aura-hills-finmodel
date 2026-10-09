@@ -255,21 +255,20 @@ export function Assumptions() {
       <fieldset>
         <legend>Прачечная</legend>
         <label className="field">
-          <span>Своё оборудование (иначе — аутсорс)</span>
+          <span>Режим стирки</span>
           <SegmentedControl
             size="xs"
-            data={[{ value: 'on', label: 'Вкл' }, { value: 'off', label: 'Выкл' }]}
+            data={[{ value: 'off', label: 'Аутсорс' }, { value: 'on', label: 'Своя' }]}
             value={P.laundry?.enabled ? 'on' : 'off'}
             onChange={(v) => setParam('laundry.enabled', v === 'on')}
           />
         </label>
-        {(P.laundry?.capex ?? []).map((c, i) => (
-          <Row key={i} label={c.name} path={`laundry.capex.${i}.eur`} value={c.eur} step={100} />
-        ))}
         <small className="note">
-          Базовый режим — аутсорсинг стирки (расходники уже в номенклатуре OPEX).
-          «Вкл» добавляет разовый CAPEX оборудования прачечной (Китай) в период стройки
-          — размещается в здании для персонала. Расходники в OPEX не отключаются.
+          <b>Аутсорс</b>: стирка комплектов по тарифу прачечной — списывается в OPEX
+          спеками услуг (NC-159 €4.99/гостевой набор, NC-210 €1.5/процедурный).
+          <b>Своя</b>: оборудование входит в CAPEX стройки (группа «Прачечная (своя)»,
+          ~€8k, амортизируется), а комплекты списываются по расходникам цикла
+          (ownPrice €0.9/€0.45 — порошок/гель; коммуналка не считается).
         </small>
       </fieldset>
       </div>

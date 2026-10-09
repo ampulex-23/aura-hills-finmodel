@@ -47,6 +47,10 @@ export interface NomenclatureItem {
    *  обычного учёта позиции: для OPEX/Спецификации это стартовый комплект,
    *  который потом пополняется помесячной нормой. */
   initialQty?: number
+  /** Себестоимость единицы при своей прачечной (params.laundry.enabled):
+   *  расходники на цикл стирки вместо аутсорс-тарифа в `price`. Только для
+   *  спековых позиций категории «Прачечная / текстиль». */
+  ownPrice?: number
   note: string | null
 }
 
@@ -106,6 +110,8 @@ export interface CapexItem {
   group?: string
   /** WBS-детализация (сумма строк = эталонной стоимости позиции; для помодульных — на текущий контур модулей) */
   wbs?: WbsSection[]
+  /** Условная строка: включается в CAPEX только при своей прачечной (params.laundry.enabled) */
+  ifLaundry?: boolean
 }
 
 /** CAPM-блок стоимости собственного капитала: ke = rf + β·ERP + страновая + size/startup премии */
@@ -220,13 +226,12 @@ export interface Params {
     opex: { name: string; base: number }[]
     capex: { name: string; eur: number }[]
   }
-  // Прачечная: базовый режим — аутсорсинг (расходники уже в номенклатуре OPEX).
-  // Опция enabled добавляет разовый CAPEX собственного оборудования (Китай)
-  // в период стройки; OPEX-расходники при этом не отключаются автоматически.
-  laundry?: {
-    enabled: boolean
-    capex: { name: string; eur: number }[]
-  }
+  // Прачечная — переключатель режима. enabled=false (база): стирка на аутсорсе —
+  // спековые позиции NC-159/NC-210 списываются по тарифу прачечной (price).
+  // enabled=true (своя): в CAPEX включаются строки capexItems с флагом ifLaundry
+  // (оборудование, амортизируется в общем графике), а спековые позиции списываются
+  // по собственной себестоимости цикла (ownPrice — порошок/гель, без коммуналки).
+  laundry?: { enabled: boolean }
   fot: {
     roles: string[]
     count: number[]
