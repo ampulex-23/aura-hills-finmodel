@@ -215,7 +215,7 @@ export function Nomenclature() {
                             <td>
                               <Select
                                 size="xs" w={58}
-                                data={['слот', 'гость', 'мес']}
+                                data={it.use === 'Спецификация' ? ['слот', 'гость'] : ['слот', 'гость', 'мес']}
                                 value={it.normBase} placeholder="—" clearable
                                 onChange={(v) => setItem(i, { normBase: v as NomenclatureItem['normBase'] })}
                               />
@@ -279,7 +279,7 @@ export function Nomenclature() {
             <Group grow>
               <Autocomplete label="Статья OPEX" data={articles} filter={({ options }) => options} disabled={draft.use === 'CAPEX'} value={draft.opexArticle ?? ''} onChange={(v) => setD({ opexArticle: v || null })} />
               <NumberInput label="Норма расхода" value={draft.norm} min={0} decimalScale={3} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ norm: Number(v) || 0 })} />
-              <Select label="База нормы" data={['слот', 'гость', 'мес']} value={draft.normBase} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ normBase: (v as NomenclatureItem['normBase']) ?? null })} />
+              <Select label="База нормы" data={draft.use === 'Спецификация' ? ['слот', 'гость'] : ['слот', 'гость', 'мес']} value={draft.normBase} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ normBase: (v as NomenclatureItem['normBase']) ?? null })} />
             </Group>
             <Group grow>
               <NumberInput label="Кол-во (CAPEX)" value={draft.qty} min={0} disabled={draft.use !== 'CAPEX'} onChange={(v) => setD({ qty: Number(v) || 0 })} />

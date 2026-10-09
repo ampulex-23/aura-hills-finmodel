@@ -77,6 +77,14 @@ describe('инварианты расчёта', () => {
       }
       expect(sum(r.cashflow.map((m) => m.presale + m.presaleUnwind))).toBeCloseTo(0, 4)
     })
+    it(`${name}: детализация переменных статей сходится со статьёй и итогом`, () => {
+      // Σ позиций внутри статьи = строка статьи; Σ всех позиций = variableTotal
+      for (const m of r.opex) {
+        for (const v of m.variable)
+          expect(sum(m.variableDetail.filter((d) => d.article === v.article).map((d) => d.amount))).toBeCloseTo(v.amount, 6)
+        expect(sum(m.variableDetail.map((d) => d.amount))).toBeCloseTo(m.variableTotal, 6)
+      }
+    })
     it(`${name}: аренда не убывает год к году при неубывающей загрузке и росте цен ≥ 0`, () => {
       // Ловит каннибализацию членскими слотами (аудит 14, C-2)
       const yr = (y: number) => sum(r.revenue.slice(y * 12, y * 12 + 12).map((m) => m.rental))

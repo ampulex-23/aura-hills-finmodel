@@ -88,6 +88,28 @@ export function computeOpexMonth(
     const article = m?.opexArticle ?? m?.category ?? 'Материалы услуг'
     return { article, amount: qty * (m ? landedCost(m) : 0) }
   })
+
+  // Помесячная детализация по позициям (для раскрытия статей в отчёте):
+  // нормативные — норма × драйвер месяца; спековые — физическое списание.
+  const variableDetail: OpexMonth['variableDetail'] = []
+  for (const it of opexItems) {
+    const baseVal = it.normBase === 'слот' ? rev.slots : it.normBase === 'гость' ? rev.guests : 1
+    const qty = it.norm * baseVal
+    const landed = landedCost(it)
+    variableDetail.push({
+      article: it.opexArticle!, code: it.code, name: it.name, unit: it.unit,
+      basis: it.normBase!, qty, landed, amount: qty * landed * infl,
+    })
+  }
+  for (const [code, qty] of specQty) {
+    const m = byCode.get(code)
+    if (!m || qty <= 0) continue
+    const landed = landedCost(m)
+    variableDetail.push({
+      article: m.opexArticle ?? m.category ?? 'Материалы услуг', code,
+      name: m.name, unit: m.unit, basis: 'спека', qty, landed, amount: qty * landed * infl,
+    })
+  }
   const articles = [
     ...new Set([
       ...opexItems.map((it) => it.opexArticle!),
@@ -130,6 +152,7 @@ export function computeOpexMonth(
     itTotal,
     landRent,
     variable,
+    variableDetail,
     variableTotal,
     pct: { acquiring, maintenance, fbCost, ota },
     pctTotal: acquiring + maintenance + fbCost + ota,

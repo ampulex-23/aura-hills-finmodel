@@ -256,11 +256,37 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
         ]
       : []),
     { label: 'ПЕРЕМЕННЫЕ (номенклатура)', values: [], section: true },
-    ...O[0].variable.map((v) => ({
-      label: v.article,
-      values: O.map((m) => m.variable.find((x) => x.article === v.article)?.amount ?? 0),
-      hint: variableHint(v.article),
-    })),
+    ...O[0].variable.map((v) => {
+      // Детализация статьи до позиций номенклатуры: нормы (слот/гость/мес)
+      // и спековое списание — раскрывается кликом по статье.
+      const codes = [...new Set(
+        O.flatMap((m) => m.variableDetail.filter((d) => d.article === v.article).map((d) => d.code)),
+      )]
+      const children: RowDef[] = codes.map((code) => {
+        const any = O.map((m) => m.variableDetail.find((d) => d.article === v.article && d.code === code)).find(Boolean)!
+        return {
+          label: `${code} · ${any.name}`,
+          values: O.map((m) => m.variableDetail.find((d) => d.article === v.article && d.code === code)?.amount ?? 0),
+          hint: (ci: number): CellHint | null => {
+            const d = O[ci].variableDetail.find((x) => x.article === v.article && x.code === code)
+            if (!d || d.qty <= 0) return null
+            return {
+              title: `${d.code} ${d.name}`,
+              text: d.basis === 'спека'
+                ? 'Списание через спеки услуг: Σ (кол-во в спеке × продано услуг месяца) × landed-цена (цена + доставка), с индексацией на инфляцию.'
+                : `Нормативный расход: норма × база «${d.basis}» месяца × landed-цена (цена + доставка), с индексацией на инфляцию.`,
+              calc: `${fmt(d.qty, 2)} ${d.unit} × ${e1(d.landed)} € × инфл ${inflAt(ci).toFixed(2)} = ${e0(d.amount)}`,
+            }
+          },
+        }
+      })
+      return {
+        label: v.article,
+        values: O.map((m) => m.variable.find((x) => x.article === v.article)?.amount ?? 0),
+        hint: variableHint(v.article),
+        children,
+      }
+    }),
     {
       label: 'Итого переменные', values: O.map((m) => m.variableTotal), bold: true,
       hint: (ci) => ({ title: 'Итого переменные', calc: `Σ переменных = ${e0(O[ci].variableTotal)}` }),
@@ -292,7 +318,7 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
       }),
     },
   ]
-  return <MonthTable rows={rows} labels={labels} withSum />
+  return <MonthTable rows={rows} labels={labels} withSum searchable />
 }
 
 export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {

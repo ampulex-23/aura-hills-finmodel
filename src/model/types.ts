@@ -317,6 +317,20 @@ export interface OpexMonth {
   itTotal: number
   landRent: number // аренда земли в операционке (mode='lease'), с инфляцией
   variable: { article: string; amount: number }[]
+  /** Детализация переменных статей до позиций номенклатуры — для раскрытия
+   *  статей в отчёте OPEX. Σ amount по статье ≡ variable[].amount. */
+  variableDetail: {
+    article: string
+    code: string
+    name: string
+    unit: string
+    /** 'слот' | 'гость' | 'мес' — нормативный расход; 'спека' — через спеки услуг */
+    basis: string
+    /** Физическое списание за месяц: норма × драйвер или Σ qty × услуги */
+    qty: number
+    landed: number
+    amount: number
+  }[]
   variableTotal: number
   pct: { acquiring: number; maintenance: number; fbCost: number; ota: number }
   pctTotal: number
