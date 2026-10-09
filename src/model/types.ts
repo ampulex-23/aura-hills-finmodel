@@ -110,6 +110,8 @@ export interface CapexItem {
   group?: string
   /** WBS-детализация (сумма строк = эталонной стоимости позиции; для помодульных — на текущий контур модулей) */
   wbs?: WbsSection[]
+  /** На сколько единиц/модулей составлена WBS (напр. 3 — эталон на 3 банных модуля): цена строки = ΣWBS / wbsQty */
+  wbsQty?: number
   /** Условная строка: включается в CAPEX только при своей прачечной (params.laundry.enabled) */
   ifLaundry?: boolean
 }

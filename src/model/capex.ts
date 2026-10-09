@@ -53,8 +53,13 @@ export function computeCapex(
       // 'MODULES_COUNT' = 1 ед. на активный модуль; 'MODULES_COUNT:N' = N ед. на модуль.
       // Так оборудование модулей (печи, купели, ванны) масштабируется при активации
       // резервных модулей, а не остаётся захардкоженным под стартовый контур.
+      // У строк с WBS цена выводится из детализации: ΣWBS / wbsQty (wbsQty —
+      // эталонный объём, на который составлена WBS; цена за единицу).
       const perModule = perModuleUnits(it.qty)
-      const unitEur = Number(it.priceEur ?? 0)
+      const wbsSum = it.wbs?.length
+        ? it.wbs.reduce((s, sec) => s + sec.items.reduce((x, l) => x + l.eur, 0), 0)
+        : null
+      const unitEur = wbsSum !== null ? wbsSum / (it.wbsQty ?? 1) : Number(it.priceEur ?? 0)
       qty = perModule !== null ? perModule * activeModuleCount(params) : Number(it.qty ?? 0)
       rateEur = unitEur
       eur = qty * unitEur

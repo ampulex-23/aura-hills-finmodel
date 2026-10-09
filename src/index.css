@@ -177,6 +177,13 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 /* Смета: поле цены в рублях — шире (миллионы), кол-во — по-прежнему узкое */
 .month-table.smeta td.price .num input { width: 104px; text-align: right; }
 .month-table.smeta td.qty .num input { width: 56px; }
+/* Смета: раскрытый WBS-редактор под строкой */
+td.wbs-cell { padding: 8px 12px; background: #101826; }
+.wbs-editor { max-width: 1100px; }
+.wbs-sec { margin-bottom: 8px; }
+.wbs-sec-head { display: flex; align-items: center; gap: 10px; margin: 4px 0; }
+.month-table.wbs td.sticky, .month-table.wbs th.sticky { min-width: 0; width: 60px; }
+.month-table.wbs .num input { width: 72px; }
 .month-table.nom .mantine-Select-input, .month-table.nom .mantine-Autocomplete-input { padding-left: 6px; padding-right: 20px; }
 /* Строка добавления в состав спецификации */
 .month-table tr.spec-add td { background: rgba(91,141,217,.05); border-top: 1px dashed #2a3548; }

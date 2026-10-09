@@ -149,6 +149,25 @@ describe('инварианты расчёта', () => {
     expect(laundryCost(out)).toBeGreaterThan(0)
   })
 
+  it('WBS-детализация задаёт цену строки: ΣWBS / wbsQty', () => {
+    const base = runModel(params, matrix, items, services, 'Base')
+    // qty=1 строка: +€10k в WBS → +€10k в CAPEX
+    const r = runModel(params, matrix, items, services, 'Base', {
+      mutate: (p) => {
+        p.capexItems.find((i) => i.row === 24)!.wbs![0].items[0].eur += 10_000
+      },
+    })
+    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + 10_000, 4)
+    // помодульная строка (wbsQty=3): +€3k в WBS → +€1k на каждый активный модуль
+    const r2 = runModel(params, matrix, items, services, 'Base', {
+      mutate: (p) => {
+        p.capexItems.find((i) => i.row === 7)!.wbs![0].items[0].eur += 3_000
+      },
+    })
+    const mods = params.modules.filter((m) => m.status === 'Активен').length
+    expect(r2.capex.totalEur).toBeCloseTo(base.capex.totalEur + (3_000 / 3) * mods, 4)
+  })
+
   it('члены: peakShare=0 → нет вытеснения; peakShare=1 → вытеснение максимально', () => {
     const mk = (peak: number) => runModel(params, matrix, items, services, 'Aggressive', { mutate: (p) => { p.members.peakShare = peak } })
     const r0 = mk(0), r1 = mk(1)

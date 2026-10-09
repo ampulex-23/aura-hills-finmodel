@@ -6,7 +6,7 @@ import {
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt } from '../components/ui'
 import { activeModuleCount, nomenclatureEquipEur } from '../model/opex'
-import type { CapexItem } from '../model/types'
+import type { CapexItem, WbsLine, WbsSection } from '../model/types'
 
 const COL = {
   name: 'Наименование строки сметы — справочно.',
@@ -19,7 +19,7 @@ const COL = {
   eur: 'Сумма в евро: кол-во × цена €. Помодульные строки — по текущему числу активных модулей.',
   group: 'Раздел сметы для группировки в отчёте CAPEX.',
   cond: 'Условная строка: входит в CAPEX только при включённой опции «Прачечная: своя» (Допущения).',
-  wbs: 'У строки есть WBS-детализация сметчика (эталон в €). При изменении суммы строки детали масштабируются коэффициентом автоматически.',
+  wbs: 'WBS-детализация строки: секции и позиции сметы (кол-во × ставка = сумма). Цена строки выводится из ΣWBS — нажмите для редактирования.',
 }
 
 // Строка 30 — «Наполнение»: сумма считается из справочника номенклатуры,
@@ -45,6 +45,7 @@ export function Smeta() {
   const { params, items, setParam } = useModel()
   const [q, setQ] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [wbsOpen, setWbsOpen] = useState<Set<number>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [draft, setDraft] = useState<(CapexItem & { _perModule?: boolean }) | null>(null)
   const [deleteAsk, setDeleteAsk] = useState<{ it: CapexItem; index: number } | null>(null)
@@ -79,6 +80,13 @@ export function Smeta() {
 
   const groupNames = [...new Set(rows.map((i) => i.group ?? 'Прочее'))]
   const unitNames = [...new Set([...rows.map((i) => i.unit), 'шт', 'компл', 'мес', 'общ', 'шт/модуль'])]
+  const wbsUnits = [...new Set([
+    ...unitNames, 'м²', 'м.п.', 'кг', 'л',
+    ...rows.flatMap((r) => r.wbs?.flatMap((s) => s.items.map((l) => l.unit)) ?? []),
+  ])].filter((u): u is string => !!u)
+  const wbsTags = [...new Set(
+    rows.flatMap((r) => r.wbs?.flatMap((s) => s.items.map((l) => l.tag)) ?? []),
+  )].filter((t): t is string => !!t)
   const filtering = q.trim().length > 0
 
   const toggle = (g: string) =>
@@ -97,6 +105,72 @@ export function Smeta() {
     const next = rows.map((it, i) => (i === index ? { ...it, ...patch } : it))
     setParam('capexItems', next)
   }
+
+  // WBS — источник цены строки: priceEur = ΣWBS / wbsQty (wbsQty = эталонный
+  // объём, на который составлена детализация: у банных модулей — 3 модуля).
+  const wbsSum = (wbs?: WbsSection[]) =>
+    (wbs ?? []).reduce((s, sec) => s + sec.items.reduce((x, l) => x + (l.eur || 0), 0), 0)
+
+  const setWbs = (index: number, wbs: WbsSection[] | undefined) => {
+    const patch: Partial<CapexItem> = { wbs: wbs?.length ? wbs : undefined }
+    if (wbs?.length) patch.priceEur = Math.round(wbsSum(wbs) / (rows[index].wbsQty ?? 1))
+    set(index, patch)
+  }
+
+  const setWbsLine = (index: number, si: number, li: number, patch: Partial<WbsLine>) => {
+    const wbs = (rows[index].wbs ?? []).map((s, j) =>
+      j !== si ? s : ({
+        ...s,
+        items: s.items.map((l, k) => {
+          if (k !== li) return l
+          const nl = { ...l, ...patch }
+          if (('qty' in patch || 'rate' in patch) && nl.qty != null && nl.rate != null)
+            nl.eur = Math.round(nl.qty * nl.rate)
+          return nl
+        }),
+      }),
+    )
+    setWbs(index, wbs)
+  }
+
+  const setWbsSection = (index: number, si: number, patch: Partial<WbsSection>) =>
+    setWbs(index, (rows[index].wbs ?? []).map((s, j) => (j === si ? { ...s, ...patch } : s)))
+
+  const addWbsLine = (index: number, si: number) =>
+    setWbs(index, (rows[index].wbs ?? []).map((s, j) =>
+      j === si ? { ...s, items: [...s.items, { code: '', name: 'Новая позиция', unit: 'общ', qty: 1, rate: 0, eur: 0 }] } : s,
+    ))
+
+  const removeWbsLine = (index: number, si: number, li: number) =>
+    setWbs(index, (rows[index].wbs ?? []).map((s, j) =>
+      j === si ? { ...s, items: s.items.filter((_, k) => k !== li) } : s,
+    ))
+
+  const addWbsSection = (index: number) => {
+    const it = rows[index]
+    const code = `${it.row}.${(it.wbs?.length ?? 0) + 1}`
+    setWbs(index, [...(it.wbs ?? []), { code, title: 'Новый раздел', items: [] }])
+  }
+
+  const removeWbsSection = (index: number, si: number) =>
+    setWbs(index, (rows[index].wbs ?? []).filter((_, j) => j !== si))
+
+  const addWbs = (index: number) => {
+    const it = rows[index]
+    setWbs(index, [{
+      code: `${it.row}.1`, title: it.name,
+      items: [{ code: `${it.row}.1.1`, name: it.name, unit: it.unit, qty: 1, rate: Number(it.priceEur ?? 0), eur: Number(it.priceEur ?? 0) }],
+    }])
+    setWbsOpen((prev) => new Set(prev).add(index))
+  }
+
+  const toggleWbs = (index: number) =>
+    setWbsOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      return next
+    })
 
   const setQty = (it: CapexItem, index: number, v: number) => {
     const n = perModuleN(it.qty)
@@ -168,13 +242,22 @@ export function Smeta() {
                   ? arr.map(({ it, index: i }) => {
                       const n = perModuleN(it.qty)
                       const off = !isActive(it)
-                      return (
+                      const hasWbs = !!it.wbs?.length
+                      return [
                         <tr key={`${it.row}-${i}`} style={off ? { opacity: 0.45 } : undefined}>
                           <td className="sticky lft">
                             <TextCell w={300} value={it.name} onChange={(v) => set(i, { name: v })} />
-                            {it.wbs?.length ? (
+                            {hasWbs ? (
                               <Hint hint={{ text: COL.wbs }}>
-                                <small className="note"> WBS·{it.wbs.length}</small>
+                                <small
+                                  className="note"
+                                  style={{ cursor: 'pointer' }}
+                                  onClick={() => toggleWbs(i)}
+                                > {wbsOpen.has(i) ? '▾' : '▸'} WBS·{it.wbs!.length}</small>
+                              </Hint>
+                            ) : it.row !== FILLER_ROW ? (
+                              <Hint hint={{ text: 'Создать WBS-детализацию: цена строки станет суммой позиций WBS' }}>
+                                <small className="note" style={{ cursor: 'pointer' }} onClick={() => addWbs(i)}> +WBS</small>
                               </Hint>
                             ) : null}
                           </td>
@@ -207,6 +290,10 @@ export function Smeta() {
                           <td className="price">
                             {it.row === FILLER_ROW ? (
                               <span className="note">—</span>
+                            ) : hasWbs ? (
+                              <Hint hint={{ text: `Цена = ΣWBS${(it.wbsQty ?? 1) > 1 ? ` / ${it.wbsQty} (эталон на ${it.wbsQty} ед.)` : ''}` }}>
+                                <span className="note">{fmt(Number(it.priceEur ?? 0))}</span>
+                              </Hint>
                             ) : (
                               <NumField value={Number(it.priceEur ?? 0)} onChange={(v) => set(i, { priceEur: v })} step={500} />
                             )}
@@ -231,8 +318,78 @@ export function Smeta() {
                               <span><ActionIcon size="sm" variant="subtle" color="red" onClick={() => setDeleteAsk({ it, index: i })}>✕</ActionIcon></span>
                             </Hint>
                           </td>
-                        </tr>
-                      )
+                        </tr>,
+                        wbsOpen.has(i) && hasWbs ? (
+                          <tr key={`wbs-${i}`}>
+                            <td colSpan={9} className="wbs-cell">
+                              <div className="wbs-editor">
+                                <p className="note">
+                                  WBS «{it.name}» · Σ = €{fmt(wbsSum(it.wbs))}
+                                  {(it.wbsQty ?? 1) > 1 && <> — эталон на {it.wbsQty} ед., цена за ед. = €{fmt(wbsSum(it.wbs) / (it.wbsQty ?? 1))}</>}
+                                  {' '}· цена строки выводится из WBS, отдельно не редактируется.
+                                </p>
+                                {it.wbs!.map((sec, si) => (
+                                  <div key={`${sec.code}-${si}`} className="wbs-sec">
+                                    <div className="wbs-sec-head">
+                                      <TextCell w={360} value={sec.title} onChange={(v) => setWbsSection(i, si, { title: v })} />
+                                      <span className="note">{sec.code} · €{fmt(sec.items.reduce((s, l) => s + l.eur, 0))}</span>
+                                      <Button size="xs" variant="subtle" onClick={() => addWbsLine(i, si)}>+ строка</Button>
+                                      <Hint hint={{ text: 'Удалить раздел WBS со всеми позициями' }}>
+                                        <span><ActionIcon size="sm" variant="subtle" color="red" onClick={() => removeWbsSection(i, si)}>✕</ActionIcon></span>
+                                      </Hint>
+                                    </div>
+                                    <table className="month-table nom wbs">
+                                      <thead>
+                                        <tr>
+                                          <th>Код</th><th>Позиция</th><th>Ед.</th>
+                                          <th>Кол-во</th><th>Ставка €</th><th>Сумма €</th>
+                                          <th>Категория</th><th></th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {sec.items.map((l, li) => (
+                                          <tr key={li}>
+                                            <td><TextCell w={56} value={l.code} onChange={(v) => setWbsLine(i, si, li, { code: v })} /></td>
+                                            <td className="lft"><TextCell w={340} value={l.name} onChange={(v) => setWbsLine(i, si, li, { name: v })} /></td>
+                                            <td>
+                                              <Select
+                                                size="xs" w={88} data={wbsUnits}
+                                                value={l.unit ?? 'общ'} allowDeselect={false}
+                                                onChange={(v) => v && setWbsLine(i, si, li, { unit: v })}
+                                              />
+                                            </td>
+                                            <td><NumField value={l.qty ?? 0} onChange={(v) => setWbsLine(i, si, li, { qty: v })} step={1} /></td>
+                                            <td><NumField value={l.rate ?? 0} onChange={(v) => setWbsLine(i, si, li, { rate: v })} step={10} /></td>
+                                            <td><NumField value={l.eur} onChange={(v) => setWbsLine(i, si, li, { eur: v })} step={100} /></td>
+                                            <td>
+                                              <Autocomplete
+                                                size="xs" w={150} data={wbsTags}
+                                                filter={({ options }) => options}
+                                                value={l.tag ?? ''} onChange={(v) => setWbsLine(i, si, li, { tag: v || undefined })}
+                                              />
+                                            </td>
+                                            <td>
+                                              <ActionIcon size="sm" variant="subtle" color="red" onClick={() => removeWbsLine(i, si, li)}>✕</ActionIcon>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ))}
+                                <Group gap="xs" mt={6}>
+                                  <Button size="xs" variant="light" onClick={() => addWbsSection(i)}>+ раздел WBS</Button>
+                                  <Hint hint={{ text: 'Убрать детализацию — цена строки снова задаётся вручную' }}>
+                                    <span>
+                                      <Button size="xs" variant="subtle" color="red" onClick={() => setWbs(i, undefined)}>убрать WBS</Button>
+                                    </span>
+                                  </Hint>
+                                </Group>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : null,
+                      ]
                     })
                   : []),
               ]
@@ -278,7 +435,7 @@ export function Smeta() {
           <div>
             <p>«{deleteAsk.it.name}» (€{fmt(rowEur(deleteAsk.it))}) будет удалена из сметы CAPEX.</p>
             {deleteAsk.it.wbs?.length ? (
-              <p className="note">⚠ У строки есть WBS-детализация ({deleteAsk.it.wbs.length} разделов) — эталон сметчика будет потерян.</p>
+              <p className="note">⚠ У строки есть WBS-детализация ({deleteAsk.it.wbs.length} разделов) — она будет потеряна вместе со строкой.</p>
             ) : null}
             {perModuleN(deleteAsk.it.qty) !== null && (
               <p className="note">⚠ Помодульная строка — её сумма масштабируется числом активных модулей.</p>
