@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   ActionIcon, Autocomplete, Button, Checkbox, Group, Modal, NumberInput,
-  TextInput,
+  Select, TextInput,
 } from '@mantine/core'
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt } from '../components/ui'
@@ -79,6 +79,7 @@ export function Smeta() {
   }, [rows, q])
 
   const groupNames = [...new Set(rows.map((i) => i.group ?? 'Прочее'))]
+  const unitNames = [...new Set([...rows.map((i) => i.unit), 'шт', 'компл', 'мес', 'общ', 'шт/модуль'])]
   const filtering = q.trim().length > 0
 
   const toggle = (g: string) =>
@@ -179,7 +180,11 @@ export function Smeta() {
                             ) : null}
                           </td>
                           <td>
-                            <TextCell w={52} value={it.unit} onChange={(v) => set(i, { unit: v || 'общ' })} />
+                            <Select
+                              size="xs" w={88} data={unitNames}
+                              value={it.unit} allowDeselect={false}
+                              onChange={(v) => v && set(i, { unit: v })}
+                            />
                           </td>
                           <td>
                             <Checkbox
@@ -242,7 +247,11 @@ export function Smeta() {
           <div className="crud-form">
             <TextInput label="Наименование" required value={draft.name} onChange={(e) => setD({ name: e.currentTarget.value })} />
             <Group grow>
-              <TextInput label="Единица" value={draft.unit} onChange={(e) => setD({ unit: e.currentTarget.value || 'общ' })} />
+              <Select
+                label="Единица" data={unitNames}
+                value={draft.unit} allowDeselect={false}
+                onChange={(v) => v && setD({ unit: v })}
+              />
               <Autocomplete
                 label="Раздел" data={groupNames}
                 filter={({ options }) => options}
