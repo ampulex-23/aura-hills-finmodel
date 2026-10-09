@@ -2,10 +2,28 @@ import type { FotMonth, Params, RevenueMonth, ServiceSpec } from './types'
 import { dirCounts } from './revenue'
 import { serviceLaborShare } from './spec'
 
-// Базовый фонд окладов месяца 0 (без бонусов и индексации) — штат + IT-куратор + повар
-export function baseSalariesMonthly(params: Params): number {
+// Численность штата на операционный месяц k: базовый вектор count,
+// с месяца `from` каждой фазы — полный вектор фазы (последняя подошедшая
+// побеждает). `from` — календарная дата: при задержке стройки openingDate
+// уже сдвинута внутри runModel, поэтому фаза остаётся привязанной к календарю.
+// delayMonths — для вызовов извне движка (отчёты): туда передают
+// scenario.constructionDelayMonths, т.к. их params не сдвинут.
+export function headcountAt(params: Params, k: number, delayMonths = 0): number[] {
+  const [y0, m0] = params.meta.openingDate.split('-').map(Number)
+  const kMonth = y0 * 12 + (m0 - 1) + k + delayMonths
+  let count = params.fot.count
+  for (const ph of params.fot.phases ?? []) {
+    const [y, m] = ph.from.split('-').map(Number)
+    if (y * 12 + (m - 1) <= kMonth) count = ph.count
+  }
+  return count
+}
+
+// Базовый фонд окладов месяца k (без бонусов и индексации) — штат + IT-куратор + повар
+export function baseSalariesMonthly(params: Params, k = 0, delayMonths = 0): number {
+  const count = headcountAt(params, k, delayMonths)
   return (
-    params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
+    count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
     (params.it.enabled ? params.it.curator : 0) +
     (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
   )
@@ -23,7 +41,7 @@ export function computeFotMonth(
   k: number,
 ): FotMonth {
   const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
-  const salaries = baseSalariesMonthly(params) * infl
+  const salaries = baseSalariesMonthly(params, k) * infl
 
   let bonuses = 0
   const byDir = new Map<string, number>()

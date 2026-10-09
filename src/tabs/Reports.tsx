@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { Button, TextInput } from '@mantine/core'
 import type { ModelResult, ModuleSpec, NomenclatureItem, Params } from '../model/types'
 import { landedCost, activeModuleCount } from '../model/opex'
+import { baseSalariesMonthly, headcountAt } from '../model/fot'
 import { capexWeights } from '../model/cashflow'
 import { useModel } from '../store'
 import { MonthTable, monthLabels, fmt, fmtEur, fmtPct, Hint } from '../components/ui'
@@ -326,16 +327,14 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
   const F = r.fot
   const R = r.revenue
   const inflAt = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
-  const baseSalaries = params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0)
-    + (params.it.enabled ? params.it.curator : 0)
-    + (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
   const rows: RowDef[] = [
     {
       label: 'Оклады (фикс.)', values: F.map((m) => m.salaries),
-      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}${params.fb.enabled ? ` и повара (${params.fb.cookCount} × ${e0(params.fb.cookSalary)}/мес)` : ''}, индексируется на инфляцию ежегодно.`,
+      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}${params.fb.enabled ? ` и повара (${params.fb.cookCount} × ${e0(params.fb.cookSalary)}/мес)` : ''}, индексируется на инфляцию ежегодно.${params.fot.phases?.length ? ' Численность растёт ступенями по фазам (Штат → колонки по датам).' : ''}`,
       hint: (ci) => ({
         title: 'Оклады',
-        calc: `${e0(baseSalaries)}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
+        text: `Штат месяца: ${fmt(headcountAt(params, ci, r.scenario.constructionDelayMonths).reduce((a, b) => a + b, 0))} ставок (без условных ролей).`,
+        calc: `${e0(baseSalariesMonthly(params, ci, r.scenario.constructionDelayMonths))}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
       }),
     },
     {

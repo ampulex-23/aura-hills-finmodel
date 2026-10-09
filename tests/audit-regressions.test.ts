@@ -79,7 +79,8 @@ describe('аудит-регрессии', () => {
     const p = clone()
     p.land.mode = 'purchase'
     p.meta.vatMode = 'С возмещением'
-    p.modules[3].status = 'Активен' // запуск 2029-01 → ops месяц 12
+    p.modules[3].status = 'Активен'
+    p.modules[3].launchDate = '2029-01-01' // запуск → ops месяц 12 (дефолт сдвинут на 2031-01)
     const r = runModel(p, matrix, items, services, 'Base')
     const vatRate = p.taxes.vatInput / (1 + p.taxes.vatInput)
     // месяц 0: (amortizable − deferred) × extracted-ставка
@@ -119,7 +120,8 @@ describe('аудит-регрессии', () => {
 
   it('помодульный OPEX и ёмкость членов учитывают только запущенные модули', () => {
     const p = clone()
-    p.modules[3].status = 'Активен' // launchDate 2029-01 → ops месяц 12
+    p.modules[3].status = 'Активен'
+    p.modules[3].launchDate = '2029-01-01' // запуск → ops месяц 12 (дефолт сдвинут на 2031-01)
     const r = runModel(p, matrix, items, services, 'Base')
     // «Обслуживание модулей» €100/модуль: 3 модуля до запуска, 4 после.
     // fixed[m] = (Σ базовых + 100×модули) × инфляция года → m13 = m0×infl + 100×infl

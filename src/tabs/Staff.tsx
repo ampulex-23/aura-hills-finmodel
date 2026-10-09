@@ -12,6 +12,7 @@ export function Staff() {
   const P = params
   const er = 1 + P.taxes.employerRate
 
+  const phases = P.fot.phases ?? []
   const staffMonthly = P.fot.count.reduce((s, c, i) => s + c * P.fot.salary[i], 0)
   const cookMonthly = P.fb.enabled ? P.fb.cookCount * P.fb.cookSalary : 0
   const curatorMonthly = P.it.enabled ? P.it.curator : 0
@@ -54,7 +55,11 @@ export function Staff() {
           <table className="month-table spec">
             <thead>
               <tr>
-                <th>Роль</th><th>Ставок</th><th>Оклад, €/мес gross</th>
+                <th>Роль</th><th>Ставок (старт)</th>
+                {phases.map((ph, pi) => (
+                  <th key={pi} title={ph.label}>{ph.from}</th>
+                ))}
+                <th>Оклад, €/мес gross</th>
                 <th>Фонд, €/мес</th><th>Со взносами, €/мес</th><th></th>
               </tr>
             </thead>
@@ -65,6 +70,11 @@ export function Staff() {
                   <tr key={i}>
                     <td className="lft"><TextCell w={190} value={role} onChange={(v) => setParam(`fot.roles.${i}`, v)} /></td>
                     <td><NumField value={P.fot.count[i]} onChange={(v) => setParam(`fot.count.${i}`, v)} step={0.5} /></td>
+                    {phases.map((ph, pi) => (
+                      <td key={pi}>
+                        <NumField value={ph.count[i] ?? 0} onChange={(v) => setParam(`fot.phases.${pi}.count.${i}`, v)} step={0.5} />
+                      </td>
+                    ))}
                     <td><NumField value={P.fot.salary[i]} onChange={(v) => setParam(`fot.salary.${i}`, v)} step={50} /></td>
                     <td className="lft">{fmt(monthly)}</td>
                     <td className="lft">{fmt(monthly * er)}</td>
@@ -79,6 +89,9 @@ export function Staff() {
               <tr style={{ borderTop: '1px solid var(--bd, #333)' }}>
                 <td className="lft"><b>Итого фонд окладов</b></td>
                 <td className="lft"><b>{fmt(P.fot.count.reduce((a, b) => a + b, 0) + (P.fb.enabled ? P.fb.cookCount : 0))}</b></td>
+                {phases.map((ph, pi) => (
+                  <td key={pi} className="lft"><b>{fmt(ph.count.reduce((a, b) => a + b, 0))}</b></td>
+                ))}
                 <td />
                 <td className="lft"><b>{fmt(totalBase)}</b></td>
                 <td className="lft"><b>{fmt(totalBase * er)}</b></td>

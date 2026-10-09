@@ -6,6 +6,7 @@ import servicesJson from '../src/data/services.json'
 import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../src/model/types'
 import { YEAR_KEYS } from '../src/model/types'
 import { runModel } from '../src/model/run'
+import { baseSalariesMonthly } from '../src/model/fot'
 
 // Инварианты модели (аудит 14, I-12): не «какие числа», а «что всегда должно
 // сходиться» — на реальных данных, со всеми слоями включёнными.
@@ -67,6 +68,30 @@ describe('инварианты расчёта', () => {
         expect(m.cash).toBeGreaterThanOrEqual(-1e-6)
         expect(m.prepaidPool).toBeGreaterThanOrEqual(-1e-6)
       }
+    })
+    it(`${name}: ФОТ растёт ступенями по фазам очередей`, () => {
+      // Оч.2 = 2031-01 (календарь): фазы привязаны к датам, при задержке
+      // стройки openingDate сдвигается внутри runModel — учитываем сдвиг.
+      if (!params.fot.phases?.length) return
+      const delay = r.scenario.constructionDelayMonths
+      const infl = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+      const sal = r.fot.map((m) => m.salaries)
+      const [y0, m0] = params.meta.openingDate.split('-').map(Number)
+      const kAt = (from: string) => {
+        const [y, m] = from.split('-').map(Number)
+        return y * 12 + (m - 1) - (y0 * 12 + m0 - 1) - delay
+      }
+      const at = (count: number[], k: number) => {
+        const p2 = { ...params, fot: { ...params.fot, count, phases: [] } }
+        return baseSalariesMonthly(p2, 0) * infl(k)
+      }
+      const [ph1, ph2, ph3] = params.fot.phases
+      const k2 = kAt(ph2.from)
+      expect(sal[0]).toBeCloseTo(at(params.fot.count, 0), 6)
+      expect(sal[k2 - 1]).toBeCloseTo(at(ph1.count, k2 - 1), 6)
+      expect(sal[k2]).toBeCloseTo(at(ph2.count, k2), 6)
+      expect(sal[kAt(ph3.from)]).toBeCloseTo(at(ph3.count, kAt(ph3.from)), 6)
+      expect(sal[k2]).toBeGreaterThan(sal[k2 - 1])
     })
     it(`${name}: налоги неотрицательны; пресейл замкнут`, () => {
       for (const t of r.taxes) {

@@ -220,7 +220,14 @@ export interface Params {
     opex: { name: string; base: number }[]
     capex: { name: string; eur: number }[]
   }
-  fot: { roles: string[]; count: number[]; salary: number[] }
+  fot: {
+    roles: string[]
+    count: number[]
+    salary: number[]
+    /** Ступени штата по очередям: с месяца `from` ('YYYY-MM') count заменяется
+     *  полным вектором фазы (не дельта). Фазы применяются в порядке дат. */
+    phases?: { from: string; label?: string; count: number[] }[]
+  }
   capexItems: CapexItem[]
 }
 
