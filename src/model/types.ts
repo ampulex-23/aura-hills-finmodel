@@ -79,6 +79,22 @@ export interface ServiceCost {
   marginPct: number
 }
 
+/** Строка WBS-детализации CAPEX-статьи (все суммы в EUR, эталонная смета заказчика) */
+export interface WbsLine {
+  code: string
+  name: string
+  unit?: string
+  qty?: number
+  rate?: number
+  eur: number
+  /** Категория затрат из сметы («Материалы + Монтаж», «Подрядные услуги»…) */
+  tag?: string
+}
+export interface WbsSection {
+  code: string
+  title: string
+  items: WbsLine[]
+}
 export interface CapexItem {
   name: string
   unit: string
@@ -86,6 +102,10 @@ export interface CapexItem {
   qty: number | string
   priceRub: number | null
   row: number
+  /** Раздел сметы для группировки в отчёте CAPEX */
+  group?: string
+  /** WBS-детализация (сумма строк = эталонной стоимости позиции; для помодульных — на текущий контур модулей) */
+  wbs?: WbsSection[]
 }
 
 export interface Params {
@@ -354,8 +374,16 @@ export interface ModelResult {
     items: {
       name: string
       eur: number
+      /** Раздел сметы (группировка в отчёте) */
+      group?: string
+      /** Расчёт строки: единица/кол-во/ставка в EUR для показа в смете */
+      unit?: string
+      qty?: number
+      rate?: number
+      /** WBS-детализация, масштабированная до eur строки */
+      wbs?: (WbsSection & { total: number })[]
       /** Дрилл-даун строки: из чего складывается сумма (номенклатура / модули) */
-      detail?: { code: string; name: string; qty: number; landed: number; eur: number }[]
+      detail?: { code: string; name: string; qty: number; landed: number; eur: number; category?: string; unit?: string }[]
     }[]
     totalEur: number
     adjustedEur: number

@@ -341,93 +341,160 @@ export function Capex({ r }: { r: ModelResult }) {
   const { params } = useModel()
   const { capex } = r
   const amortTex = String.raw`\mathrm{аморт}=\sum_{групп}\frac{\mathrm{CAPEX}\cdot\mathrm{доля}_{группы}}{\mathrm{срок}_{лет}\cdot 12}`
-  const half = Math.ceil(capex.items.length / 2)
-  const [open, setOpen] = useState<Set<string>>(new Set())
-  const toggleOpen = (k: string) =>
-    setOpen((prev) => {
-      const next = new Set(prev)
-      if (next.has(k)) next.delete(k)
-      else next.add(k)
-      return next
-    })
-  const ItemRows = ({ rows }: { rows: typeof capex.items }) => (
-    <>
-      {rows.map((i) => {
-        const has = !!i.detail?.length
-        const isOpen = open.has(i.name)
-        return (
-          <Fragment key={i.name}>
-            <tr className={has ? 'spec-head' : undefined} onClick={() => has && toggleOpen(i.name)}>
-              <td className="sticky">
-                {has && <span className="spec-caret">{isOpen ? '▾' : '▸'}</span>}
-                {i.name}
-              </td>
-              <td>{fmt(i.eur)}</td>
+  // Разделы сметы: строки с одинаковой группой собираются в один блок
+  // (порядок разделов = порядок первого появления в capexItems, IT и земля в конце)
+  const groups: { name: string; items: typeof capex.items; total: number }[] = []
+  const gidx = new Map<string, number>()
+  for (const it of capex.items) {
+    const g = it.group ?? 'Прочее'
+    const ix = gidx.get(g)
+    if (ix === undefined) {
+      gidx.set(g, groups.length)
+      groups.push({ name: g, items: [it], total: it.eur })
+    } else {
+      groups[ix].items.push(it)
+      groups[ix].total += it.eur
+    }
+  }
+  const qty2 = (v?: number) => (v == null ? '' : fmt(v, 2))
+  const ItemRows = ({ it }: { it: (typeof capex.items)[number] }) => {
+    // Наполнение: детали группируем по категориям номенклатуры
+    const isNomenclature = it.detail?.some((d) => d.category)
+    const catGroups: { name: string; rows: NonNullable<typeof it.detail>; total: number }[] = []
+    if (isNomenclature) {
+      const cix = new Map<string, number>()
+      for (const d of it.detail!) {
+        const c = d.category ?? 'Прочее'
+        const ix = cix.get(c)
+        if (ix === undefined) {
+          cix.set(c, catGroups.length)
+          catGroups.push({ name: c, rows: [d], total: d.eur })
+        } else {
+          catGroups[ix].rows.push(d)
+          catGroups[ix].total += d.eur
+        }
+      }
+    }
+    return (
+      <Fragment>
+        <tr>
+          <td className="sticky"><b>{it.name}</b></td>
+          <td>{it.unit ?? ''}</td>
+          <td>{qty2(it.qty)}</td>
+          <td>{qty2(it.rate)}</td>
+          <td><b>{fmt(it.eur)}</b></td>
+        </tr>
+        {it.wbs?.map((sec) => (
+          <Fragment key={sec.code}>
+            <tr className="wbs-sec">
+              <td className="sticky">{sec.code} {sec.title}</td>
+              <td /><td /><td />
+              <td>{fmt(sec.total)}</td>
             </tr>
-            {has && isOpen &&
-              i.detail!.map((d) => (
-                <tr key={`${i.name}-${d.code}`} className="sub-detail">
-                  <td className="sticky"><small>{d.code} · {d.name}</small></td>
-                  <td><small>{fmt(d.qty)} × {fmt(d.landed, 2)} = {fmt(d.eur)}</small></td>
-                </tr>
-              ))}
+            {sec.items.map((l) => (
+              <tr key={l.code} className="wbs-line">
+                <td className="sticky">
+                  {l.code} {l.name}
+                  {l.tag && <span className="wbs-tag">{l.tag}</span>}
+                </td>
+                <td>{l.unit ?? ''}</td>
+                <td>{qty2(l.qty)}</td>
+                <td>{qty2(l.rate)}</td>
+                <td>{fmt(l.eur)}</td>
+              </tr>
+            ))}
           </Fragment>
-        )
-      })}
-    </>
-  )
-  const summaryRows = (
-    <>
-      <tr className="bold">
-        <td className="sticky">ИТОГО CAPEX</td>
-        <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций, включая наполнение из справочника номенклатуры (landed-цена × кол-во).' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
-      </tr>
-      <tr className="bold">
-        <td className="sticky">С буфером сценария</td>
-        <td>
-          <Hint hint={{
-            title: 'CAPEX с буфером',
-            text: 'Сценарная надбавка к стоимости строительства (риск удорожания).',
-            calc: `${e0(capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${e0(capex.adjustedEur)}`,
-          }}>
-            <span className="cellval">{fmt(capex.adjustedEur)}</span>
-          </Hint>
-        </td>
-      </tr>
-      <tr>
-        <td className="sticky">Амортизация, €/мес</td>
-        <td>
-          <Hint hint={{
-            title: 'Амортизация',
-            text: 'Линейная: для каждой группы CAPEX — сумма × доля группы ÷ (срок службы × 12 мес).',
-            tex: amortTex,
-            calc: params.amort.groups
-              .map((g, i) => `${g}: ${pc(params.amort.shares[i])} / ${params.amort.years[i]} лет`)
-              .join(' · ') + ` → ${e0(capex.monthlyAmort)}/мес`,
-          }}>
-            <span className="cellval">{fmt(capex.monthlyAmort)}</span>
-          </Hint>
-        </td>
-      </tr>
-    </>
-  )
+        ))}
+        {!isNomenclature &&
+          it.detail?.map((d) => (
+            <tr key={`${it.name}-${d.code}`} className="sub-detail">
+              <td className="sticky"><small>{d.code} · {d.name}</small></td>
+              <td><small>{d.unit ?? ''}</small></td>
+              <td><small>{qty2(d.qty)}</small></td>
+              <td><small>{fmt(d.landed, 2)}</small></td>
+              <td><small>{fmt(d.eur)}</small></td>
+            </tr>
+          ))}
+        {catGroups.map((cg) => (
+          <Fragment key={cg.name}>
+            <tr className="wbs-sec">
+              <td className="sticky">{cg.name}</td>
+              <td /><td /><td />
+              <td>{fmt(cg.total)}</td>
+            </tr>
+            {cg.rows.map((d) => (
+              <tr key={d.code} className="wbs-line">
+                <td className="sticky"><small>{d.code} {d.name}</small></td>
+                <td><small>{d.unit ?? ''}</small></td>
+                <td><small>{qty2(d.qty)}</small></td>
+                <td><small>{fmt(d.landed, 2)}</small></td>
+                <td><small>{fmt(d.eur)}</small></td>
+              </tr>
+            ))}
+          </Fragment>
+        ))}
+      </Fragment>
+    )
+  }
   return (
-    <div className="cols-2">
-      <div className="table-wrap">
-        <table className="month-table scen">
-          <thead><tr><th className="sticky">Позиция</th><th>Сумма, €</th></tr></thead>
-          <tbody><ItemRows rows={capex.items.slice(0, half)} /></tbody>
-        </table>
-      </div>
-      <div className="table-wrap">
-        <table className="month-table scen">
-          <thead><tr><th className="sticky">Позиция</th><th>Сумма, €</th></tr></thead>
-          <tbody>
-            <ItemRows rows={capex.items.slice(half)} />
-            {summaryRows}
-          </tbody>
-        </table>
-      </div>
+    <div className="table-wrap">
+      <table className="month-table scen capex-table">
+        <thead>
+          <tr>
+            <th className="sticky">Статья затрат / элемент работ</th>
+            <th>Ед.</th>
+            <th>Кол-во</th>
+            <th>Ставка, €</th>
+            <th>Сумма, €</th>
+          </tr>
+        </thead>
+        <tbody>
+          {groups.map((g, gi) => (
+            <Fragment key={g.name}>
+              <tr className="capex-group">
+                <td className="sticky">Раздел {gi + 1}. {g.name}</td>
+                <td /><td /><td />
+                <td>{fmt(g.total)}</td>
+              </tr>
+              {g.items.map((it) => <ItemRows key={it.name} it={it} />)}
+            </Fragment>
+          ))}
+          <tr className="bold">
+            <td className="sticky">ИТОГО CAPEX</td>
+            <td /><td /><td />
+            <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций, включая наполнение из справочника номенклатуры (landed-цена × кол-во).' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
+          </tr>
+          <tr className="bold">
+            <td className="sticky">С буфером сценария</td>
+            <td /><td /><td />
+            <td>
+              <Hint hint={{
+                title: 'CAPEX с буфером',
+                text: 'Сценарная надбавка к стоимости строительства (риск удорожания).',
+                calc: `${e0(capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${e0(capex.adjustedEur)}`,
+              }}>
+                <span className="cellval">{fmt(capex.adjustedEur)}</span>
+              </Hint>
+            </td>
+          </tr>
+          <tr>
+            <td className="sticky">Амортизация, €/мес</td>
+            <td /><td /><td />
+            <td>
+              <Hint hint={{
+                title: 'Амортизация',
+                text: 'Линейная: для каждой группы CAPEX — сумма × доля группы ÷ (срок службы × 12 мес).',
+                tex: amortTex,
+                calc: params.amort.groups
+                  .map((g, i) => `${g}: ${pc(params.amort.shares[i])} / ${params.amort.years[i]} лет`)
+                  .join(' · ') + ` → ${e0(capex.monthlyAmort)}/мес`,
+              }}>
+                <span className="cellval">{fmt(capex.monthlyAmort)}</span>
+              </Hint>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

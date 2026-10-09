@@ -1,4 +1,4 @@
-import type { CapexItem, NomenclatureItem, Params } from './types'
+import type { CapexItem, NomenclatureItem, Params, WbsSection } from './types'
 import { activeModuleCount, landedCost, nomenclatureCapexEur } from './opex'
 
 // CAPEX: qty × ценаRUB / курс = EUR; строка «Наполнение» = справочник; итог × (1+capexAdj)
@@ -21,22 +21,32 @@ export function computeCapex(
   deferred: { month: number; eur: number }[]
 } {
   const rate = params.general.rubEurRate
-  const out: {
+  type Item = {
     name: string
     eur: number
-    detail?: { code: string; name: string; qty: number; landed: number; eur: number }[]
-  }[] = params.capexItems.map((it) => {
+    group?: string
+    unit?: string
+    qty?: number
+    rate?: number
+    wbs?: (WbsSection & { total: number })[]
+    detail?: { code: string; name: string; qty: number; landed: number; eur: number; category?: string; unit?: string }[]
+  }
+  const out: Item[] = params.capexItems.map((it) => {
     let eur: number
-    let detail: { code: string; name: string; qty: number; landed: number; eur: number }[] | undefined
+    let unit: string | undefined = it.unit
+    let qty: number | undefined
+    let rateEur: number | undefined
+    let detail: Item['detail']
     if (it.row === 30) {
       eur = nomenclatureCapexEur(items) // наполнение — из справочника, уже в EUR
+      unit = 'справ.'
       detail = items
         .filter((x) => x.use === 'CAPEX' || (x.initialQty ?? 0) > 0)
         .map((x) => {
           const qty = x.use === 'CAPEX' ? x.qty : (x.initialQty ?? 0)
           return {
             code: x.code, name: x.name + (x.use === 'CAPEX' ? '' : ' (нач. запас)'),
-            qty, landed: landedCost(x), eur: landedCost(x) * qty,
+            qty, landed: landedCost(x), eur: landedCost(x) * qty, category: x.category, unit: x.unit,
           }
         })
     } else {
@@ -44,25 +54,38 @@ export function computeCapex(
       // Так оборудование модулей (печи, купели, ванны) масштабируется при активации
       // резервных модулей, а не остаётся захардкоженным под стартовый контур.
       const perModule = perModuleUnits(it.qty)
-      const qty = perModule !== null ? perModule * activeModuleCount(params) : Number(it.qty ?? 0)
-      eur = (qty * Number(it.priceRub ?? 0)) / rate
+      const unitEur = Number(it.priceRub ?? 0) / rate
+      qty = perModule !== null ? perModule * activeModuleCount(params) : Number(it.qty ?? 0)
+      rateEur = unitEur
+      eur = qty * unitEur
       if (perModule !== null) {
-        const unit = Number(it.priceRub ?? 0) / rate
         detail = params.modules
           .filter((m) => m.status === 'Активен')
           .map((m) => ({
             code: `Модуль #${m.id}`, name: `запуск ${m.launchDate.slice(0, 7)}`,
-            qty: perModule, landed: unit, eur: unit * perModule,
+            qty: perModule, landed: unitEur, eur: unitEur * perModule, unit: 'шт',
           }))
       }
     }
-    return { name: it.name ?? '', eur, detail }
+    // WBS-детализация хранится в EUR на эталонный объём; масштабируем до фактической
+    // суммы строки (для помодульных статей — под текущее число активных модулей).
+    let wbs: Item['wbs']
+    if (it.wbs?.length) {
+      const base = it.wbs.reduce((s, sec) => s + sec.items.reduce((x, l) => x + l.eur, 0), 0)
+      const k = base > 0 ? eur / base : 1
+      wbs = it.wbs.map((sec) => ({
+        ...sec,
+        total: sec.items.reduce((x, l) => x + l.eur, 0) * k,
+        items: sec.items.map((l) => ({ ...l, eur: l.eur * k })),
+      }))
+    }
+    return { name: it.name ?? '', eur, group: it.group, unit, qty, rate: rateEur, wbs, detail }
   })
   // IT / АСУ: внедрение кастомного слоя — разовые вложения в период стройки (уже в EUR)
-  if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur })))
+  if (params.it.enabled) out.push(...params.it.capex.map((c) => ({ name: c.name, eur: c.eur, group: 'IT и автоматизация' })))
   // Земля (режим purchase): входит в CAPEX, но НЕ амортизируется — земля не изнашивается
   const landEur = params.land.mode === 'purchase' ? params.land.purchaseCost : 0
-  if (landEur) out.push({ name: 'Земля / участок', eur: landEur })
+  if (landEur) out.push({ name: 'Земля / участок', eur: landEur, group: 'Земля' })
   const totalEur = out.reduce((s, i) => s + i.eur, 0)
   const adjustedEur = totalEur * (1 + capexAdj)
   const amortizableEur = adjustedEur - landEur * (1 + capexAdj)

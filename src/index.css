@@ -449,3 +449,13 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 }
 .month-table tr.sub-detail td { background: #131d30; color: #9fb0d0; }
 .month-table tr.sub-detail td.sticky { padding-left: 26px; }
+
+/* Сметная таблица CAPEX: разделы, WBS-подразделы и строки работ */
+.month-table.capex-table td.sticky { min-width: 320px; max-width: 560px; white-space: normal; }
+.month-table tr.capex-group td { background: #1a2334; color: #dbe4f5; font-weight: 600; }
+.month-table tr.capex-group td.sticky { background: #1a2334; }
+.month-table tr.wbs-sec td { background: #16202f; color: #c3cfe4; font-weight: 500; }
+.month-table tr.wbs-sec td.sticky { background: #16202f; padding-left: 16px; }
+.month-table tr.wbs-line td { color: #93a3bc; font-size: 12.5px; }
+.month-table tr.wbs-line td.sticky { padding-left: 32px; }
+.wbs-tag { color: #5d7292; font-size: 11px; margin-left: 8px; }
