@@ -27,3 +27,13 @@ for (const name of ['Conservative', 'Base', 'Aggressive'] as const) {
       `payback: ${r.kpis.paybackMonths}, discPayback: ${r.kpis.discountedPaybackMonths}, peak: ${Math.round(r.kpis.peakFundingNeed)} },`,
   )
 }
+
+import { computeSensitivity } from '../src/model/sensitivity'
+const s = computeSensitivity(params, matrix, items, services)
+console.log('t1_d08_w14:', Math.round(s.t1.rows[0].cells[2].npv))
+console.log('t1_d10_w14:', Math.round(s.t1.rows[2].cells[2].npv))
+console.log('t1_d12_w14:', Math.round(s.t1.rows[4].cells[2].npv))
+console.log('t2_g0_c30:', Math.round(s.t2.rows[0].cells[4].npv))
+console.log('t2_g7_c30:', Math.round(s.t2.rows[4].cells[4].npv))
+console.log('t3_p08:', Math.round(s.t3[0].npv))
+console.log('t3_p12:', Math.round(s.t3[4].npv))

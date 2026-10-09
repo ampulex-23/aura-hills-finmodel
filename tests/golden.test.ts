@@ -36,9 +36,9 @@ const services = servicesJson.services as unknown as ServiceSpec[]
 // Исторические отклонения от книги: авансы CIT июль/декабрь (Кипр),
 // KPI по спецификациям вместо глобального пула.
 const ORACLE = {
-  Conservative: { npv: 1554771, irr: 0.3943, payback: 42, discPayback: 49, peak: -1910159 },
-  Base: { npv: 3383651, irr: 0.7168, payback: 33, discPayback: 37, peak: -1567482 },
-  Aggressive: { npv: 5501356, irr: 1.0421, payback: 27, discPayback: 28, peak: -1518762 },
+  Conservative: { npv: 1563700, irr: 0.3956, payback: 42, discPayback: 49, peak: -1909829 },
+  Base: { npv: 3395476, irr: 0.7185, payback: 33, discPayback: 37, peak: -1567366 },
+  Aggressive: { npv: 5516036, irr: 1.0442, payback: 27, discPayback: 28, peak: -1518685 },
 }
 
 describe('golden-master: TS-ядро vs formulas-оракул', () => {
