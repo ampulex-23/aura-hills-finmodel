@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import { Button, TextInput } from '@mantine/core'
 import type { ModelResult, ModuleSpec, NomenclatureItem, Params } from '../model/types'
 import { landedCost, activeModuleCount } from '../model/opex'
+import { capexWeights } from '../model/cashflow'
 import { useModel } from '../store'
 import { MonthTable, monthLabels, fmt, fmtEur, fmtPct, Hint } from '../components/ui'
 import type { CellHint, RowDef } from '../components/ui'
@@ -805,7 +806,10 @@ export function CashFlow({ r }: { r: ModelResult }) {
   const labels = r.cashflow.map((m) => m.label)
   const C = r.cashflow
   const sc = r.scenario
-  const presaleStart = params.meta.capexMonths - params.units.presaleMonths + 1
+  // Фактическая длина стройки — с учётом сценарной задержки
+  const capM = C.filter((m) => !m.isOps).length
+  const presaleStart = capM - params.units.presaleMonths + 1
+  const weights = capexWeights({ ...params, meta: { ...params.meta, capexMonths: capM } })
   const ops = (ci: number, text: string) => (C[ci].isOps ? text : 'Период строительства — операций нет.')
   const rows: RowDef[] = [
     {
@@ -821,7 +825,7 @@ export function CashFlow({ r }: { r: ModelResult }) {
       tip: 'Кэш-корректировка НДС: P&L берёт начисленный выходной НДС, а уплачивается меньше на входной кредит — разница остаётся в деньгах. В режиме «Гросс» всегда 0.',
       hint: (ci) => ({
         title: 'ΔНДС',
-        calc: C[ci].vatTiming ? `${e0(r.pnl[ci - params.meta.capexMonths]?.vatOut ?? 0)} − ${e0(r.pnl[ci - params.meta.capexMonths]?.vatPayable ?? 0)} = ${e0(C[ci].vatTiming)}` : '—',
+        calc: C[ci].vatTiming ? `${e0(r.pnl[ci - capM]?.vatOut ?? 0)} − уплачено ${e0(r.pnl[ci - capM]?.vatPaid ?? 0)} = ${e0(C[ci].vatTiming)}` : '—',
       }),
     },
     {
@@ -830,10 +834,10 @@ export function CashFlow({ r }: { r: ModelResult }) {
     },
     {
       label: 'CAPEX', values: C.map((m) => m.capex),
-      tip: `Инвестиции распределены равномерно по ${params.meta.capexMonths} мес строительства.`,
+      tip: `Инвестиции по S-кривой освоения за ${capM} мес строительства${sc.constructionDelayMonths ? ` (включая задержку ${sc.constructionDelayMonths} мес)` : ''}: проект/разрешения → основной объём → импорт и монтаж.`,
       hint: (ci) => ({
         title: 'CAPEX',
-        calc: C[ci].capex ? `−${e0(r.capex.adjustedEur)} / ${params.meta.capexMonths} мес = ${e0(C[ci].capex)}` : '—',
+        calc: C[ci].capex ? `−(${e0(r.capex.adjustedEur)} − отложенные ${e0(r.capex.deferred.reduce((s, d) => s + d.eur, 0))}) × вес ${pc(weights[ci] ?? 0)} = ${e0(C[ci].capex)}` : '—',
       }),
     },
     ...(r.capex.deferred.length
@@ -872,27 +876,45 @@ export function CashFlow({ r }: { r: ModelResult }) {
           hint: (ci: number): CellHint => ({ title: 'Аренда земли', calc: C[ci].landLease ? `${e0(params.land.rentMonthly)}/мес` : '—' }),
         }]
       : []),
+    ...(params.capexMaint.enabled
+      ? [{
+          label: '− Maintenance CAPEX', values: C.map((m) => m.maintCapex),
+          tip: `Reserve for replacement ${pc(params.capexMaint.pctPerYear)} амортизируемого CAPEX в год с ${params.capexMaint.startYear}-го года операций + капремонт ${e0(params.capexMaint.lumpEur)} в году ${params.capexMaint.lumpYear}.`,
+          hint: (ci: number): CellHint => ({ title: 'Maintenance CAPEX', calc: C[ci].maintCapex ? e0(C[ci].maintCapex) : '—' }),
+        }]
+      : []),
     {
       label: 'FCFF', values: C.map((m) => m.fcff), bold: true,
-      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}+\mathrm{preopen}`, // OCF включает ΔНДС
-      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + (${e0(C[ci].deferredCapex)}) + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) + (${e0(C[ci].preopen)}) = ${e0(C[ci].fcff)}` }),
+      tex: String.raw`\mathrm{FCFF}=\mathrm{OCF}+\mathrm{CAPEX}+\mathrm{пресейл}+\mathrm{прогорание}+\mathrm{земля}+\mathrm{preopen}+\mathrm{maint}`, // OCF включает ΔНДС
+      hint: (ci) => ({ title: 'FCFF', text: 'Свободный денежный поток фирмы до распределений.', calc: `${e0(C[ci].operatingCf)} + ${e0(C[ci].capex)} + (${e0(C[ci].deferredCapex)}) + ${e0(C[ci].presale)} + (${e0(C[ci].presaleUnwind)}) + (${e0(C[ci].landLease)}) + (${e0(C[ci].preopen)}) + (${e0(C[ci].maintCapex)}) = ${e0(C[ci].fcff)}` }),
     },
     {
-      label: 'Дивиденды и УК', values: C.map((m) => m.dividends),
-      hint: (ci) => ({ title: 'Дивиденды', calc: C[ci].dividends ? `${e0(C[ci].dividends)}` : '—' }),
+      label: 'Дивиденды брутто (вкл. УК)', values: C.map((m) => m.dividends),
+      tip: 'Отток компании. SDC и GESY удерживаются ИЗ этой суммы при выплате резидентам — не дополнительный расход компании.',
+      hint: (ci) => ({ title: 'Дивиденды брутто', calc: C[ci].dividends ? `${e0(C[ci].dividends)}, в т.ч. удержано SDC+GESY ${e0(C[ci].sdc + C[ci].gesy)}` : '—' }),
     },
     {
-      label: 'Defence Tax + GESY', values: C.map((m) => m.sdc + m.gesy),
-      hint: (ci) => ({ title: 'SDC + GESY', calc: C[ci].sdc || C[ci].gesy ? `${e0(C[ci].sdc + C[ci].gesy)}` : '—' }),
+      label: '  в т.ч. удержано SDC + GESY', values: C.map((m) => -(m.sdc + m.gesy)),
+      tip: 'Справочно: часть дивидендов, перечисляемая в бюджет вместо акционеров-резидентов (внутри строки выше).',
+      hint: (ci) => ({ title: 'SDC + GESY (удержание)', calc: C[ci].sdc || C[ci].gesy ? `${e0(C[ci].sdc)} + ${e0(C[ci].gesy)}` : '—' }),
     },
     {
       label: 'CF после распределения', values: C.map((m) => m.totalCf), bold: true,
-      hint: (ci) => ({ title: 'CF после распределения', calc: `${e0(C[ci].fcff)} + ${e0(C[ci].dividends)} + ${e0(C[ci].sdc + C[ci].gesy)} = ${e0(C[ci].totalCf)}` }),
+      hint: (ci) => ({ title: 'CF после распределения', calc: `${e0(C[ci].fcff)} + ${e0(C[ci].dividends)} = ${e0(C[ci].totalCf)}` }),
     },
     {
-      label: 'Остаток денег', values: C.map((m) => m.cumCash),
-      tip: 'Накопленный остаток денежных средств на конец месяца.',
-      hint: (ci) => ({ title: 'Остаток денег', calc: `Σ CF с начала = ${e0(C[ci].cumCash)}` }),
+      label: '+ Equity-транш акционеров', values: C.map((m) => m.equityIn),
+      tip: 'Взнос, закрывающий кассовый разрыв месяца: касса не уходит в минус. Σ траншей — потребность в собственном капитале.',
+      hint: (ci) => ({ title: 'Equity-транш', calc: C[ci].equityIn ? `max(0, −(касса_пред + CF)) = ${e0(C[ci].equityIn)}` : '—' }),
+    },
+    {
+      label: 'Касса на конец месяца', values: C.map((m) => m.cash), bold: true,
+      tip: 'Остаток денег с учётом equity-траншей (≥ 0). Без траншей накопленный CF — строкой ниже.',
+      hint: (ci) => ({ title: 'Касса', calc: `${e0(ci ? C[ci - 1].cash : 0)} + ${e0(C[ci].totalCf)} + ${e0(C[ci].equityIn)} = ${e0(C[ci].cash)}` }),
+    },
+    {
+      label: 'Накопл. CF (без траншей)', values: C.map((m) => m.cumCash),
+      hint: (ci) => ({ title: 'Накопленный CF', calc: `Σ CF после распределения = ${e0(C[ci].cumCash)}` }),
     },
     {
       label: 'Накопл. FCFF', values: C.map((m) => m.cumFcff),
@@ -900,8 +922,8 @@ export function CashFlow({ r }: { r: ModelResult }) {
     },
     {
       label: 'Дисконт. FCFF', values: C.map((m) => m.discountedFcff),
-      tex: String.raw`\mathrm{DF}=\frac{1}{(1+\mathrm{WACC}/12)^{m}},\quad \mathrm{DCF}=\mathrm{FCFF}\cdot\mathrm{DF}`,
-      tip: `FCFF, приведённый к текущему моменту по ставке WACC = ${pc(params.general.wacc)} годовых.`,
+      tex: String.raw`\mathrm{DF}=\frac{1}{(1+\mathrm{WACC})^{m/12}},\quad \mathrm{DCF}=\mathrm{FCFF}\cdot\mathrm{DF}`,
+      tip: `FCFF, приведённый к текущему моменту по эффективной ставке WACC = ${pc(r.kpis.wacc)} годовых (месячная (1+WACC)^(1/12)−1).`,
       hint: (ci) => ({
         title: 'Дисконтированный FCFF',
         calc: `${e0(C[ci].fcff)} × DF ${C[ci].discountFactor.toFixed(3)} = ${e0(C[ci].discountedFcff)}`,
@@ -913,7 +935,106 @@ export function CashFlow({ r }: { r: ModelResult }) {
       hint: (ci) => ({ title: 'NPV накопительно', calc: `Σ дисконт. FCFF = ${e0(C[ci].cumDcf)}` }),
     },
   ]
-  return <MonthTable rows={rows} labels={labels} withSum />
+  return (
+    <>
+      <MonthTable rows={rows} labels={labels} withSum />
+      <SourcesUses r={r} />
+      <Balance r={r} />
+    </>
+  )
+}
+
+// Источники и использование средств: куда ушли деньги и чем закрыты (аудит 14, I-2/I-11)
+function SourcesUses({ r }: { r: ModelResult }) {
+  const C = r.cashflow
+  const sum = (f: (m: typeof C[number]) => number) => C.reduce((s, m) => s + f(m), 0)
+  const build = C.filter((m) => !m.isOps)
+  const uses: [string, number][] = [
+    ['Строительный CAPEX (с буфером)', -sum((m) => m.capex)],
+    ['CAPEX модулей (отложенный)', -sum((m) => m.deferredCapex)],
+    ['Maintenance CAPEX и капремонт', -sum((m) => m.maintCapex)],
+    ['Pre-opening и аренда земли в стройке', -sum((m) => m.preopen + m.landLease)],
+    ['Операционные убытки (месяцы с OCF < 0)', -sum((m) => Math.min(0, m.operatingCf))],
+    ['Дивиденды брутто', -sum((m) => m.dividends)],
+    ['Остаток кассы на конец горизонта', C[C.length - 1].cash],
+  ]
+  const sources: [string, number][] = [
+    ['Equity-транши акционеров', sum((m) => m.equityIn)],
+    ['Пре-сейл (предоплаты)', sum((m) => m.presale)],
+    ['Операционный CF (месяцы с OCF > 0)', sum((m) => Math.max(0, m.operatingCf))],
+    ['Прогорание пресейла (неденежное)', sum((m) => m.presaleUnwind)],
+  ]
+  const tU = uses.reduce((s, [, v]) => s + v, 0)
+  const tS = sources.reduce((s, [, v]) => s + v, 0)
+  const tranches = C.map((m, i) => ({ m, i })).filter((x) => x.m.equityIn > 0)
+  const byPeriod = { build: tranches.filter((x) => !x.m.isOps).reduce((s, x) => s + x.m.equityIn, 0), ops: tranches.filter((x) => x.m.isOps).reduce((s, x) => s + x.m.equityIn, 0) }
+  return (
+    <div className="chart-card" style={{ marginTop: 16 }}>
+      <h3>Источники и использование средств (весь горизонт)</h3>
+      <div className="cols-2">
+        <table className="month-table spec">
+          <thead><tr><th>Использование</th><th>€</th></tr></thead>
+          <tbody>
+            {uses.map(([l, v]) => <tr key={l}><td className="lft">{l}</td><td>{e0(v)}</td></tr>)}
+            <tr className="total"><td className="lft"><b>Итого</b></td><td><b>{e0(tU)}</b></td></tr>
+          </tbody>
+        </table>
+        <table className="month-table spec">
+          <thead><tr><th>Источники</th><th>€</th></tr></thead>
+          <tbody>
+            {sources.map(([l, v]) => <tr key={l}><td className="lft">{l}</td><td>{e0(v)}</td></tr>)}
+            <tr className="total"><td className="lft"><b>Итого</b></td><td><b>{e0(tS)}</b></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <small className="note" style={{ display: 'block', marginTop: 6 }}>
+        Equity-транши: стройка {e0(byPeriod.build)} за {build.length} мес ({tranches.filter((x) => !x.m.isOps).length} траншей)
+        {byPeriod.ops > 0 ? `, операционка ${e0(byPeriod.ops)} (${tranches.filter((x) => x.m.isOps).length} мес с разрывом — разгон/капремонт)` : ', в операционке разрывов нет'}.
+        Контроль: источники − использование = {e0(tS - tU)}.
+      </small>
+    </div>
+  )
+}
+
+// Мини-баланс по годам (на конец операционного года + конец стройки)
+function Balance({ r }: { r: ModelResult }) {
+  const B = r.balance
+  const C = r.cashflow
+  const capM = C.filter((m) => !m.isOps).length
+  const idx = [capM - 1, ...Array.from({ length: Math.floor((B.length - capM) / 12) }, (_, y) => capM + y * 12 + 11)].filter((i) => i < B.length)
+  const rows: [string, (b: typeof B[number]) => number, boolean?][] = [
+    ['Касса', (b) => b.cash],
+    ['Основные средства (остаточная)', (b) => b.ppeNbv],
+    ['АКТИВЫ', (b) => b.totalAssets, true],
+    ['Предоплаты гостей (deferred revenue)', (b) => b.prepaidPool],
+    ['НДС: нетто-расчёты с бюджетом', (b) => b.vatNet],
+    ['Вклады акционеров (equity-транши)', (b) => b.equityIn],
+    ['Нераспределённая прибыль', (b) => b.retained],
+    ['ОБЯЗАТЕЛЬСТВА + КАПИТАЛ', (b) => b.totalLiabEq, true],
+    ['Контроль (А − П)', (b) => b.check],
+  ]
+  return (
+    <div className="chart-card" style={{ marginTop: 16 }}>
+      <h3>Мини-баланс (на конец периода)</h3>
+      <div className="table-wrap">
+        <table className="month-table spec">
+          <thead><tr><th>Статья</th>{idx.map((i) => <th key={i}>{B[i].label}</th>)}</tr></thead>
+          <tbody>
+            {rows.map(([l, f, bold]) => (
+              <tr key={l} className={bold ? 'total' : ''}>
+                <td className="lft">{bold ? <b>{l}</b> : l}</td>
+                {idx.map((i) => <td key={i}>{bold ? <b>{e0(f(B[i]))}</b> : e0(f(B[i]))}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <small className="note" style={{ display: 'block', marginTop: 6 }}>
+        Упрощённый баланс: без запасов, дебиторки/кредиторки и отложенных налогов. ОС = Σ CAPEX (стройка, модули, maintenance) − накопленная амортизация; земля в составе ОС без амортизации.
+        Нераспределённая прибыль = Σ ЧП + расходы стройки (pre-opening, аренда) − дивиденды брутто. Сходится тождественно — контрольная строка должна быть 0.
+      </small>
+    </div>
+  )
 }
 
 export { monthLabels }

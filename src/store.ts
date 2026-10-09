@@ -186,7 +186,9 @@ export const useModel = create<ModelState>()(
       name: 'aura-hills-model',
       // v2: номенклатурный реворк — старые снапшоты (115 позиций, старые коды
       // спек) несовместимы → migrate сбрасывает к новым дефолтам.
-      version: 4,
+      // v5: аудит 14 — новая форма матрицы сценариев (полные 5-летние векторы),
+      // CAPM/WACC, members.peakShare, capexMaint и т.д. → сброс к дефолтам.
+      version: 5,
       storage: createJSONStorage(() => debouncedLocalStorage),
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>

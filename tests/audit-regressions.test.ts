@@ -8,7 +8,12 @@ import { runModel } from '../src/model/run'
 import { dirCounts } from '../src/model/revenue'
 import { costService, serviceLaborShare } from '../src/model/spec'
 
-const matrix = scenariosJson as ScenarioMatrix
+// Механики проверяются без сценарных стрессов стройки (задержка сдвигает индексы месяцев)
+const matrix = (() => {
+  const m = JSON.parse(JSON.stringify(scenariosJson)) as ScenarioMatrix
+  m.constructionDelayMonths = m.names.map(() => 0)
+  return m
+})()
 const items = nomenclatureJson as NomenclatureItem[]
 const services = servicesJson.services as unknown as ServiceSpec[]
 const clone = () => JSON.parse(JSON.stringify(paramsJson)) as Params
@@ -19,8 +24,8 @@ describe('аудит-регрессии', () => {
     for (let k = 0; k < 60; k++) {
       const vatOut = r.taxes[k].vatOut19 + r.taxes[k].vatOut9
       expect(r.pnl[k].revenueNet).toBeCloseTo(r.revenue[k].total - vatOut, 6)
-      // CF-корректировка закрывает разницу начисленный vs уплаченный
-      expect(r.cashflow[k + 12].vatTiming).toBeCloseTo(vatOut - r.taxes[k].vatPayable, 6)
+      // CF-корректировка закрывает разницу начисленный vs уплаченный кэшем
+      expect(r.cashflow[k + 12].vatTiming).toBeCloseTo(vatOut - r.taxes[k].vatPaid, 6)
       expect(r.cashflow[k + 12].operatingCf).toBeCloseTo(
         r.pnl[k].netProfit + r.pnl[k].amortization + r.cashflow[k + 12].vatTiming, 6,
       )
@@ -31,9 +36,43 @@ describe('аудит-регрессии', () => {
     expect(r.pnl[k].ebitda).toBeLessThan(r.revenue[k].total * 0.9)
   })
 
-  it('«Гросс»: vatTiming всегда 0, модель не изменилась', () => {
-    const r = runModel(clone(), matrix, items, services, 'Base')
+  it('«Гросс» + помесячная уплата: vatTiming всегда 0', () => {
+    const p = clone()
+    p.taxes.vatQuarterly = false
+    const r = runModel(p, matrix, items, services, 'Base', { vatMode: 'Гросс' })
     expect(r.cashflow.every((m) => Math.abs(m.vatTiming) < 1e-9)).toBe(true)
+  })
+
+  it('квартальная уплата НДС: Σ уплачено = Σ начислено минус хвост последнего квартала', () => {
+    const r = runModel(clone(), matrix, items, services, 'Base')
+    const payable = r.taxes.reduce((s, t) => s + t.vatPayable, 0)
+    const paid = r.taxes.reduce((s, t) => s + t.vatPaid, 0)
+    // последний квартал (Окт–Дек года 5) платится уже за горизонтом
+    const tail = r.taxes.slice(-3).reduce((s, t) => s + t.vatPayable, 0)
+    expect(paid).toBeCloseTo(payable - tail, 6)
+    // платежи только в месяцы 2, 5, 8, 11 (через 2 мес после конца квартала)
+    r.taxes.forEach((t, k) => { if (t.vatPaid > 0) expect([2, 5, 8, 11]).toContain(r.revenue[k].monthOfYear) })
+  })
+
+  it('SDC/GESY удерживаются ИЗ дивидендов: отток компании = дивиденды брутто', () => {
+    const r = runModel(clone(), matrix, items, services, 'Base')
+    r.cashflow.forEach((m) => {
+      expect(m.totalCf).toBeCloseTo(m.fcff + m.dividends, 6)
+      expect(m.cash).toBeGreaterThanOrEqual(-1e-6)
+    })
+  })
+
+  it('потолок GESY €180k на партнёра в календарный год', () => {
+    const p = clone()
+    p.taxes.gesyCap = 1000 // низкий потолок: GESY упирается в него
+    const r = runModel(p, matrix, items, services, 'Aggressive')
+    const residents = p.partners.statuses.filter((s) => s.startsWith('Резидент')).length
+    const byYear = new Map<number, number>()
+    r.taxes.forEach((t, k) => {
+      const y = Math.floor(k / 12)
+      byYear.set(y, (byYear.get(y) ?? 0) + t.gesy)
+    })
+    for (const [, g] of byYear) expect(g).toBeLessThanOrEqual(residents * 1000 * p.taxes.gesy + 1e-6)
   })
 
   it('входной НДС по CAPEX исключает землю и отложенные модули', () => {
@@ -84,8 +123,10 @@ describe('аудит-регрессии', () => {
     const r = runModel(p, matrix, items, services, 'Base')
     // «Обслуживание модулей» €100/модуль: 3 модуля до запуска, 4 после.
     // fixed[m] = (Σ базовых + 100×модули) × инфляция года → m13 = m0×infl + 100×infl
-    const svcM0 = r.opex[0].fixed.reduce((s, v) => s + v, 0)
-    const svcM13 = r.opex[13].fixed.reduce((s, v) => s + v, 0)
+    // (маркетинг исключён — он теперь % выручки, см. opexFixed[0].pctOfRevenue)
+    const noMkt = (f: number[]) => f.filter((_, i) => !p.opexFixed[i].pctOfRevenue).reduce((s, v) => s + v, 0)
+    const svcM0 = noMkt(r.opex[0].fixed)
+    const svcM13 = noMkt(r.opex[13].fixed)
     const inflY2 = Math.pow(1.025, 1)
     expect(svcM13).toBeCloseTo(svcM0 * inflY2 + 100 * inflY2, 0)
   })
@@ -115,9 +156,9 @@ describe('аудит-регрессии', () => {
     // (печи и купели переехали в номенклатурное наполнение — там не помодульные)
     expect(r.capex.deferred).toHaveLength(1)
     expect(r.capex.deferred[0].eur).toBeCloseTo(90_000 * (1 + r.scenario.capexAdj), 2)
-    // общий CAPEX вырос на полную помодульную сумму (раньше добавлялся только корпус €70k)
+    // общий CAPEX (до буфера) вырос на полную помодульную сумму (раньше добавлялся только корпус €70k)
     const base = runModel(clone(), matrix, items, services, 'Base')
-    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + 90_000 * (1 + r.scenario.capexAdj), 0)
+    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + 90_000, 0)
   })
 })
 

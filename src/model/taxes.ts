@@ -8,6 +8,8 @@ export interface VatMonth {
   inputVat: number
   vatCredit: number
   vatPayable: number
+  /** Кэш-платёж месяца: квартальный график (НДС за квартал — 10-е число 2-го месяца после) */
+  vatPaid: number
 }
 
 // НДС: выходной 19% (бани/услуги/членства) + 9% (глэмпинг/F&B), extracted-ставки.
@@ -34,6 +36,12 @@ export function computeVat(
   )
   const out: VatMonth[] = []
   let credit = 0
+  // Квартальная уплата: начисленное за календарный квартал уходит кэшем через
+  // 2 месяца после его конца (Кипр: до 10-го числа 2-го месяца). Остаток на
+  // конец горизонта — обязательство в мини-балансе.
+  const quarterly = r.vatQuarterly ?? false
+  const paySchedule = new Map<number, number>()
+  let quarterAcc = 0
   for (let k = 0; k < revenue.length; k++) {
     const rev = revenue[k]
     const vatOut19 =
@@ -48,7 +56,16 @@ export function computeVat(
       : 0
     const vatPayable = Math.max(0, vatOut - inputVat - credit)
     credit = Math.max(0, credit + inputVat - vatOut)
-    out.push({ vatOut19, vatOut9, vatOut, inputVat, vatCredit: credit, vatPayable })
+    let vatPaid = vatPayable
+    if (quarterly) {
+      quarterAcc += vatPayable
+      if (rev.monthOfYear % 3 === 0) {
+        paySchedule.set(k + 2, (paySchedule.get(k + 2) ?? 0) + quarterAcc)
+        quarterAcc = 0
+      }
+      vatPaid = paySchedule.get(k) ?? 0
+    }
+    out.push({ vatOut19, vatOut9, vatOut, inputVat, vatCredit: credit, vatPayable, vatPaid })
   }
   return out
 }
@@ -91,17 +108,12 @@ export function computeProfitTaxes(
 
   const distShare =
     params.partners.shares.reduce((a, b) => a + b, 0) + params.partners.corporate.mgmt
-  // SDC 17% и GESY 2.65% — на дивиденды резидентам Кипра (non-dom освобождены от обоих)
-  const sdcWeighted = params.partners.shares.reduce(
-    (s, sh, i) =>
-      s + sh * (params.partners.statuses[i] === 'Резидент Кипра (17%)' ? r.sdc : 0),
-    0,
-  )
-  const gesyWeighted = params.partners.shares.reduce(
-    (s, sh, i) =>
-      s + sh * (params.partners.statuses[i] === 'Резидент Кипра (17%)' ? r.gesy : 0),
-    0,
-  )
+  // SDC (5% с реформы 2026; 17% — прибыль до 2025) и GESY 2.65% удерживаются из
+  // дивидендов резидентам-домицилам Кипра; non-dom освобождены от обоих.
+  // GESY — с потолком базы €180k на физлицо в календарный год.
+  const isResident = (i: number) => params.partners.statuses[i] === 'Резидент Кипра (17%)'
+  const gesyCap = r.gesyCap ?? Infinity
+  const gesyUsed = new Map<string, number>() // `${partner}-${year}` → база GESY, уже обложенная
 
   const taxes = vat.map((v, k) => {
     const mo = revenue[k].monthOfYear
@@ -110,8 +122,19 @@ export function computeProfitTaxes(
         ? (citOf.get(calYearOf(k)) ?? 0) / (payCount.get(calYearOf(k)) ?? 1)
         : 0
     const dividends = k >= 12 ? Math.max(0, netProfitPreDiv[k - 12]) * distShare : 0
-    const sdc = (dividends * sdcWeighted) / distShare
-    const gesy = (dividends * gesyWeighted) / distShare
+    let sdc = 0
+    let gesy = 0
+    params.partners.shares.forEach((sh, i) => {
+      if (!isResident(i) || distShare <= 0) return
+      const divI = (dividends * sh) / distShare
+      sdc += divI * r.sdc
+      const key = `${i}-${calYearOf(k)}`
+      const used = gesyUsed.get(key) ?? 0
+      const taxable = Math.max(0, Math.min(divI, gesyCap - used))
+      gesyUsed.set(key, used + taxable)
+      gesy += taxable * r.gesy
+    })
+    // total — налоговая нагрузка периода: НДС + CIT + удержания с дивидендов
     return { ...v, cit, dividends, sdc, gesy, total: v.vatPayable + cit + sdc + gesy }
   })
   return { taxes, citByYear }

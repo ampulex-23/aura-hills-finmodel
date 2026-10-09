@@ -7,22 +7,32 @@
     "opsMonths": 60,
     "mode": "Да",
     "scenario": "Base",
-    "vatMode": "Гросс"
+    "vatMode": "С возмещением"
   },
   "general": {
     "rubEurRate": 100,
     "inflation": 0.025,
-    "wacc": 0.14
+    "wacc": 0.14,
+    "waccMode": "capm",
+    "capm": {
+      "rf": 0.032,
+      "beta": 1.4,
+      "erp": 0.055,
+      "countryPremium": 0.015,
+      "sizePremium": 0.05
+    }
   },
   "taxes": {
-    "cit": 0.125,
+    "cit": 0.15,
     "vatStd": 0.19,
     "vatGlamp": 0.09,
     "vatFb": 0.09,
     "vatInput": 0.19,
-    "employerRate": 0.1515,
-    "sdc": 0.17,
-    "gesy": 0.0265
+    "employerRate": 0.154,
+    "sdc": 0.05,
+    "gesy": 0.0265,
+    "gesyCap": 180000,
+    "vatQuarterly": true
   },
   "prices": {
     "membershipMonth": 200,
@@ -45,7 +55,9 @@
     "certsPerMonth": 65,
     "presaleMonths": 3,
     "presaleMode": "deferred",
-    "presaleRecognizeMonths": 12
+    "presaleRecognizeMonths": 12,
+    "certRedemptionRate": 0.85,
+    "certGuestsPerCert": 1
   },
   "amort": {
     "shares": [
@@ -86,7 +98,9 @@
   "members": {
     "consumeSlots": true,
     "visitsPerMonth": 2,
-    "partySize": 2
+    "partySize": 2,
+    "peakShare": 0.3,
+    "serviceSpendPerVisit": 40
   },
   "taxDepr": {
     "enabled": true,
@@ -103,7 +117,8 @@
   },
   "tv": {
     "enabled": false,
-    "growth": 0.025
+    "growth": 0.025,
+    "exitMultiple": 6
   },
   "deposit": {
     "base": 110,
@@ -119,32 +134,46 @@
   },
   "seasonality": {
     "baths": [
-      1.25,
-      1.2,
-      1.1,
-      1.05,
-      0.9,
-      0.7,
-      1,
-      0.65,
-      0.9,
-      1.2,
-      1.25,
-      1
+      1.2295,
+      1.1803,
+      1.082,
+      1.0328,
+      0.8852,
+      0.6885,
+      0.9836,
+      0.6393,
+      0.8852,
+      1.1803,
+      1.2295,
+      0.9836
     ],
     "glamping": [
-      0.3,
-      0.4,
-      0.7,
-      1.1,
+      0.375,
+      0.5,
+      0.875,
+      1.375,
+      1.5,
+      1.375,
+      1,
+      1,
+      1.375,
+      1.5,
+      0.75,
+      0.375
+    ],
+    "certificates": [
+      0.9,
       1.2,
-      1.1,
+      1,
       0.8,
       0.8,
-      1.1,
-      1.2,
       0.6,
-      0.3
+      0.6,
+      0.6,
+      0.8,
+      0.9,
+      1.3,
+      2.5
     ]
   },
   "procedures": {
@@ -364,11 +393,13 @@
   "opexFixed": [
     {
       "name": "Маркетинг и реклама",
-      "base": 5000
+      "base": 5000,
+      "pctOfRevenue": 0.035
     },
     {
       "name": "Электроэнергия",
-      "base": 3000
+      "base": 3000,
+      "energy": true
     },
     {
       "name": "Водоснабжение",
@@ -376,7 +407,8 @@
     },
     {
       "name": "Отопление (газ)",
-      "base": 300
+      "base": 300,
+      "energy": true
     },
     {
       "name": "Транспорт",
@@ -1128,5 +1160,26 @@
         "eur": 13000
       }
     ]
-  }
+  },
+  "capexMaint": {
+    "enabled": true,
+    "pctPerYear": 0.015,
+    "startYear": 2,
+    "lumpYear": 4,
+    "lumpEur": 60000
+  },
+  "capexSCurve": [
+    0.04,
+    0.05,
+    0.07,
+    0.09,
+    0.11,
+    0.12,
+    0.12,
+    0.11,
+    0.1,
+    0.08,
+    0.06,
+    0.05
+  ]
 }

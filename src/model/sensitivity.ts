@@ -1,29 +1,40 @@
 import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from './types'
-import { runModel } from './run'
+import { resolveWacc, runModel } from './run'
 import { resolveScenario } from './scenario'
 
 // Sensitivity: настоящий пересчёт модели (не эвристика) — как sens_run.py по формулам.
-// Таблица 1: спрос × WACC → NPV + диск.окупаемость
+// Таблица 1: спрос × WACC → NPV + диск.окупаемость (ось WACC центрирована на базовой)
 // Таблица 2: рост цен × буфер CAPEX → NPV + IRR
 // Таблица 3: уровень всех цен × → NPV + IRR
+// Таблица 4: доля гостей с пакетом (uptake, непакетный режим) × загрузка → NPV
+// Таблица 5: курс RUB/EUR × буфер CAPEX → NPV
 
 export interface SensPoint { npv: number; irr: number; discPayback: number }
 export interface SensTable1Row { demand: number; cells: { wacc: number; npv: number; discPayback: number }[] }
 export interface SensTable2Row { priceGrowth: number; cells: { capexAdj: number; npv: number; irr: number }[] }
 export interface SensTable3Row { priceMult: number; npv: number; irr: number }
+export interface SensTable4Row { uptake: number; cells: { loadMult: number; npv: number; irr: number }[] }
+export interface SensTable5Row { rubEur: number; cells: { capexAdj: number; npv: number; irr: number }[] }
 
 export interface SensitivityResult {
   t1: { waccAxis: number[]; rows: SensTable1Row[] }
   t2: { capexAxis: number[]; rows: SensTable2Row[] }
   t3: SensTable3Row[]
+  t4: { loadAxis: number[]; rows: SensTable4Row[] }
+  t5: { capexAxis: number[]; rows: SensTable5Row[] }
   computedInMs: number
 }
 
 export const T1_DEMAND = [0.8, 0.9, 1.0, 1.1, 1.2]
-export const T1_WACC = [0.1, 0.12, 0.14, 0.17, 0.2]
+/** Ось WACC: симметрично вокруг базовой ставки (центр = база — sanity-check таблицы) */
+export const waccAxis = (base: number) => [-0.04, -0.02, 0, 0.03, 0.06].map((d) => Math.round((base + d) * 1000) / 1000)
 export const T2_GROWTH = [0, 0.02, 0.03, 0.05, 0.07]
 export const T2_CAPEX = [0, 0.1, 0.15, 0.2, 0.3]
 export const T3_PRICE = [0.8, 0.9, 1.0, 1.1, 1.2]
+export const T4_UPTAKE = [0.3, 0.5, 0.7, 0.85, 1.0]
+export const T4_LOAD = [0.8, 0.9, 1.0, 1.1, 1.2]
+export const T5_RATE = [80, 90, 100, 110, 120]
+export const T5_CAPEX = [0, 0.1, 0.2, 0.3]
 
 export function computeSensitivity(
   params: Params,
@@ -33,6 +44,7 @@ export function computeSensitivity(
 ): SensitivityResult {
   const t0 = performance.now()
   const scenario = params.meta.scenario
+  const T1_WACC = waccAxis(resolveWacc(params))
 
   const t1: SensTable1Row[] = T1_DEMAND.map((demand) => ({
     demand,
@@ -55,10 +67,32 @@ export function computeSensitivity(
     return { priceMult, npv: r.kpis.npv, irr: r.kpis.irrAnnual }
   })
 
+  // T4: пакет как ключевой коммерческий риск (аудит 14, W-9). uptake=1.0 ≡ пакетный режим.
+  const t4: SensTable4Row[] = T4_UPTAKE.map((uptake) => ({
+    uptake,
+    cells: T4_LOAD.map((loadMult) => {
+      const r = runModel(params, matrix, items, services, scenario, { mode: 'Нет', uptake, loadMult })
+      return { loadMult, npv: r.kpis.npv, irr: r.kpis.irrAnnual }
+    }),
+  }))
+
+  // T5: валютный риск рублёвой сметы × буфер CAPEX (аудит 14, I-9)
+  const t5: SensTable5Row[] = T5_RATE.map((rubEur) => ({
+    rubEur,
+    cells: T5_CAPEX.map((capexAdj) => {
+      const r = runModel(params, matrix, items, services, scenario, {
+        capexAdj, mutate: (p) => { p.general.rubEurRate = rubEur },
+      })
+      return { capexAdj, npv: r.kpis.npv, irr: r.kpis.irrAnnual }
+    }),
+  }))
+
   return {
     t1: { waccAxis: T1_WACC, rows: t1 },
     t2: { capexAxis: T2_CAPEX, rows: t2 },
     t3,
+    t4: { loadAxis: T4_LOAD, rows: t4 },
+    t5: { capexAxis: T5_CAPEX, rows: t5 },
     computedInMs: performance.now() - t0,
   }
 }
@@ -115,7 +149,7 @@ export function computeTornado(
 ): TornadoBar[] {
   const scenario = params.meta.scenario
   const baseCapexAdj = resolveScenario(params, matrix, scenario).capexAdj
-  const baseWacc = params.general.wacc
+  const baseWacc = resolveWacc(params)
 
   type Ov = Parameters<typeof runModel>[5]
   const drivers: { label: string; loLabel: string; hiLabel: string; lo: Ov; hi: Ov }[] = [

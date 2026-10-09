@@ -1,5 +1,7 @@
+import { Fragment } from 'react'
 import { useModel } from '../store'
 import { NumField, fmtPct } from '../components/ui'
+import { YEAR_KEYS } from '../model/types'
 
 // Редактор матрицы сценариев — лист «Сценарии» в виде формы.
 // Два блока (Загрузка / Экономика) размещены горизонтально, чтобы не растягивать таблицу.
@@ -42,18 +44,21 @@ export function Scenarios() {
           <table className="month-table scen">
             <Head />
             <tbody>
-              <tr className="section"><td className="sticky" colSpan={4}>ЗАГРУЗКА БАНЬ</td></tr>
-              {(['y1','y2','y3','y4','y5'] as const).map((y, i) => (
-                <Row key={y} label={`Бани — Год ${i + 1}`} path={`baths.${y}`} pct />
+              {([
+                ['ЗАГРУЗКА БАНЬ', 'baths', 'Бани', true],
+                ['ПАРЕНИЯ', 'steam', 'Парения', true],
+                ['МАССАЖ', 'massage', 'Массаж', true],
+                ['ДОП. УСЛУГИ', 'extra', 'Допы', true],
+                ['ГЛЭМПИНГ', 'glamping', 'Глэмпинг', true],
+                ['МЕСЯЧНЫЕ ЧЛЕНСТВА, чел', 'membersMonth', 'Членов', false],
+              ] as const).map(([title, key, label, pct]) => (
+                <Fragment key={key}>
+                  <tr className="section"><td className="sticky" colSpan={4}>{title}</td></tr>
+                  {YEAR_KEYS.map((y, i) => (
+                    <Row key={y} label={`${label} — Год ${i + 1}`} path={`${key}.${y}`} pct={pct} />
+                  ))}
+                </Fragment>
               ))}
-              <Row label="Парения — Год 1" path="steam.y1" pct />
-              <Row label="Парения — Год 3+" path="steam.y3" pct />
-              <Row label="Массаж — Год 1" path="massage.y1" pct />
-              <Row label="Массаж — Год 3+" path="massage.y3" pct />
-              <Row label="Глэмпинг — Год 1" path="glamping.y1" pct />
-              <Row label="Глэмпинг — Год 3+" path="glamping.y3" pct />
-              <Row label="Месячные членства — Год 1" path="membersMonth.y1" />
-              <Row label="Месячные членства — Год 3+" path="membersMonth.y3" />
             </tbody>
           </table>
         </div>
@@ -69,20 +74,25 @@ export function Scenarios() {
                 label={packageMode ? 'Доля реализации услуг (=100% в пакетном режиме)' : 'Доля реализации услуг (непакетная)'}
                 path="uptake" pct locked={packageMode}
               />
+              <tr className="section"><td className="sticky" colSpan={4}>СТРЕССЫ СТРОЙКИ И ЗАТРАТ</td></tr>
+              <Row label="Задержка стройки, мес." path="constructionDelayMonths" />
+              <Row label="Множитель энергозатрат" path="energyCostMult" />
             </tbody>
           </table>
         </div>
       </div>
       <p className="note">
-        Промежуточные годы интерполируются: × 20/35 (парения, массаж),
-        × 15/25 (глэмпинг), × 30/70 с округлением (членства); бани задаются явно
-        по годам. Загрузка доп. услуг = парения − 25 п.п. (наследуется, без ручки).
-        Векторы услуг — множители доли реализации: в пакетном режиме услуга
-        включена в слот (uptake = 100%, ручка заблокирована), но реально ей
-        пользуется доля гостей = загрузка услуги; в непакетном режиме доля
-        реализации дополнительно умножается на «Долю реализации услуг».
+        Все потоки заданы явно по пяти годам — интерполяций и унаследованных
+        коэффициентов нет. Векторы услуг — множители доли реализации: в пакетном
+        режиме услуга включена в слот (uptake = 100%, ручка заблокирована), но
+        реально ей пользуется доля гостей = загрузка услуги; в непакетном режиме
+        дополнительно умножается на «Долю реализации услуг».
+        Задержка стройки сдвигает открытие и удлиняет стройку (CAPEX растягивается,
+        аренда земли и pre-opening — дольше); множитель энергозатрат масштабирует
+        электроэнергию и отопление.
         Текущий сценарий «{scenario}»: рост цен {fmtPct(matrix.priceGrowth[matrix.names.indexOf(scenario)])},
-        буфер CAPEX {fmtPct(matrix.capexAdj[matrix.names.indexOf(scenario)])}.
+        буфер CAPEX {fmtPct(matrix.capexAdj[matrix.names.indexOf(scenario)])},
+        задержка {matrix.constructionDelayMonths[matrix.names.indexOf(scenario)]} мес.
       </p>
     </div>
   )

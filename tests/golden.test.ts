@@ -1,32 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import paramsJson from '../src/data/params.json'
-import scenariosJson from '../src/data/scenarios.json'
-import nomenclatureJson from '../src/data/nomenclature.json'
-import servicesJson from '../src/data/services.json'
-import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../src/model/types'
 import { runModel } from '../src/model/run'
+import { baselineMatrix, baselineParams, items, services } from './_baseline'
 
-const params = paramsJson as Params
-// IT/АСУ-блок — новый слой модели, его нет в Excel-оракуле: выключаем,
-// чтобы golden-master продолжал сверять порт ядра 1:1.
-params.it.enabled = false
-// Deferred-пресейл — расширение сверх Excel-оракула (в книге только incremental):
-// golden сверяет порт ядра 1:1, поэтому в тесте остаёмся на поведении оракула.
-params.units.presaleMode = 'incremental'
-// F&B-слой (food-cost + повар) — расширение сверх Excel-оракула.
-params.fb.enabled = false
-params.preopen.enabled = false // pre-opening вне оракула
-// Расширения сверх Excel-оракула: ёмкость членов, GESY, налоговый график CIT.
-params.members.consumeSlots = false
-params.taxes.gesy = 0
-params.taxDepr.enabled = false
-params.glampOta.enabled = false // OTA-комиссия вне оракула
-// Векторы загрузки услуг (парения/массаж/допы) — расширение сверх оракула:
-// в Excel-книге строки присутствовали, но не участвовали в расчёте.
-params.service.serviceLoads = false
-const matrix = scenariosJson as ScenarioMatrix
-const items = nomenclatureJson as NomenclatureItem[]
-const services = servicesJson.services as unknown as ServiceSpec[]
+// Слои сверх Excel-оракула (IT, F&B, pre-opening, члены, GESY, CAPM, maintenance
+// CAPEX, квартальный НДС и т.д.) выключены в tests/_baseline.ts — golden
+// сверяет ядро расчёта.
+const params = baselineParams()
+const matrix = baselineMatrix()
 
 // Эталон — прогон ядра после номенклатурного реворка (Блоки 1–7, спеки услуг
 // несут материальный COGS, аренда = 3 бани × flat-цена 250/500/750, пармастер

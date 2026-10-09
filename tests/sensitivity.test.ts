@@ -1,24 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import paramsJson from '../src/data/params.json'
-import scenariosJson from '../src/data/scenarios.json'
-import nomenclatureJson from '../src/data/nomenclature.json'
-import servicesJson from '../src/data/services.json'
-import type { NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../src/model/types'
 import { computeSensitivity } from '../src/model/sensitivity'
+import { baselineMatrix, baselineParams, items, services } from './_baseline'
 
-const params = paramsJson as Params
-params.it.enabled = false // IT/АСУ нет в оракуле — сверяем ядро 1:1
-params.units.presaleMode = 'incremental' // deferred-пресейл вне оракула (см. golden.test)
-params.fb.enabled = false // F&B-слой вне оракула
-params.preopen.enabled = false // pre-opening вне оракула
-params.members.consumeSlots = false // ёмкость членов вне оракула
-params.taxes.gesy = 0 // GESY вне оракула
-params.taxDepr.enabled = false // налоговый график CIT вне оракула
-params.glampOta.enabled = false // OTA-комиссия вне оракула
-params.service.serviceLoads = false // векторы загрузки услуг вне оракула
-const matrix = scenariosJson as ScenarioMatrix
-const items = nomenclatureJson as NomenclatureItem[]
-const services = servicesJson.services as unknown as ServiceSpec[]
+const params = baselineParams()
+const matrix = baselineMatrix()
 
 // Эталон — прогон ядра после номенклатурного реворка (спековый COGS,
 // аренда 3×flat, CAPEX из ТЗ-2). Зафиксирован как baseline ядра; проверяются
@@ -28,7 +13,7 @@ const ORACLE = {
   t2_g0_c30: 2390270, t2_g7_c30: 3812372, t3_p08: 1462239, t3_p12: 5329908,
 }
 
-describe('sensitivity: 57 точек реального пересчёта', () => {
+describe('sensitivity: 100 точек реального пересчёта', () => {
   const s = computeSensitivity(params, matrix, items, services)
 
   it('таблица 1: спрос × WACC', () => {
@@ -59,7 +44,18 @@ describe('sensitivity: 57 точек реального пересчёта', () 
     expect(s.t3[4].npv / s.t3[0].npv).toBeGreaterThan(1.8)
   })
 
-  it('производительность: 57 точек < 5с', () => {
-    expect(s.computedInMs).toBeLessThan(5000)
+  it('таблица 4: пакет × загрузка — 100% пакета ≈ пакетный режим, меньше пакета → меньше NPV', () => {
+    const pkg = s.t4.rows[4].cells[2].npv // uptake 1.0, loadMult 1.0
+    expect(pkg).toBeGreaterThan(s.t4.rows[0].cells[2].npv)
+    expect(s.t4.rows[0].cells[2].npv).toBeLessThan(s.t4.rows[0].cells[4].npv) // загрузка помогает
+  })
+
+  it('таблица 5: дороже рубль → дороже CAPEX → меньше NPV', () => {
+    expect(s.t5.rows[0].cells[0].npv).toBeLessThan(s.t5.rows[4].cells[0].npv) // 80 ₽/€ хуже 120
+    expect(s.t5.rows[2].cells[3].npv).toBeLessThan(s.t5.rows[2].cells[0].npv) // +30% буфер хуже 0
+  })
+
+  it('производительность: 100 точек < 8с', () => {
+    expect(s.computedInMs).toBeLessThan(8000)
   })
 })

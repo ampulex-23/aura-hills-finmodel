@@ -33,9 +33,12 @@ export function computeOpexMonth(
   // Помодульные статьи берут только модули, уже запущенные к этому месяцу —
   // статус «Активен» с launchDate в будущем не должен тратить деньги заранее.
   const modulesNow = activeModuleCountAt(params, k)
-  const fixed = params.opexFixed.map(
-    (f) => f.base * (f.perModule ? modulesNow : 1) * infl,
-  )
+  // Статья с pctOfRevenue (маркетинг) — не меньше базы, но масштабируется с
+  // выручкой (аудит 14, W-14: фикс €5k превращался в 1.5% выручки к году 3).
+  const fixed = params.opexFixed.map((f) => {
+    const base = f.base * (f.perModule ? modulesNow : 1) * infl
+    return f.pctOfRevenue ? Math.max(base, f.pctOfRevenue * rev.total) : base
+  })
   const fixedTotal = fixed.reduce((a, b) => a + b, 0)
 
   // IT / АСУ: подписки и инфраструктура с индексацией на инфляцию

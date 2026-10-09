@@ -24,7 +24,7 @@ def val(sheet, addr):
 wb = openpyxl.load_workbook(PATH)
 checks = wb['Checks']
 bad = 0
-for row in checks.iter_rows(min_row=2, max_row=7):
+for row in checks.iter_rows(min_row=2, max_row=9):
     name, _, expect, _ = [c.value for c in row[:4]]
     got = val('Checks', f'D{row[0].row}')
     ok = got is not None and abs(got - expect) < 1

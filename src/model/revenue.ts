@@ -85,28 +85,45 @@ export function computeRevenueMonth(
     })
   })
 
-  // Члены клуба занимают ёмкость: активные члены × визиты/мес × гостей/визит.
-  // Слоты членов вычитаются из доступной ёмкости до платных продаж —
-  // в пиковые месяцы они вытесняют платные слоты (консервативно).
-  const membersMonthCount = dm * sc.membersMonth[yearIdx] * ramp
-  const annualActive = dm * params.units.annualMembersPlan[yearIdx] * ramp
+  // Члены клуба. Год 1: когорта продана пресейлом до открытия (deferred-режим),
+  // поэтому рампа к ней не применяется — иначе «продали всё в стройке, а в
+  // месяц 1 активны 11%» (аудит 14, W-12). Со 2-го года — сценарный вектор.
+  const presold = params.units.presaleMode === 'deferred' && params.units.presaleMonths > 0
+  const memberRamp = yearIdx === 0 && presold ? 1 : ramp
+  const membersMonthCount = dm * sc.membersMonth[yearIdx] * memberRamp
+  const annualActive = dm * params.units.annualMembersPlan[yearIdx] * memberRamp
   const memberGuests = params.members.consumeSlots
     ? (membersMonthCount + annualActive) * params.members.visitsPerMonth * params.members.partySize
     : 0
+  // Сертификаты: продажи с сезонностью (пик — декабрь); погашенная доля —
+  // это гости, занимающие ёмкость и несущие COGS/F&B (аудит 14, W-8), выручка
+  // сертификата и есть оплата их визита — отдельно аренда/услуги им не начисляются.
+  const seasC = params.seasonality.certificates?.[at.month - 1] ?? 1
+  const certsSold = params.units.certsPerMonth * dm * ramp * seasC
+  const certGuests = certsSold * (params.units.certRedemptionRate ?? 0) * (params.units.certGuestsPerCert ?? 1)
   // Средняя вместимость слота — по модулям, запущенным к этому месяцу
   // (раньше считалась по всем активным статусам → будущие модули занижали
   // ёмкость членов и базу услуг до своего запуска).
   const cap = capN ? capSum / capN : sc.avgCapacity
   const memberSlots = memberGuests / cap
-  if (memberSlots > 0 && capSlots > 0) {
-    const paidSlots = Math.max(0, Math.min(slots, capSlots - memberSlots))
+  const certSlots = certGuests / cap
+  // Вытесняют платные продажи только визиты в пиковые слоты (peakShare) —
+  // остальные заполняют свободную ёмкость (аудит 14, C-2: вытеснение 1:1
+  // делало членскую программу убыточной и роняло аренду год к году).
+  const peak = params.members.peakShare ?? 1
+  const displacing = (memberSlots + certSlots) * peak
+  let displacedSlots = 0
+  if (displacing > 0 && capSlots > 0) {
+    const paidSlots = Math.max(0, Math.min(slots, capSlots - displacing))
+    displacedSlots = slots - paidSlots
     const scale = slots > 0 ? paidSlots / slots : 1
     slots = paidSlots
-    guests = guests * scale + memberGuests
     rental *= scale
     for (let j = 0; j < slotCounts.length; j++) slotCounts[j] *= scale
     for (let j = 0; j < bathCounts.length; j++) bathCounts[j] *= scale
+    guests *= scale
   }
+  guests += memberGuests + certGuests
 
   const up = sc.effectiveUptake
   // Векторы загрузки услуг из матрицы сценариев — множители доли реализации.
@@ -146,6 +163,22 @@ export function computeRevenueMonth(
       (w * p) / swp(params.procedures.extra) * growth
     )
   })
+  // Сервисный чек гостей-членов: распределяется по потокам в пропорции пакета
+  // (парения : массаж : допы = steamBase : massageBase : кошелёк допов) и внутри
+  // потока — по весам ступеней. Так members-гости несут COGS спек и KPI-бонусы.
+  const memberSpend = memberGuests * (params.members.serviceSpendPerVisit ?? 0) * growth
+  const wE = params.service.walletExtraShare
+  const baseW = (1 - wE) * (params.deposit.steamBase + params.deposit.massageBase) + wE * params.deposit.base
+  const addStream = (arr: number[], set: { prices: number[]; weights: number[] }, share: number) => {
+    const tot = swp(set)
+    if (tot <= 0) return
+    set.prices.forEach((p, j) => { arr[j] += memberSpend * share * (set.weights[j] * p) / tot })
+  }
+  if (memberSpend > 0 && baseW > 0) {
+    addStream(steam, params.procedures.steam, (1 - wE) * params.deposit.steamBase / baseW)
+    addStream(massage, params.procedures.massage, (1 - wE) * params.deposit.massageBase / baseW)
+    addStream(extra, params.procedures.extra, wE * params.deposit.base / baseW)
+  }
   const steamTotal = steam.reduce((a, b) => a + b, 0)
   const massageTotal = massage.reduce((a, b) => a + b, 0)
   const extraTotal = extra.reduce((a, b) => a + b, 0)
@@ -163,10 +196,9 @@ export function computeRevenueMonth(
       params.units.glampBig * glampLoad * params.prices.glampBig) * growth
 
   const membersMonth = membersMonthCount * params.prices.membershipMonth * growth
-  const membersYearCount = (dm * params.units.annualMembersPlan[yearIdx] / 12) * ramp
+  const membersYearCount = (dm * params.units.annualMembersPlan[yearIdx] / 12) * memberRamp
   const membersYear = membersYearCount * params.prices.membershipYear * growth
-  const certsCount = params.units.certsPerMonth * dm * ramp
-  const certificates = certsCount * params.prices.certificate * growth
+  const certificates = certsSold * params.prices.certificate * growth
   const membershipTotal = membersMonth + membersYear + certificates
 
   const fb = guests * params.prices.fbPerGuest * growth
@@ -199,6 +231,10 @@ export function computeRevenueMonth(
     membersYear,
     memberSlots,
     memberGuests,
+    memberServices: memberSpend,
+    certsSold,
+    certGuests,
+    displacedSlots,
     certificates,
     membershipTotal,
     fb,

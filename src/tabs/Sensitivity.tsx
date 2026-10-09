@@ -1,10 +1,10 @@
 import { useMemo } from 'react'
 import { useModel } from '../store'
 import type { ModelResult } from '../model/types'
-import { computeSensitivity, computeTornado, T1_WACC, T2_CAPEX } from '../model/sensitivity'
+import { computeSensitivity, computeTornado, T2_CAPEX } from '../model/sensitivity'
 import { fmt } from '../components/ui'
 
-// Три таблицы чувствительности — реальный пересчёт (57 точек, ~0.3с).
+// Пять таблиц чувствительности — реальный пересчёт (~100 точек).
 export function Sensitivity({ r }: { r: ModelResult }) {
   const { params, matrix, items, services, scenario } = useModel()
   const s = useMemo(
@@ -31,7 +31,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
   return (
     <div>
       <p className="note">
-        Пересчёт модели по 57 точкам · сценарий «{scenario}» · {s.computedInMs.toFixed(0)} мс
+        Пересчёт модели по {25 + 25 + 5 + 25 + 20} точкам · сценарий «{scenario}» · {s.computedInMs.toFixed(0)} мс
       </p>
 
       <div className="chart-card">
@@ -77,7 +77,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
           <div className="table-wrap">
             <table className="month-table sens">
               <thead>
-                <tr><th className="sticky">Спрос \ WACC</th>{T1_WACC.map((w) => <th key={w}>{(w * 100).toFixed(0)}%</th>)}</tr>
+                <tr><th className="sticky">Спрос \ WACC</th>{s.t1.waccAxis.map((w) => <th key={w}>{(w * 100).toFixed(1)}%</th>)}</tr>
               </thead>
               <tbody>
                 {s.t1.rows.map((row) => (
@@ -116,6 +116,61 @@ export function Sensitivity({ r }: { r: ModelResult }) {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <div className="cols-2">
+        <div>
+          <h3>Доля гостей с пакетом × загрузка → NPV (IRR)</h3>
+          <div className="table-wrap">
+            <table className="month-table sens">
+              <thead>
+                <tr><th className="sticky">Пакет \ Загрузка</th>{s.t4.loadAxis.map((l) => <th key={l}>×{l}</th>)}</tr>
+              </thead>
+              <tbody>
+                {s.t4.rows.map((row) => (
+                  <tr key={row.uptake}>
+                    <td className="sticky">{(row.uptake * 100).toFixed(0)}%</td>
+                    {row.cells.map((c) => (
+                      <td key={c.loadMult}>
+                        {fmt(c.npv / 1e6, 2)}M <small>({fmt(c.irr * 100)}%)</small>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <small className="note">
+            Ключевой коммерческий риск: Base предполагает обязательный пакет €{params.deposit.base}/гость (100%).
+            Строка 100% ≡ пакетный режим; ниже — если пакет станет опцией и его купит лишь часть гостей.
+          </small>
+        </div>
+
+        <div>
+          <h3>Курс RUB/EUR × буфер CAPEX → NPV (IRR)</h3>
+          <div className="table-wrap">
+            <table className="month-table sens">
+              <thead>
+                <tr><th className="sticky">Курс \ CAPEX</th>{s.t5.capexAxis.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
+              </thead>
+              <tbody>
+                {s.t5.rows.map((row) => (
+                  <tr key={row.rubEur}>
+                    <td className="sticky">{row.rubEur} ₽/€</td>
+                    {row.cells.map((c) => (
+                      <td key={c.capexAdj}>
+                        {fmt(c.npv / 1e6, 2)}M <small>({fmt(c.irr * 100)}%)</small>
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <small className="note">
+            Смета модулей и СМР хранится в рублях (курс {params.general.rubEurRate} ₽/€ в Допущениях) — валютный риск контрактов с РФ-подрядчиками.
+          </small>
         </div>
       </div>
 

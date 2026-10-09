@@ -24,6 +24,7 @@ export function computePnl(
       revenueGross: rev.total,
       vatOut: taxes[k].vatOut,
       vatPayable: taxes[k].vatPayable,
+      vatPaid: taxes[k].vatPaid,
       variableOpex: opex[k].variableTotal,
       pctOpex: opex[k].pctTotal,
       marginalProfit,

@@ -8,6 +8,25 @@ import { computeProfitTaxes, computeVat } from './taxes'
 import { computePnl } from './pnl'
 import { computeCashFlow } from './cashflow'
 import { computeKpis } from './kpis'
+import { computeBalance } from './balance'
+
+/** Стоимость капитала по CAPM: ke = rf + β·ERP + страновая + size/startup премии.
+ *  Проект без долга → WACC = ke. */
+export function capmWacc(p: Params): number {
+  const c = p.general.capm
+  return c.rf + c.beta * c.erp + c.countryPremium + c.sizePremium
+}
+
+/** Ставка дисконтирования, которую реально применяет модель */
+export function resolveWacc(p: Params): number {
+  return p.general.waccMode === 'capm' && p.general.capm ? capmWacc(p) : p.general.wacc
+}
+
+function shiftIso(iso: string, months: number): string {
+  const [y, m] = iso.slice(0, 7).split('-').map(Number)
+  const t = y * 12 + (m - 1) + months
+  return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}-01`
+}
 
 // Полный прогон модели: параметры + сценарий + режимы -> все отчёты + KPI.
 // Порядок: НДС (от выручки) → нетто-выручка → EBIT → CIT → ЧП → дивиденды/SDC.
@@ -25,6 +44,7 @@ export function runModel(
     capexAdj: number
     priceMult: number
     loadMult: number
+    uptake: number
     mode: 'Да' | 'Нет'
     vatMode: 'Гросс' | 'С возмещением'
     mutate: (p: Params) => void
@@ -32,15 +52,29 @@ export function runModel(
 ): ModelResult {
   const p: Params = JSON.parse(JSON.stringify(params))
   if (overrides.demandMult !== undefined) p.service.demandMult = overrides.demandMult
-  if (overrides.wacc !== undefined) p.general.wacc = overrides.wacc
   if (overrides.priceMult !== undefined) applyPriceMult(p, overrides.priceMult)
   if (overrides.mode !== undefined) p.meta.mode = overrides.mode
   if (overrides.vatMode !== undefined) p.meta.vatMode = overrides.vatMode
   if (overrides.mutate) overrides.mutate(p)
+  // WACC: CAPM-расчёт или ручной; явный override всегда побеждает (sensitivity)
+  p.general.wacc = overrides.wacc !== undefined ? overrides.wacc : resolveWacc(p)
 
   const sc = resolveScenario(p, matrix, scenario)
   if (overrides.priceGrowth !== undefined) sc.priceGrowth = overrides.priceGrowth
   if (overrides.capexAdj !== undefined) sc.capexAdj = overrides.capexAdj
+  if (overrides.uptake !== undefined) {
+    sc.uptake = overrides.uptake
+    sc.effectiveUptake = p.meta.mode === 'Да' ? 1 : overrides.uptake
+  }
+  // Сценарные стрессы стройки и энергии (аудит 14, W-13): задержка сдвигает
+  // открытие и удлиняет стройку (CAPEX, аренда земли, pre-opening — на дольше);
+  // energyCostMult масштабирует энергетические статьи постоянных OPEX.
+  if (sc.constructionDelayMonths > 0) {
+    p.meta.capexMonths += sc.constructionDelayMonths
+    p.meta.openingDate = shiftIso(p.meta.openingDate, sc.constructionDelayMonths)
+  }
+  if (sc.energyCostMult !== 1)
+    for (const f of p.opexFixed) if (f.energy) f.base *= sc.energyCostMult
   // loadMult — общий масштаб спроса/загрузки (break-even, tornado): все
   // векторы загрузки и планы членства умножаются на один коэффициент.
   if (overrides.loadMult !== undefined) {
@@ -71,11 +105,12 @@ export function runModel(
   const { taxes, citByYear } = computeProfitTaxes(p, revenue, citEbit, netPreDiv, vat)
 
   const pnl = computePnl(p, revenue, opex, fot, taxes, capex.monthlyAmort)
-  const cashflow = computeCashFlow(p, pnl, capex.adjustedEur, sc.presaleMonthly, capex.deferred)
-  const kpis = computeKpis(p, cashflow)
+  const cashflow = computeCashFlow(p, pnl, capex.adjustedEur, sc.presaleMonthly, capex.deferred, capex.amortizableEur)
+  const balance = computeBalance(cashflow)
+  const kpis = computeKpis(p, cashflow, pnl)
 
   return {
-    scenario: sc, revenue, opex, fot, taxes, pnl, cashflow, capex, citByYear, kpis,
+    scenario: sc, revenue, opex, fot, taxes, pnl, cashflow, balance, capex, citByYear, kpis,
   }
 }
 

@@ -1,8 +1,10 @@
 import ExcelJS from 'exceljs'
 import type { ModelResult, NomenclatureItem, Params, ScenarioMatrix, ServiceSpec } from '../model/types'
+import { YEAR_KEYS } from '../model/types'
 import { runModel } from '../model/run'
-import { computeSensitivity, T1_WACC, T2_CAPEX } from '../model/sensitivity'
+import { computeSensitivity, T2_CAPEX } from '../model/sensitivity'
 import { landedCost } from '../model/opex'
+import { capexWeights } from '../model/cashflow'
 
 // Профессиональная выгрузка модели в .xlsx:
 // — живые формулы между листами (PnL ← Выручка/OPEX/ФОТ/Налоги, CF ← PnL,
@@ -130,17 +132,19 @@ export async function exportWorkbook(
 ): Promise<Blob> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'AURA HILLS Model'
-  const ops = params.meta.opsMonths
-  const capM = params.meta.capexMonths
-  const cfTotal = capM + ops
-  const labels = Array.from({ length: ops }, (_, i) => {
-    const [y, m] = params.meta.openingDate.slice(0, 7).split('-').map(Number)
-    const t = y * 12 + (m - 1) + i
-    return `${String((t % 12) + 1).padStart(2, '0')}.${Math.floor(t / 12)}`
-  })
   const results = matrix.names.map((n) => runModel(params, matrix, items, services, n))
   const r = results[matrix.names.indexOf(params.meta.scenario)] ?? results[1]
   const scen = r.scenario
+  const ops = params.meta.opsMonths
+  // фактическая стройка — с учётом сценарной задержки
+  const capM = r.cashflow.filter((m) => !m.isOps).length
+  const cfTotal = capM + ops
+  const labels = Array.from({ length: ops }, (_, i) => {
+    const [y, m] = params.meta.openingDate.slice(0, 7).split('-').map(Number)
+    const t = y * 12 + (m - 1) + i + scen.constructionDelayMonths
+    return `${String((t % 12) + 1).padStart(2, '0')}.${Math.floor(t / 12)}`
+  })
+  const sCurve = capexWeights({ ...params, meta: { ...params.meta, capexMonths: capM } })
   const landCost = params.land.mode === 'purchase' ? params.land.purchaseCost : 0
 
   // ─── ДОПУЩЕНИЯ (входы — синие; на них ссылаются формулы др. листов) ───
@@ -167,13 +171,21 @@ export async function exportWorkbook(
     A.scenario = put('Активный сценарий', params.meta.scenario, 'меняется в UI модели')
     put('Пакетный режим', params.meta.mode)
     put('Режим НДС', params.meta.vatMode)
-    A.capM = put('Месяцев стройки', capM, 'CAPEX равномерно по месяцам стройки')
+    A.capM = put('Месяцев стройки', capM, `S-кривая освоения CAPEX${scen.constructionDelayMonths ? `, вкл. задержку ${scen.constructionDelayMonths} мес` : ''}`)
     A.ops = put('Месяцев операций', ops)
-    A.wacc = put('WACC, годовых', params.general.wacc, 'дисконтирование помесячно: WACC/12', FMT_PCT)
+    if (params.general.waccMode === 'capm') {
+      A.wacc = ws.addRow(['WACC (CAPM), годовых', { formula: `'WACC'!$B$8`, result: r.kpis.wacc }, 'лист WACC; помесячно (1+WACC)^(1/12)−1']).number
+      ws.getCell(A.wacc, 2).numFmt = FMT_PCT
+      ws.getCell(A.wacc, 2).font = FONT.link as ExcelJS.Font
+      ws.getCell(A.wacc, 3).font = { ...ARIAL, color: { argb: 'FF7A8AA8' } }
+    } else {
+      A.wacc = put('WACC, годовых', params.general.wacc, 'эффективная годовая; помесячно (1+WACC)^(1/12)−1', FMT_PCT)
+    }
     put('Инфляция, годовых', params.general.inflation, '', FMT_PCT)
     put('Курс RUB/EUR', params.general.rubEurRate, 'смета CAPEX хранится в ₽')
     A.capexAdj = put('Буфер CAPEX сценария', scen.capexAdj, `сценарий «${params.meta.scenario}»`, FMT_PCT)
-    put('CIT', params.taxes.cit, '', FMT_PCT)
+    put('CIT', params.taxes.cit, 'реформа Кипра 2026: 15%', FMT_PCT)
+    put('SDC на дивиденды', params.taxes.sdc, 'реформа 2026: 5% резидентам-домицилам', FMT_PCT)
     put('НДС стандартный', params.taxes.vatStd, '', FMT_PCT)
     put('Мультипликатор спроса', params.service.demandMult)
     put('Депозит на гостя, €', params.deposit.base, '', FMT_EUR)
@@ -203,6 +215,43 @@ export async function exportWorkbook(
   }
   const A$ = (k: string) => `'Допущения'!$B$${A[k]}`
 
+  // ─── WACC (CAPM) ───
+  {
+    const ws = wb.addWorksheet('WACC')
+    ws.properties.tabColor = { argb: 'FF4472C4' }
+    ws.getColumn(1).width = 40
+    ws.getColumn(2).width = 12
+    ws.getColumn(3).width = 56
+    ws.addRow(['Стоимость капитала (CAPM)', 'Значение', 'Источник / комментарий'])
+    headerRow(ws)
+    const c = params.general.capm
+    const inp = (l: string, v: number, note: string) => {
+      const row = ws.addRow([l, v, note])
+      row.getCell(1).font = { ...ARIAL }
+      row.getCell(2).font = FONT.input as ExcelJS.Font
+      row.getCell(2).numFmt = l.includes('Бета') ? '0.00' : FMT_PCT
+      row.getCell(3).font = { ...ARIAL, color: { argb: 'FF7A8AA8' } }
+    }
+    inp('Безрисковая ставка (rf)', c.rf, 'EUR 10Y gov (Германия/Кипр), на дату модели')                 // B2
+    inp('Бета (unlevered, leisure/hospitality)', c.beta, 'Damodaran: Hotel/Gaming, Recreation small-cap')  // B3
+    inp('Премия за риск акций (ERP)', c.erp, 'Damodaran mature-market ERP')                                // B4
+    inp('Страновая премия (Кипр)', c.countryPremium, 'CRP по рейтингу BBB+/Baa2')                          // B5
+    inp('Премия size / startup (greenfield)', c.sizePremium, 'Micro-cap + стартовый риск проекта')          // B6
+    const ke = ws.addRow(['Cost of equity (ke) = rf + β·ERP + CRP + size', { formula: 'B2+B3*B4+B5+B6', result: r.kpis.wacc }, ''])
+    ke.getCell(2).numFmt = FMT_PCT
+    ke.getCell(2).font = { ...ARIAL, bold: true }
+    ke.getCell(1).font = { ...ARIAL, bold: true }                                                            // B7
+    const w = ws.addRow(['WACC (долга нет → WACC = ke)', { formula: 'B7', result: r.kpis.wacc }, params.general.waccMode === 'capm' ? 'применяется в модели' : 'справочно: в модели ручная ставка'])
+    w.getCell(2).numFmt = FMT_PCT
+    w.getCell(2).font = { ...ARIAL, bold: true }
+    w.getCell(1).font = { ...ARIAL, bold: true }                                                             // B8
+    w.getCell(3).font = { ...ARIAL, color: { argb: 'FF7A8AA8' } }
+    ws.addRow([])
+    const mr = ws.addRow(['Месячная ставка (1+WACC)^(1/12)−1', { formula: '(1+B8)^(1/12)-1', result: Math.pow(1 + r.kpis.wacc, 1 / 12) - 1 }, 'применяется к FCFF помесячно'])
+    mr.getCell(2).numFmt = '0.000%'
+    mr.getCell(3).font = { ...ARIAL, color: { argb: 'FF7A8AA8' } }
+  }
+
   // ─── СЦЕНАРИИ ───
   {
     const ws = wb.addWorksheet('Сценарии')
@@ -215,13 +264,16 @@ export async function exportWorkbook(
       row.getCell(1).font = { ...ARIAL }
       vals.forEach((v, i) => putCell(ws, row.number, i + 2, v, fmt, style))
     }
-    ;(['y1', 'y2', 'y3', 'y4', 'y5'] as const).forEach((y, i) =>
-      put(`Бани — Год ${i + 1}`, matrix.baths[y], FMT_PCT),
-    )
-    put('Парения — Год 1', matrix.steam.y1)
-    put('Парения — Год 3+', matrix.steam.y3)
+    const streams: [string, keyof Pick<ScenarioMatrix, 'baths' | 'steam' | 'massage' | 'extra' | 'glamping' | 'membersMonth'>, string][] = [
+      ['Бани', 'baths', FMT_PCT], ['Парения', 'steam', FMT_PCT], ['Массаж', 'massage', FMT_PCT],
+      ['Допы', 'extra', FMT_PCT], ['Глэмпинг', 'glamping', FMT_PCT], ['Членов (мес)', 'membersMonth', '#,##0'],
+    ]
+    for (const [label, key, fmt] of streams)
+      YEAR_KEYS.forEach((y, i) => put(`${label} — Год ${i + 1}`, matrix[key][y], fmt))
     put('Рост цен', matrix.priceGrowth, FMT_PCT)
     put('Корректировка CAPEX', matrix.capexAdj, FMT_PCT)
+    put('Задержка стройки, мес', matrix.constructionDelayMonths, '0')
+    put('Множитель энергозатрат', matrix.energyCostMult, '0.00')
     put('Uptake (непакетный)', matrix.uptake, FMT_PCT)
     ws.addRow([])
     ws.addRow(['РЕЗУЛЬТАТЫ (снимок ядра)', ...matrix.names])
@@ -529,10 +581,10 @@ export async function exportWorkbook(
   {
     const ws = pnl.ws
     const v1 = ws.addRow(['НДС начисленный (справочно)'])
-    const v2 = ws.addRow(['НДС к уплате (справочно)'])
+    const v2 = ws.addRow(['НДС уплачен в кэше (квартально, справочно)'])
     r.pnl.forEach((m, i) => {
       ws.getCell(v1.number, i + 2).value = m.vatOut
-      ws.getCell(v2.number, i + 2).value = m.vatPayable
+      ws.getCell(v2.number, i + 2).value = m.vatPaid
       for (const rr of [v1.number, v2.number]) {
         ws.getCell(rr, i + 2).numFmt = FMT_EUR
         ws.getCell(rr, i + 2).font = { ...ARIAL, color: { argb: 'FF8A97B0' } }
@@ -542,8 +594,11 @@ export async function exportWorkbook(
     const vatPay = v2.number
     // ─── CASH-FLOW (capexMonths стройки + ops) ───
     // Номера строк фиксированы порядком массива ниже: ЧП=2, Аморт=3, ΔНДС=4,
-    // OCF=5, CAPEX=6, отложенный=7 … — нужны для перекрёстных формул.
+    // OCF=5, CAPEX=6, отложенный=7, пресейл=8, прогорание=9, земля=10, preopen=11,
+    // maint=12, FCFF=13, дивиденды=14, удержано=15, CF=16, equity=17, касса=18,
+    // накопл.FCFF=19, DF=20, NPV=21 — нужны для перекрёстных формул.
     const CF_DEF = 7
+    // S-кривая стройки — входы на листе Cash-Flow (строка весов ниже таблицы)
     const cfLabels = r.cashflow.map((m) => m.label)
     const cf = monthSheet(wb, 'Cash-Flow', cfLabels, [
       {
@@ -568,11 +623,11 @@ export async function exportWorkbook(
         cells: r.cashflow.map((m, i) => f(`SUM(${L(i + 2)}2:${L(i + 2)}4)`, m.operatingCf)),
       },
       {
-        label: 'CAPEX',
-        // в стройку идёт смета за вычетом отложенной доли резервных модулей
+        label: 'CAPEX (S-кривая)',
+        // в стройку идёт смета за вычетом отложенной доли резервных модулей × вес месяца (строка 23)
         cells: r.cashflow.map((m, i) =>
           !m.isOps
-            ? f(`-(${CX$(CX.adj)}+SUM($B$${CF_DEF}:${L(1 + cfTotal)}$${CF_DEF}))/${A$('capM')}`, m.capex)
+            ? f(`-(${CX$(CX.adj)}+SUM($B$${CF_DEF}:${L(1 + cfTotal)}$${CF_DEF}))*${L(i + 2)}$23`, m.capex)
             : 0),
       },
       { label: 'CAPEX модулей (отложенный)', cells: nums(r.cashflow.map((m) => m.deferredCapex)) },
@@ -580,54 +635,82 @@ export async function exportWorkbook(
       { label: 'Прогорание пресейла', cells: nums(r.cashflow.map((m) => m.presaleUnwind)) },
       { label: 'Аренда земли (стройка)', cells: nums(r.cashflow.map((m) => m.landLease)), style: 'input' },
       { label: 'Pre-opening', cells: nums(r.cashflow.map((m) => m.preopen)), style: 'input' },
+      { label: 'Maintenance CAPEX', cells: nums(r.cashflow.map((m) => m.maintCapex)), style: 'input' },
       {
         label: 'FCFF', bold: true, border: 'top',
-        cells: r.cashflow.map((m, i) => f(`SUM(${L(i + 2)}5:${L(i + 2)}11)`, m.fcff)),
+        cells: r.cashflow.map((m, i) => f(`SUM(${L(i + 2)}5:${L(i + 2)}12)`, m.fcff)),
       },
       {
-        label: 'Дивиденды',
+        label: 'Дивиденды брутто',
         cells: r.cashflow.map((m, i) =>
           m.isOps ? f(`-'Налоги'!${L(i + 2 - capM)}${TAX.div}`, m.dividends) : 0),
       },
       {
-        label: 'SDC',
+        label: '  в т.ч. удержано SDC+GESY (справочно)',
         cells: r.cashflow.map((m, i) =>
-          m.isOps ? f(`-'Налоги'!${L(i + 2 - capM)}${TAX.sdc}`, m.sdc) : 0),
-      },
-      {
-        label: 'GESY',
-        cells: r.cashflow.map((m, i) =>
-          m.isOps ? f(`-'Налоги'!${L(i + 2 - capM)}${TAX.gesy}`, m.gesy) : 0),
+          m.isOps ? f(`-'Налоги'!${L(i + 2 - capM)}${TAX.sdc}-'Налоги'!${L(i + 2 - capM)}${TAX.gesy}`, -(m.sdc + m.gesy)) : 0),
       },
       {
         label: 'CF после распределения', bold: true,
-        cells: r.cashflow.map((m, i) => f(`${L(i + 2)}12+SUM(${L(i + 2)}13:${L(i + 2)}15)`, m.totalCf)),
+        cells: r.cashflow.map((m, i) => f(`${L(i + 2)}13+${L(i + 2)}14`, m.totalCf)),
+      },
+      {
+        label: 'Equity-транш акционеров',
+        cells: r.cashflow.map((m, i) =>
+          f(i === 0 ? `MAX(0,-${L(i + 2)}16)` : `MAX(0,-(${L(i + 1)}18+${L(i + 2)}16))`, m.equityIn)),
+      },
+      {
+        label: 'Касса на конец месяца', bold: true,
+        cells: r.cashflow.map((m, i) =>
+          f(i === 0 ? `${L(i + 2)}16+${L(i + 2)}17` : `${L(i + 1)}18+${L(i + 2)}16+${L(i + 2)}17`, m.cash)),
       },
       {
         label: 'Накопл. FCFF',
         cells: r.cashflow.map((m, i) =>
-          f(i === 0 ? `${L(i + 2)}12` : `${L(i + 1)}17+${L(i + 2)}12`, m.cumFcff)),
+          f(i === 0 ? `${L(i + 2)}13` : `${L(i + 1)}19+${L(i + 2)}13`, m.cumFcff)),
       },
       {
         label: 'Дисконт-фактор',
-        cells: r.cashflow.map((_, i) =>
-          f(`1/(1+${A$('wacc')}/12)^${i + 1}`, 1 / Math.pow(1 + params.general.wacc / 12, i + 1))),
+        cells: r.cashflow.map((m, i) =>
+          f(`1/(1+${A$('wacc')})^(${i + 1}/12)`, m.discountFactor)),
         fmt: '0.000',
       },
       {
         label: 'Накопл. DCF (NPV)', bold: true, border: 'top',
         cells: r.cashflow.map((m, i) =>
-          f(i === 0 ? `${L(i + 2)}12*${L(i + 2)}18` : `${L(i + 1)}19+${L(i + 2)}12*${L(i + 2)}18`, m.cumDcf)),
+          f(i === 0 ? `${L(i + 2)}13*${L(i + 2)}20` : `${L(i + 1)}21+${L(i + 2)}13*${L(i + 2)}20`, m.cumDcf)),
       },
       { label: 'Пул предоплат (обязат.)', cells: nums(r.cashflow.map((m) => m.prepaidPool)) },
+      {
+        label: 'Вес S-кривой стройки (вход)', fmt: '0.0%',
+        cells: r.cashflow.map((m, i) => (m.isOps ? null : sCurve[i])), style: 'input',
+      },
     ], 'FF548235')
     const CF = {
       fcff: cf.rows.get('FCFF')!,
       cumFcff: cf.rows.get('Накопл. FCFF')!,
       cumDcf: cf.rows.get('Накопл. DCF (NPV)')!,
       df: cf.rows.get('Дисконт-фактор')!,
+      equity: cf.rows.get('Equity-транш акционеров')!,
     }
     const lastCol = L(1 + cfTotal)
+
+    // ─── БАЛАНС (мини) ───
+    {
+      const B = r.balance
+      const bal = monthSheet(wb, 'Баланс', cfLabels, [
+        { label: 'Касса', cells: B.map((b, i) => f(`'Cash-Flow'!${L(i + 2)}18`, b.cash)) },
+        { label: 'Основные средства (остаточная)', cells: nums(B.map((b) => b.ppeNbv)) },
+        { label: 'АКТИВЫ', bold: true, border: 'top', cells: B.map((b, i) => f(`${L(i + 2)}2+${L(i + 2)}3`, b.totalAssets)) },
+        { label: 'Предоплаты гостей (deferred revenue)', cells: B.map((b, i) => f(`'Cash-Flow'!${L(i + 2)}22`, b.prepaidPool)) },
+        { label: 'НДС: нетто-расчёты с бюджетом', cells: nums(B.map((b) => b.vatNet)) },
+        { label: 'Вклады акционеров (equity-транши)', cells: B.map((b, i) => f(i === 0 ? `'Cash-Flow'!${L(i + 2)}17` : `${L(i + 1)}7+'Cash-Flow'!${L(i + 2)}17`, b.equityIn)) },
+        { label: 'Нераспределённая прибыль', cells: nums(B.map((b) => b.retained)) },
+        { label: 'ОБЯЗАТЕЛЬСТВА + КАПИТАЛ', bold: true, border: 'top', cells: B.map((b, i) => f(`SUM(${L(i + 2)}5:${L(i + 2)}8)`, b.totalLiabEq)) },
+        { label: 'Контроль (А − П)', cells: B.map((b, i) => f(`${L(i + 2)}4-${L(i + 2)}9`, b.check)), fmt: FMT_EUR2 },
+      ], 'FF7F7F7F')
+      void bal
+    }
 
     // ─── НОМЕНКЛАТУРА ───
     {
@@ -656,9 +739,9 @@ export async function exportWorkbook(
     {
       const ws = wb.addWorksheet('Sensitivity')
       const s = computeSensitivity(params, matrix, items, services)
-      ws.addRow([`Спрос \\ WACC`, ...T1_WACC.map((w) => `${w * 100}%`)])
+      ws.addRow([`Спрос \\ WACC`, ...s.t1.waccAxis.map((w) => `${(w * 100).toFixed(1)}%`)])
       headerRow(ws)
-      ws.getColumn(1).width = 16
+      ws.getColumn(1).width = 18
       for (const row of s.t1.rows) {
         const rw = ws.addRow([`×${row.demand}`, ...row.cells.map((c) => Math.round(c.npv))])
         rw.eachCell((c, i) => { if (i > 1) { c.numFmt = FMT_EUR; c.font = { ...ARIAL } } })
@@ -677,6 +760,20 @@ export async function exportWorkbook(
       n1.eachCell((c, i) => { if (i > 1) c.numFmt = FMT_EUR })
       const n2 = ws.addRow(['IRR', ...s.t3.map((t) => t.irr)])
       n2.eachCell((c, i) => { if (i > 1) c.numFmt = FMT_PCT })
+      ws.addRow([])
+      ws.addRow(['Пакет \\ Загрузка', ...s.t4.loadAxis.map((l) => `×${l}`)])
+      headerRow(ws, ws.rowCount)
+      for (const row of s.t4.rows) {
+        const rw = ws.addRow([`${row.uptake * 100}% гостей`, ...row.cells.map((c) => Math.round(c.npv))])
+        rw.eachCell((c, i) => { if (i > 1) { c.numFmt = FMT_EUR; c.font = { ...ARIAL } } })
+      }
+      ws.addRow([])
+      ws.addRow(['Курс ₽/€ \\ CAPEX', ...s.t5.capexAxis.map((c) => `+${c * 100}%`)])
+      headerRow(ws, ws.rowCount)
+      for (const row of s.t5.rows) {
+        const rw = ws.addRow([`${row.rubEur}`, ...row.cells.map((c) => Math.round(c.npv))])
+        rw.eachCell((c, i) => { if (i > 1) { c.numFmt = FMT_EUR; c.font = { ...ARIAL } } })
+      }
     }
 
     // ─── KPI ───
@@ -692,12 +789,13 @@ export async function exportWorkbook(
         row.getCell(1).font = { ...ARIAL }
         results.forEach((x, i) => putCell(ws, row.number, i + 2, g(x), fmt, 'calc'))
       }
+      put('WACC (эфф. годовая)', (x) => x.kpis.wacc, FMT_PCT)
       put('NPV (5 лет), EUR', (x) => Math.round(x.kpis.npv))
-      put('IRR годовой', (x) => x.kpis.irrAnnual, FMT_PCT)
-      put('IRR номинальный', (x) => x.kpis.irrNominal, FMT_PCT)
+      put('IRR годовой (эфф.)', (x) => x.kpis.irrAnnual, FMT_PCT)
       put('Окупаемость, мес', (x) => x.kpis.paybackMonths, '0')
       put('Диск. окупаемость, мес', (x) => x.kpis.discountedPaybackMonths, '0')
       put('Пиковая потребность, EUR', (x) => Math.round(x.kpis.peakFundingNeed))
+      put('Equity-транши Σ, EUR', (x) => Math.round(x.kpis.equityTotal))
       put('MOIC', (x) => x.kpis.moic, '0.00"x"')
       put('Выручка год 1, EUR', (x) => Math.round(x.revenue.slice(0, 12).reduce((s2, m) => s2 + m.total, 0)))
       put('EBITDA год 1, EUR', (x) => Math.round(x.pnl.slice(0, 12).reduce((s2, m) => s2 + m.ebitda, 0)))
@@ -708,8 +806,8 @@ export async function exportWorkbook(
       const kpis = r.kpis
       kpiRows.push(
         { label: 'NPV = накопл. DCF', formula: `'Cash-Flow'!${lastCol}${CF.cumDcf}`, v: kpis.npv, fmt: FMT_EUR },
-        { label: 'IRR годовой', formula: `(1+IRR('Cash-Flow'!$B$${CF.fcff}:${lastCol}${CF.fcff},0.02))^12-1`, v: kpis.irrAnnual, fmt: FMT_PCT },
-        { label: 'IRR номинальный', formula: `IRR('Cash-Flow'!$B$${CF.fcff}:${lastCol}${CF.fcff},0.02)*12`, v: kpis.irrNominal, fmt: FMT_PCT },
+        { label: 'IRR годовой (эфф.)', formula: `(1+IRR('Cash-Flow'!$B$${CF.fcff}:${lastCol}${CF.fcff},0.02))^12-1`, v: kpis.irrAnnual, fmt: FMT_PCT },
+        { label: 'Equity-транши Σ', formula: `SUM('Cash-Flow'!$B$${CF.equity}:${lastCol}${CF.equity})`, v: kpis.equityTotal, fmt: FMT_EUR },
         { label: 'Окупаемость, мес', formula: `COUNTIF('Cash-Flow'!$B$${CF.cumFcff}:${lastCol}${CF.cumFcff},"<=0")+1`, v: kpis.paybackMonths, fmt: '0' },
         { label: 'Диск. окупаемость, мес', formula: `COUNTIF('Cash-Flow'!$B$${CF.cumDcf}:${lastCol}${CF.cumDcf},"<=0")+1`, v: kpis.discountedPaybackMonths, fmt: '0' },
         { label: 'Пиковая потребность', formula: `MIN('Cash-Flow'!$B$${CF.cumFcff}:${lastCol}${CF.cumFcff})`, v: kpis.peakFundingNeed, fmt: FMT_EUR },
@@ -763,6 +861,14 @@ export async function exportWorkbook(
           name: 'OPEX год 1: ИТОГО = Σ статей',
           recalc: `${y1('OPEX', OPEX.fixed)}+${y1('OPEX', OPEX.it)}+${y1('OPEX', OPEX.land)}+${y1('OPEX', OPEX.variable)}+${y1('OPEX', OPEX.pct)}`,
         },
+        {
+          name: 'Баланс: max |Активы − Пассивы| = 0',
+          recalc: `SUMPRODUCT(ABS('Баланс'!B10:${lastCol}10))`,
+        },
+        {
+          name: 'CF: Σ весов S-кривой стройки = 100%',
+          recalc: `SUM('Cash-Flow'!B23:${L(1 + capM)}23)*100`,
+        },
       ]
       // ожидаемые значения — из результата ядра
       const expVals = [
@@ -772,6 +878,8 @@ export async function exportWorkbook(
         r.cashflow[cfTotal - 1].cumFcff,
         r.cashflow[cfTotal - 1].cumDcf,
         r.opex.slice(0, 12).reduce((s, m) => s + m.total, 0),
+        0,
+        100,
       ]
       checks.forEach((c, i) => {
         const ev2 = expVals[i]

@@ -1,11 +1,18 @@
 import { Select, SegmentedControl } from '@mantine/core'
 import { useModel } from '../store'
-import { NumField, TextCell, fmt } from '../components/ui'
+import { NumField, TextCell, fmt, fmtPct } from '../components/ui'
+import { capmWacc } from '../model/run'
 
 // Форма «Допущения» — все входы модели, сгруппированные.
 export function Assumptions() {
   const { params, setParam } = useModel()
   const P = params
+  const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
+  const SeasonCheck = ({ v, label }: { v: number[]; label: string }) => (
+    <small className="note" style={{ color: Math.abs(mean(v) - 1) < 0.005 ? '#9fd3b4' : '#e07a7a' }}>
+      {label}: среднее {mean(v).toFixed(3)} {Math.abs(mean(v) - 1) < 0.005 ? '✓' : '— должно быть 1.000'}
+    </small>
+  )
 
   const Row = ({ label, path, value, pct, step, suffix }: any) => (
     <label className="field">
@@ -21,7 +28,33 @@ export function Assumptions() {
         <legend>Общие</legend>
         <Row label="Курс RUB/EUR" path="general.rubEurRate" value={P.general.rubEurRate} />
         <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
-        <Row label="WACC" path="general.wacc" value={P.general.wacc} pct />
+        <div className="field">
+          <span>Ставка дисконтирования</span>
+          <Select
+            size="xs" w={190}
+            data={[
+              { value: 'capm', label: 'CAPM (расчёт ниже)' },
+              { value: 'manual', label: 'Ручная' },
+            ]}
+            value={P.general.waccMode}
+            onChange={(v) => v && setParam('general.waccMode', v)}
+            allowDeselect={false}
+          />
+        </div>
+        {P.general.waccMode === 'manual' ? (
+          <Row label="WACC (ручная)" path="general.wacc" value={P.general.wacc} pct />
+        ) : (
+          <>
+            <Row label="Безрисковая (rf, EUR 10Y)" path="general.capm.rf" value={P.general.capm.rf} pct step={0.001} />
+            <Row label="Бета (leisure, unlevered)" path="general.capm.beta" value={P.general.capm.beta} step={0.05} />
+            <Row label="Премия за риск (ERP)" path="general.capm.erp" value={P.general.capm.erp} pct step={0.005} />
+            <Row label="Страновая премия (Кипр)" path="general.capm.countryPremium" value={P.general.capm.countryPremium} pct step={0.005} />
+            <Row label="Size / startup премия" path="general.capm.sizePremium" value={P.general.capm.sizePremium} pct step={0.005} />
+            <small className="note">
+              ke = rf + β·ERP + страновая + size = <b>{fmtPct(capmWacc(P))}</b>. Долга нет → WACC = ke. Эффективная годовая; помесячно (1+WACC)^(1/12)−1.
+            </small>
+          </>
+        )}
         <div className="field">
           <span>Terminal value</span>
           <Select
@@ -36,7 +69,8 @@ export function Assumptions() {
           />
         </div>
         <Row label="Рост после горизонта (g)" path="tv.growth" value={P.tv.growth} pct step={0.005} />
-        <small className="note">TV = FCFF 5-го года × (1+g) / (WACC−g). Показывается отдельной метрикой «NPV с TV» — база остаётся без TV.</small>
+        <Row label="Exit-мультипликатор EV/EBITDA" path="tv.exitMultiple" value={P.tv.exitMultiple} step={0.5} suffix="×" />
+        <small className="note">TV = FCFF 5-го года (после maintenance CAPEX) × (1+g) / (WACC−g); exit-multiple — cross-check (leisure 5–7×). «NPV с TV» — отдельная метрика, база без TV.</small>
       </fieldset>
 
       <fieldset>
@@ -79,9 +113,24 @@ export function Assumptions() {
         <Row label="НДС глэмпинг" path="taxes.vatGlamp" value={P.taxes.vatGlamp} pct />
         <Row label="НДС F&B" path="taxes.vatFb" value={P.taxes.vatFb} pct />
         <Row label="НДС входной" path="taxes.vatInput" value={P.taxes.vatInput} pct />
-        <Row label="Взносы работодателя" path="taxes.employerRate" value={P.taxes.employerRate} pct />
-        <Row label="SDC (Defence Tax)" path="taxes.sdc" value={P.taxes.sdc} pct />
-        <Row label="GESY (здравоохранение)" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
+        <Row label="Взносы работодателя" path="taxes.employerRate" value={P.taxes.employerRate} pct step={0.001} />
+        <Row label="SDC на дивиденды" path="taxes.sdc" value={P.taxes.sdc} pct />
+        <Row label="GESY на дивиденды" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
+        <Row label="Потолок базы GESY, €/год на лицо" path="taxes.gesyCap" value={P.taxes.gesyCap} step={10000} />
+        <label className="field">
+          <span>Уплата НДС</span>
+          <SegmentedControl
+            size="xs"
+            data={[{ value: 'q', label: 'Квартально' }, { value: 'm', label: 'Помесячно' }]}
+            value={P.taxes.vatQuarterly ? 'q' : 'm'}
+            onChange={(v) => setParam('taxes.vatQuarterly', v === 'q')}
+          />
+        </label>
+        <small className="note">
+          Налоговая реформа Кипра (в силе с 01.01.2026): CIT 15%, SDC на дивиденды резидентам-домицилам 5% (17% — для прибыли до 2025).
+          Взносы работодателя 2025: SI 8.8% + GESY 2.9% + Social Cohesion 2% + Redundancy 1.2% + HRDA 0.5% = 15.4%.
+          НДС за квартал платится до 10-го числа 2-го месяца после квартала.
+        </small>
       </fieldset>
       </div>
 
@@ -101,7 +150,10 @@ export function Assumptions() {
                   <td>
                     <Select
                       size="xs" w={170}
-                      data={['Резидент Кипра (17%)', 'Нерезидент / Non-Dom (0%)']}
+                      data={[
+                        { value: 'Резидент Кипра (17%)', label: 'Резидент-домицил (SDC+GESY)' },
+                        { value: 'Нерезидент / Non-Dom (0%)', label: 'Нерезидент / Non-Dom (0%)' },
+                      ]}
                       value={P.partners.statuses[i]}
                       onChange={(v) => v && setParam(`partners.statuses.${i}`, v)}
                       allowDeselect={false}
@@ -128,7 +180,7 @@ export function Assumptions() {
           <b style={{ color: Math.abs(P.partners.shares.reduce((a, b) => a + b, 0) + P.partners.corporate.mgmt + P.partners.corporate.reserve - 1) < 0.001 ? '#9fd3b4' : '#e07a7a' }}>
             Σ = {((P.partners.shares.reduce((a, b) => a + b, 0) + P.partners.corporate.mgmt + P.partners.corporate.reserve) * 100).toFixed(1)}%
           </b>
-          . SDC 17% и GESY 2.65% взвешиваются по долям резидентов; Non-Dom освобождён от обоих.
+          . SDC {fmtPct(P.taxes.sdc)} и GESY {fmtPct(P.taxes.gesy, 2)} <b>удерживаются из дивидендов</b> резидентов (не доп. отток компании); Non-Dom освобождён от обоих.
         </small>
       </fieldset>
 
@@ -151,14 +203,16 @@ export function Assumptions() {
         <legend>Прочие OPEX</legend>
         <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct />
         <Row label="Ремонт/обслуживание, %" path="opexPct.maintenance" value={P.opexPct.maintenance} pct />
+        <Row label="Маркетинг, min €/мес" path="opexFixed.0.base" value={P.opexFixed[0]?.base ?? 0} step={250} />
+        <Row label="Маркетинг, % выручки" path="opexFixed.0.pctOfRevenue" value={P.opexFixed[0]?.pctOfRevenue ?? 0} pct step={0.005} />
         <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50} />
         <Row label="Доля глэмпинга через OTA" path="glampOta.share" value={P.glampOta.share} pct step={0.05} />
         <Row label="Комиссия OTA" path="glampOta.commissionPct" value={P.glampOta.commissionPct} pct step={0.01} />
-        <small className="note">FF&E-норма отрасли 3–4% выручки на ремонт/обслуживание; страхование публичного банно-водного объекта €800–2,000/мес. OTA: Booking/Airbnb ~15–18% с продажи; доля 0% = «только прямые продажи».</small>
+        <small className="note">Маркетинг = max(min €/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес. OTA: Booking/Airbnb ~15–18%.</small>
       </fieldset>
 
       <fieldset>
-        <legend>Членства и ёмкость</legend>
+        <legend>Членства, сертификаты и ёмкость</legend>
         <Row label="Визитов члена/мес" path="members.visitsPerMonth" value={P.members.visitsPerMonth} step={0.5} />
         <Row label="Гостей в визите" path="members.partySize" value={P.members.partySize} step={0.5} />
         <div className="field">
@@ -169,7 +223,15 @@ export function Assumptions() {
             onChange={(v) => setParam('members.consumeSlots', v === 'true')}
           />
         </div>
-        <small className="note">Члены занимают слоты: члены × визиты × гостей ÷ вместимость слота — вычитаются из ёмкости до платных продаж, и добавляются к гостям F&B.</small>
+        <Row label="Доля визитов в пиковые слоты" path="members.peakShare" value={P.members.peakShare} pct step={0.05} />
+        <Row label="Сервисный чек члена, €/визит" path="members.serviceSpendPerVisit" value={P.members.serviceSpendPerVisit} step={5} />
+        <Row label="Сертификаты: доля погашения" path="units.certRedemptionRate" value={P.units.certRedemptionRate} pct step={0.05} />
+        <Row label="Гостей на сертификат" path="units.certGuestsPerCert" value={P.units.certGuestsPerCert} step={0.5} />
+        <small className="note">
+          Платные слоты вытесняют только членские/сертификатные визиты в пик (доля выше) — остальные заполняют свободную ёмкость.
+          Гости-члены покупают услуги на сервисный чек (распределяется по потокам в пропорции пакета → COGS спек и KPI).
+          Погашённые сертификаты — гости, занимающие ёмкость и несущие COGS/F&B; непогашённые — чистая выручка (breakage).
+        </small>
       </fieldset>
 
       <fieldset>
@@ -252,6 +314,57 @@ export function Assumptions() {
         />
         <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1} />
         <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Maintenance CAPEX и стройка</legend>
+        <label className="field">
+          <span>Maintenance CAPEX</span>
+          <SegmentedControl
+            size="xs"
+            data={[{ value: 'on', label: 'Вкл' }, { value: 'off', label: 'Выкл' }]}
+            value={P.capexMaint.enabled ? 'on' : 'off'}
+            onChange={(v) => setParam('capexMaint.enabled', v === 'on')}
+          />
+        </label>
+        <Row label="% амортизируемого CAPEX в год" path="capexMaint.pctPerYear" value={P.capexMaint.pctPerYear} pct step={0.005} />
+        <Row label="С операционного года" path="capexMaint.startYear" value={P.capexMaint.startYear} step={1} />
+        <Row label="Капремонт в году" path="capexMaint.lumpYear" value={P.capexMaint.lumpYear} step={1} />
+        <Row label="Капремонт, €" path="capexMaint.lumpEur" value={P.capexMaint.lumpEur} step={5000} />
+        <small className="note">
+          Замена печей/купелей/текстиля/IT-железа — reserve for replacement (отрасль 1.5–4% CAPEX в год) + разовый капремонт.
+          S-кривая освоения стройки (12 весов, нормируются): {P.capexSCurve.map((w) => (w * 100).toFixed(0)).join(' · ')}%.
+          Задержка стройки и энергетический стресс — в матрице сценариев.
+        </small>
+      </fieldset>
+      </div>
+
+      <div className="form-row">
+      <fieldset className="f2">
+        <legend>Сезонность (множители по месяцам, среднее = 1.000)</legend>
+        <div className="table-wrap">
+          <table className="month-table spec">
+            <thead>
+              <tr><th>Поток</th>{['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'].map((m) => <th key={m}>{m}</th>)}</tr>
+            </thead>
+            <tbody>
+              {([['Бани', 'baths'], ['Глэмпинг', 'glamping'], ['Сертификаты', 'certificates']] as const).map(([label, key]) => (
+                <tr key={key}>
+                  <td className="lft">{label}</td>
+                  {P.seasonality[key].map((v, i) => (
+                    <td key={i}><NumField value={v} onChange={(nv) => setParam(`seasonality.${key}.${i}`, nv)} step={0.05} /></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="controls" style={{ marginTop: 6, gap: 16 }}>
+          <SeasonCheck v={P.seasonality.baths} label="Бани" />
+          <SeasonCheck v={P.seasonality.glamping} label="Глэмпинг" />
+          <SeasonCheck v={P.seasonality.certificates} label="Сертификаты" />
+        </div>
+        <small className="note">Сценарные загрузки — среднегодовые, поэтому сезонность должна быть нормирована к 1.0: иначе «65% загрузки» на деле работает как другая цифра.</small>
       </fieldset>
       </div>
 

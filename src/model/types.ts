@@ -108,12 +108,32 @@ export interface CapexItem {
   wbs?: WbsSection[]
 }
 
+/** CAPM-блок стоимости собственного капитала: ke = rf + β·ERP + страновая + size/startup премии */
+export interface CapmInputs {
+  rf: number
+  beta: number
+  erp: number
+  countryPremium: number
+  sizePremium: number
+}
+
 export interface Params {
   meta: ModelMeta
-  general: { rubEurRate: number; inflation: number; wacc: number }
+  general: {
+    rubEurRate: number
+    inflation: number
+    /** Ставка дисконтирования (эффективная годовая). При waccMode='capm' перезаписывается расчётом */
+    wacc: number
+    waccMode: 'manual' | 'capm'
+    capm: CapmInputs
+  }
   taxes: {
     cit: number; vatStd: number; vatGlamp: number; vatFb: number
     vatInput: number; employerRate: number; sdc: number; gesy: number
+    /** Потолок базы GESY на физлицо в календарный год (Кипр: €180 000) */
+    gesyCap: number
+    /** НДС к уплате уходит в кэш раз в квартал (10-е число 2-го месяца после квартала) */
+    vatQuarterly: boolean
   }
   prices: {
     membershipMonth: number; membershipYear: number; certificate: number
@@ -126,7 +146,15 @@ export interface Params {
     // incremental: пресейл — дополнительный канал сверх плана (поведение Excel).
     presaleMode: 'deferred' | 'incremental'
     presaleRecognizeMonths: number // окно признания prepaid-пула в CF (deferred)
+    /** Доля сертификатов, которые погашаются визитом (остальное — breakage, чистая выручка) */
+    certRedemptionRate: number
+    /** Гостей на один погашенный сертификат — они занимают ёмкость и несут COGS/F&B */
+    certGuestsPerCert: number
   }
+  /** Maintenance CAPEX: ежегодный % от амортизируемого CAPEX (с года startYear) + разовый капремонт */
+  capexMaint: { enabled: boolean; pctPerYear: number; startYear: number; lumpYear: number; lumpEur: number }
+  /** S-кривая освоения строительного CAPEX по месяцам стройки (нормируется; длина ≠ capexMonths → равномерно) */
+  capexSCurve: number[]
   amort: { shares: number[]; years: number[]; groups: string[] }
   opexPct: { acquiring: number; maintenance: number }
   // F&B-экономика: себестоимость продуктов (% выручки F&B) + повар в ФОТ.
@@ -140,7 +168,13 @@ export interface Params {
   preopen: { enabled: boolean; months: number }
   // Члены клуба занимают ёмкость бань: активные члены × визитов/мес × гостей
   // визита → слоты, вычитаемые из доступной ёмкости до платных продаж.
-  members: { consumeSlots: boolean; visitsPerMonth: number; partySize: number }
+  members: {
+    consumeSlots: boolean; visitsPerMonth: number; partySize: number
+    /** Доля членских визитов в пиковые слоты — только она вытесняет платные продажи */
+    peakShare: number
+    /** Средний сервисный чек гостя-члена за визит (парения/массаж/допы), € */
+    serviceSpendPerVisit: number
+  }
   // Налоговая амортизация (кипрские capital allowances) — отдельный график для CIT:
   // конструкции ~4%/год (25 лет), оборудование ~14% (7 лет), прочее/IT ~20% (5 лет).
   // Доли берутся из amort.shares, здесь только сроки. В Excel-оракуле нет.
@@ -150,7 +184,7 @@ export interface Params {
   glampOta: { enabled: boolean; share: number; commissionPct: number }
   // Terminal value: опциональный «хвост» стоимости после горизонта (Gordon growth).
   // enabled=false — база консервативна, TV только как sensitivity-кейс. В Excel нет.
-  tv: { enabled: boolean; growth: number }
+  tv: { enabled: boolean; growth: number; exitMultiple: number }
   deposit: { base: number; steamBase: number; massageBase: number; policy: string }
   kpi?: { steamShare: number; massageShare: number; revenueShare: number } // legacy: игнорируется, KPI задаётся в спецификациях
   service: {
@@ -160,7 +194,7 @@ export interface Params {
     /** Векторы загрузки услуг из матрицы сценариев как множители uptake */
     serviceLoads: boolean
   }
-  seasonality: { baths: number[]; glamping: number[] }
+  seasonality: { baths: number[]; glamping: number[]; certificates: number[] }
   procedures: {
     steam: ProcedureSet; massage: ProcedureSet; extra: ProcedureSet
   }
@@ -171,7 +205,13 @@ export interface Params {
   modules: ModuleSpec[]
   slotMix: number[]
   slotNames: string[]
-  opexFixed: { name: string; base: number; perModule?: boolean }[]
+  opexFixed: {
+    name: string; base: number; perModule?: boolean
+    /** Статья = max(base × инфляция, pct × выручка месяца) — маркетинг как % выручки */
+    pctOfRevenue?: number
+    /** Энергетическая статья — масштабируется сценарным energyCostMult */
+    energy?: boolean
+  }[]
   // IT / АСУ: кастомный слой — подписки и инфраструктура помесячно, внедрение в CAPEX.
   // enabled=false возвращает модель к поведению исходного Excel (нужно golden-тестам).
   it: {
@@ -191,17 +231,27 @@ export interface ProcedureSet {
 }
 
 // Матрица сценариев (лист «Сценарии»): три колонки — Conservative/Base/Aggressive
+/** Пятилетний вектор по сценариям: y1..y5 → [Conservative, Base, Aggressive] */
+export type YearVectors = { y1: number[]; y2: number[]; y3: number[]; y4: number[]; y5: number[] }
+export const YEAR_KEYS = ['y1', 'y2', 'y3', 'y4', 'y5'] as const
+
+// Все потоки задаются явно по пяти годам — интерполяций и «магических» коэффициентов нет.
 export interface ScenarioMatrix {
   names: ScenarioName[]
-  baths: { y1: number[]; y2: number[]; y3: number[]; y4: number[]; y5: number[] }
-  steam: { y1: number[]; y3: number[] }
-  massage: { y1: number[]; y3: number[] }
-  glamping: { y1: number[]; y3: number[] }
-  membersMonth: { y1: number[]; y3: number[] }
+  baths: YearVectors
+  steam: YearVectors
+  massage: YearVectors
+  extra: YearVectors
+  glamping: YearVectors
+  membersMonth: YearVectors
   priceGrowth: number[]
   capexAdj: number[]
   rampMonths: number[]
   uptake: number[]
+  /** Задержка стройки, мес: сдвигает открытие, продлевает стройку/pre-opening/аренду */
+  constructionDelayMonths: number[]
+  /** Множитель энергетических статей OPEX (электроэнергия, отопление) */
+  energyCostMult: number[]
 }
 
 // Резолвленный сценарий: все годовые векторы раскрыты на 5 лет
@@ -221,6 +271,8 @@ export interface ResolvedScenario {
   presaleMonthly: number
   activeModules: number
   avgCapacity: number
+  constructionDelayMonths: number
+  energyCostMult: number
 }
 
 export interface RevenueMonth {
@@ -246,8 +298,12 @@ export interface RevenueMonth {
   membersMonthCount: number
   membersMonth: number
   membersYear: number
-  memberSlots: number   // слоты, занятые членами клуба
-  memberGuests: number  // гости-члены (участвуют в F&B)
+  memberSlots: number   // слоты-эквивалент всех членских визитов
+  memberGuests: number  // гости-члены (участвуют в F&B и норм. COGS)
+  memberServices: number // сервисная выручка гостей-членов (внутри steam/massage/extra)
+  certsSold: number      // проданных сертификатов за месяц
+  certGuests: number     // гости по погашенным сертификатам (занимают ёмкость)
+  displacedSlots: number // платные слоты, вытесненные членами/сертификатами в пике
   certificates: number
   membershipTotal: number
   fb: number
@@ -284,8 +340,12 @@ export interface TaxMonth {
   inputVat: number
   vatCredit: number
   vatPayable: number
+  /** НДС, фактически уплаченный в этом месяце (квартальный график) */
+  vatPaid: number
   cit: number
+  /** Дивиденды брутто (до удержания SDC/GESY) — это и есть отток компании */
   dividends: number
+  /** Удержано из дивидендов в пользу бюджета (не доп. отток компании) */
   sdc: number
   gesy: number
   total: number
@@ -297,6 +357,7 @@ export interface PnlMonth {
   /** Начисленный НДС (в P&L) и уплаченный (в CF) — разница = Δ обязательства по НДС */
   vatOut: number
   vatPayable: number
+  vatPaid: number
   variableOpex: number
   pctOpex: number
   marginalProfit: number
@@ -328,36 +389,62 @@ export interface CashFlowMonth {
   prepaidPool: number // остаток обязательств по предоплатам (deferred revenue)
   landLease: number // аренда земли в период стройки (≤0)
   preopen: number // pre-opening burn в конце стройки (≤0)
+  maintCapex: number // maintenance CAPEX / капремонт в операционке (≤0)
   fcff: number
+  /** Дивиденды брутто (отток компании); SDC/GESY — удержание внутри них */
   dividends: number
   sdc: number
   gesy: number
   totalCf: number
-  cumCash: number
+  /** Взнос акционеров, закрывающий кассовый разрыв месяца (≥0) */
+  equityIn: number
+  /** Остаток денег на счёте (≥0) — с учётом equity-траншей */
+  cash: number
+  cumCash: number // накопленный totalCf без траншей (= cash − Σ equityIn)
   cumFcff: number
   discountFactor: number
   discountedFcff: number
   cumDcf: number
 }
 
+/** Мини-баланс на конец месяца: Активы = Обязательства + Капитал (сходится по построению) */
+export interface BalanceMonth {
+  label: string
+  cash: number
+  ppeNbv: number
+  totalAssets: number
+  prepaidPool: number
+  vatNet: number
+  equityIn: number
+  retained: number
+  totalLiabEq: number
+  check: number
+}
+
 export interface Kpis {
+  /** Фактически применённая ставка дисконтирования (эффективная годовая) */
+  wacc: number
   npv: number
   irrMonthly: number
+  /** Годовой эффективный IRR = (1+r_мес)^12 − 1; сопоставим с WACC */
   irrAnnual: number
-  /** IRR × 12 — номинальная годовая; сопоставима с WACC, который в NPV
-   *  трактуется как номинальная ставка с помесячным начислением */
-  irrNominal: number
   paybackMonths: number
   discountedPaybackMonths: number
   peakFundingNeed: number
+  /** Σ equity-траншей, закрывающих кассовые разрывы (включая стройку) */
+  equityTotal: number
   /** MOIC = Σ положительных FCFF / Σ вложенного (отрицательного) FCFF */
   moic: number
   /** Cash-on-cash: годовой FCFF 3-го операционного года / вложенный капитал */
   cashOnCash: number
   /** Всего вложено (Σ отрицательных FCFF) */
   investedTotal: number
-  /** Дисконтированная терминальная стоимость (0, если tv.enabled=false) */
+  /** Дисконтированная терминальная стоимость, Gordon (0, если tv.enabled=false) */
   tvValue: number
+  /** TV по exit-multiple: EBITDA года 5 × мультипликатор, дисконтировано */
+  tvExitValue: number
+  /** Подразумеваемый EV/EBITDA терминальной стоимости Gordon — cross-check */
+  tvEvEbitda: number
   /** NPV + TV — показывается отдельно, база остаётся консервативной */
   npvWithTv: number
 }
@@ -370,6 +457,7 @@ export interface ModelResult {
   taxes: TaxMonth[]
   pnl: PnlMonth[]
   cashflow: CashFlowMonth[]
+  balance: BalanceMonth[]
   capex: {
     items: {
       name: string

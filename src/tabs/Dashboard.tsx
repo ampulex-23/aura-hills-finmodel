@@ -53,8 +53,8 @@ export function Dashboard({ r }: { r: ModelResult }) {
       label: 'NPV (5 лет)', value: fmtEur(k.npv),
       hint: {
         title: 'Чистая приведённая стоимость',
-        text: 'Сумма всех дисконтированных свободных потоков (FCFF) за 72 месяца: стройка + 5 лет операций.',
-        tex: String.raw`\mathrm{NPV}=\sum_{m}\frac{\mathrm{FCFF}_m}{(1+\mathrm{WACC}/12)^{m}}`,
+        text: `Сумма дисконтированных FCFF за стройку + 5 лет операций. Ставка ${fmtPct(k.wacc)} годовых (${params.general.waccMode === 'capm' ? 'CAPM' : 'ручная'}), помесячно по эффективной ставке (1+WACC)^(1/12)−1.`,
+        tex: String.raw`\mathrm{NPV}=\sum_{m}\frac{\mathrm{FCFF}_m}{(1+\mathrm{WACC})^{m/12}}`,
         calc: `Σ дисконт. FCFF = ${fmtEur(last.cumDcf)}`,
       },
     },
@@ -62,8 +62,8 @@ export function Dashboard({ r }: { r: ModelResult }) {
       label: 'IRR годовой', value: fmtPct(k.irrAnnual),
       hint: {
         title: 'Внутренняя норма доходности',
-        text: 'Ставка, при которой NPV = 0. Считается по помесячным FCFF, переведена в годовую.',
-        calc: `IRR мес ${fmtPct(k.irrMonthly, 2)} → годовая эффективная ${fmtPct(k.irrAnnual)} · номинальная (мес×12, сопоставима с WACC) ${fmtPct(k.irrNominal)}`,
+        text: 'Ставка, при которой NPV = 0. Считается по помесячным FCFF и переведена в годовую эффективную — напрямую сопоставима с WACC.',
+        calc: `IRR мес ${fmtPct(k.irrMonthly, 2)} → (1+r)^12−1 = ${fmtPct(k.irrAnnual)} vs WACC ${fmtPct(k.wacc)}`,
       },
     },
     {
@@ -100,7 +100,14 @@ export function Dashboard({ r }: { r: ModelResult }) {
       label: 'Пиковая потребность', value: fmtEur(k.peakFundingNeed),
       hint: {
         title: 'Пиковая потребность в финансировании',
-        text: 'Максимальный отрицательный накопленный CF — сколько денег нужно в проект в самой глубокой точке.',
+        text: 'Максимальный отрицательный накопленный FCFF — сколько денег нужно в проект в самой глубокой точке.',
+      },
+    },
+    {
+      label: 'Equity-транши', value: fmtEur(k.equityTotal),
+      hint: {
+        title: 'Взносы акционеров',
+        text: 'Σ взносов, закрывающих кассовые разрывы по месяцам (касса ≥ 0), включая стройку и месяцы после начала дивидендов. Разложение по месяцам — в Отчётах → Cash-Flow / Источники и использование.',
       },
     },
     {
@@ -119,9 +126,9 @@ export function Dashboard({ r }: { r: ModelResult }) {
           label: 'NPV с TV', value: fmtEur(k.npvWithTv),
           hint: {
             title: 'NPV + терминальная стоимость',
-            text: 'Gordon growth: TV = FCFF 5-го года × (1+g) / (WACC − g), дисконтированная на конец горизонта. Показывается отдельно — база консервативна без TV.',
+            text: 'Gordon growth: TV = FCFF 5-го года (за вычетом maintenance CAPEX) × (1+g) / (WACC − g), дисконтированная на конец горизонта. Cross-check — exit-multiple по EBITDA. Показывается отдельно — база консервативна без TV.',
             tex: String.raw`\mathrm{TV}=\frac{\mathrm{FCFF}_5\cdot(1+g)}{\mathrm{WACC}-g},\quad g=${(params.tv.growth * 100).toFixed(1)}\%`,
-            calc: `TV диск. = ${fmtEur(k.tvValue)} → NPV ${fmtEur(k.npv)} + TV = ${fmtEur(k.npvWithTv)}`,
+            calc: `TV диск. = ${fmtEur(k.tvValue)} (EV/EBITDA ${Number.isFinite(k.tvEvEbitda) ? k.tvEvEbitda.toFixed(1) : '—'}×) · exit ${params.tv.exitMultiple}× EBITDA = ${fmtEur(k.tvExitValue)} → NPV + TV = ${fmtEur(k.npvWithTv)}`,
           },
         }]
       : []),
