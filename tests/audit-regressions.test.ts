@@ -111,12 +111,13 @@ describe('аудит-регрессии', () => {
     const p = clone()
     p.modules[3].status = 'Активен' // launch 2029-01
     const r = runModel(p, matrix, items, services, 'Base')
-    // 7M (корпус) + 250k (печи) + 250k (хол. купели) + 500k (гор.) + 2×1M (Афродита) = 10M RUB = €100k
+    // 7M (корпус) + 2×1M (Афродита) = 9M RUB = €90k
+    // (печи и купели переехали в номенклатурное наполнение — там не помодульные)
     expect(r.capex.deferred).toHaveLength(1)
-    expect(r.capex.deferred[0].eur).toBeCloseTo(100_000 * (1 + r.scenario.capexAdj), 2)
+    expect(r.capex.deferred[0].eur).toBeCloseTo(90_000 * (1 + r.scenario.capexAdj), 2)
     // общий CAPEX вырос на полную помодульную сумму (раньше добавлялся только корпус €70k)
     const base = runModel(clone(), matrix, items, services, 'Base')
-    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + 100_000 * (1 + r.scenario.capexAdj), 0)
+    expect(r.capex.totalEur).toBeCloseTo(base.capex.totalEur + 90_000 * (1 + r.scenario.capexAdj), 0)
   })
 })
 
