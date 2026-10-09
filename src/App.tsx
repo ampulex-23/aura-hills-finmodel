@@ -16,6 +16,7 @@ import { Assumptions } from './tabs/Assumptions'
 import { Scenarios } from './tabs/Scenarios'
 import { CashFlow, Capex, Fot, Opex, Pnl, Revenue, Taxes } from './tabs/Reports'
 import { Nomenclature } from './tabs/Nomenclature'
+import { Smeta } from './tabs/Smeta'
 import { Specs } from './tabs/Specs'
 import { It } from './tabs/It'
 import { Staff } from './tabs/Staff'
@@ -26,14 +27,14 @@ import { AiChat, useChat } from './components/AiChat'
 import { DOCS, getDoc } from './docs'
 
 type Tab =
-  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Спецификации' | 'IT'
+  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Смета' | 'Спецификации' | 'IT'
   | 'Выручка' | 'OPEX' | 'ФОТ' | 'CAPEX' | 'Налоги' | 'P&L' | 'Cash-Flow' | 'Sensitivity'
 
 // Hash-роутинг: #/dashboard … #/sensitivity — вкладка переживает F5, ссылки шарятся.
 const TAB_SLUGS: Record<Tab, string> = {
   'Дашборд': 'dashboard', 'Допущения': 'assumptions', 'Сценарии': 'scenarios',
   'Штат': 'staff',
-  'Номенклатура': 'nomenclature', 'Спецификации': 'specs', 'IT': 'it',
+  'Номенклатура': 'nomenclature', 'Смета': 'smeta', 'Спецификации': 'specs', 'IT': 'it',
   'Выручка': 'revenue', 'OPEX': 'opex', 'ФОТ': 'fot', 'CAPEX': 'capex',
   'Налоги': 'taxes', 'P&L': 'pnl', 'Cash-Flow': 'cashflow', 'Sensitivity': 'sensitivity',
 }
@@ -60,6 +61,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
       { id: 'Сценарии', label: 'Сценарии', icon: IconVersions },
       { id: 'Штат', label: 'Штат', icon: IconUserCog },
       { id: 'Номенклатура', label: 'Номенклатура', icon: IconListDetails },
+      { id: 'Смета', label: 'Смета', icon: IconCoins },
       { id: 'Спецификации', label: 'Спецификации', icon: IconClipboardList },
       { id: 'IT', label: 'IT', icon: IconCpu },
     ],
@@ -274,6 +276,7 @@ export default function App() {
           {tab === 'P&L' && <Pnl r={result} labels={opsLabels} />}
           {tab === 'Cash-Flow' && <CashFlow r={result} />}
           {tab === 'Номенклатура' && <Nomenclature />}
+          {tab === 'Смета' && <Smeta />}
           {tab === 'Спецификации' && <Specs />}
           {tab === 'IT' && <It />}
           {tab === 'Sensitivity' && <Sensitivity r={result} />}
