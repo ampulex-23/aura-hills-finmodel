@@ -5,3 +5,4 @@ dist/
 vite.log
 public/
 scripts/.snap.mjs
+out/
