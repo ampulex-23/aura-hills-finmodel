@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import {
   ActionIcon, Autocomplete, Button, Checkbox, Group, Modal, NumberInput,
-  Select, TextInput,
+  SegmentedControl, Select, TextInput,
 } from '@mantine/core'
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt } from '../components/ui'
@@ -58,6 +58,7 @@ export function Smeta() {
   const [addOpen, setAddOpen] = useState(false)
   const [draft, setDraft] = useState<(CapexItem & { _perModule?: boolean }) | null>(null)
   const [deleteAsk, setDeleteAsk] = useState<{ it: CapexItem; index: number } | null>(null)
+  const [phaseTab, setPhaseTab] = useState<string>('all')
 
   const rows = params.capexItems
   const fillerEur = nomenclatureEquipEur(items)
@@ -96,6 +97,7 @@ export function Smeta() {
     const query = q.trim().toLowerCase()
     const filtered = rows
       .map((it, index) => ({ it, index }))
+      .filter(({ it }) => phaseTab === 'all' || (it.phase ?? 1) === Number(phaseTab))
       .filter(({ it }) =>
         !query || it.name.toLowerCase().includes(query) || (it.group ?? '').toLowerCase().includes(query),
       )
@@ -240,6 +242,16 @@ export function Smeta() {
         IT-пакет, земля и наполнение номенклатуры правятся на своих вкладках.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
+        <SegmentedControl
+          size="sm"
+          value={phaseTab}
+          onChange={setPhaseTab}
+          data={[
+            { value: '1', label: `Очередь 1 · €${fmt(p1Eur)}` },
+            { value: '2', label: `Очередь 2 · €${fmt(p2Eur)}` },
+            { value: 'all', label: 'Вся смета' },
+          ]}
+        />
         <TextInput
           placeholder="Фильтр по наименованию или разделу…"
           value={q}

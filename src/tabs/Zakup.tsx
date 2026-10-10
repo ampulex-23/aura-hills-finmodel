@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Checkbox, TextInput } from '@mantine/core'
+import { Checkbox, SegmentedControl, TextInput } from '@mantine/core'
 import { useModel } from '../store'
 import { Hint, NumField, fmt } from '../components/ui'
 import { landedCost, nomenclatureStockEur } from '../model/opex'
@@ -22,6 +22,9 @@ export function Zakup() {
   const [q, setQ] = useState('')
   const [showAll, setShowAll] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const [phaseTab, setPhaseTab] = useState<string>('all')
+  const q1Cols = phaseTab !== '2'
+  const q2Cols = phaseTab !== '1'
 
   const stockEur = nomenclatureStockEur(items)
   const stock2Eur = items.reduce((s, i) => s + landedCost(i) * (i.initialQtyP2 ?? 0), 0)
@@ -66,6 +69,16 @@ export function Zakup() {
         Оборудование и мебель — «Наполнение» в смете стройки; цены и доставка правятся в Номенклатуре.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
+        <SegmentedControl
+          size="sm"
+          value={phaseTab}
+          onChange={setPhaseTab}
+          data={[
+            { value: '1', label: `Очередь 1 · €${fmt(stockEur)}` },
+            { value: '2', label: `Очередь 2 · €${fmt(stock2Eur)}` },
+            { value: 'all', label: 'Обе очереди' },
+          ]}
+        />
         <TextInput
           placeholder="Фильтр по наименованию, коду или категории…"
           value={q}
@@ -95,11 +108,11 @@ export function Zakup() {
               <th className="sticky"><Hint hint={{ text: COL.code }}><span>Код</span></Hint></th>
               <th><Hint hint={{ text: COL.name }}><span>Наименование</span></Hint></th>
               <th><Hint hint={{ text: COL.unit }}><span>Ед.</span></Hint></th>
-              <th><Hint hint={{ text: COL.qty }}><span>Закуп на открытие</span></Hint></th>
-              <th><Hint hint={{ text: COL.qty2 }}><span>Закуп оч. 2</span></Hint></th>
+              {q1Cols && <th><Hint hint={{ text: COL.qty }}><span>Закуп оч. 1</span></Hint></th>}
+              {q2Cols && <th><Hint hint={{ text: COL.qty2 }}><span>Закуп оч. 2</span></Hint></th>}
               <th><Hint hint={{ text: COL.landed }}><span>Landed €</span></Hint></th>
-              <th><Hint hint={{ text: COL.eur }}><span>Сумма €</span></Hint></th>
-              <th><Hint hint={{ text: COL.eur }}><span>Сумма оч.2 €</span></Hint></th>
+              {q1Cols && <th><Hint hint={{ text: COL.eur }}><span>Сумма оч.1 €</span></Hint></th>}
+              {q2Cols && <th><Hint hint={{ text: COL.eur }}><span>Сумма оч.2 €</span></Hint></th>}
             </tr>
           </thead>
           <tbody>
@@ -114,13 +127,15 @@ export function Zakup() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={5} className="sticky">
+                  <td colSpan={3} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
+                  {q1Cols && <td></td>}
+                  {q2Cols && <td></td>}
                   <td></td>
-                  <td><b>{fmt(catSum)}</b></td>
-                  <td><b>{fmt(catSum2)}</b></td>
+                  {q1Cols && <td><b>{fmt(catSum)}</b></td>}
+                  {q2Cols && <td><b>{fmt(catSum2)}</b></td>}
                 </tr>,
                 ...(open
                   ? arr.map(({ item: it, index: i }) => (
@@ -128,11 +143,11 @@ export function Zakup() {
                         <td className="sticky">{it.code}</td>
                         <td className="lft">{it.name}</td>
                         <td>{it.unit}</td>
-                        <td><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></td>
-                        <td><NumField value={it.initialQtyP2 ?? 0} onChange={(v) => setItem(i, { initialQtyP2: v || undefined })} step={1} /></td>
+                        {q1Cols && <td><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></td>}
+                        {q2Cols && <td><NumField value={it.initialQtyP2 ?? 0} onChange={(v) => setItem(i, { initialQtyP2: v || undefined })} step={1} /></td>}
                         <td>{fmt(landedCost(it), 2)}</td>
-                        <td><b>{fmt(landedCost(it) * (it.initialQty ?? 0))}</b></td>
-                        <td><b>{fmt(landedCost(it) * (it.initialQtyP2 ?? 0))}</b></td>
+                        {q1Cols && <td><b>{fmt(landedCost(it) * (it.initialQty ?? 0))}</b></td>}
+                        {q2Cols && <td><b>{fmt(landedCost(it) * (it.initialQtyP2 ?? 0))}</b></td>}
                       </tr>
                     ))
                   : []),
