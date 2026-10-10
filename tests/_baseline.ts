@@ -46,6 +46,13 @@ export function baselineParams(): Params {
   // чтобы golden/sensitivity сверяли ядро эпохи очереди 1.
   for (const m of p.modules) if (m.phase === 2) m.status = 'В резерве'
   if (p.publicBath) p.publicBath.enabled = false
+  // Оракул считал 4 слота/день (утро/день-1/день-2/вечер); после решения
+  // убрать дневной-2 в проде 3 слота — здесь фиксируем эпоху эталонов.
+  for (const m of p.modules) {
+    m.slotsPerDay = 4
+    m.prices = [m.prices[0], m.prices[0], m.prices[0], m.prices[0]]
+  }
+  p.slotMix = [0.15, 0.15, 0.3, 0.4]
   for (const m of p.modules) if (m.status !== 'Активен') m.launchDate = '2029-01-01'
   // Горизонт оракула — 60 операционных месяцев; 72 (под очередь 2) пришло после
   // эталонов — фиксируем старый, чтобы golden/sensitivity сверяли ядро.

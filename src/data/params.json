@@ -286,10 +286,9 @@
    "launchDate": "2028-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 4,
    "prices": [
-    250,
     250,
     250,
     250
@@ -303,10 +302,9 @@
    "launchDate": "2028-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 8,
    "prices": [
-    500,
     500,
     500,
     500
@@ -320,10 +318,9 @@
    "launchDate": "2028-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 12,
    "prices": [
-    750,
     750,
     750,
     750
@@ -338,10 +335,9 @@
    "launchDate": "2031-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 6,
    "prices": [
-    500,
     500,
     500,
     500
@@ -355,10 +351,9 @@
    "launchDate": "2031-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 6,
    "prices": [
-    500,
     500,
     500,
     500
@@ -372,10 +367,9 @@
    "launchDate": "2031-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 4,
    "prices": [
-    350,
     350,
     350,
     350
@@ -389,10 +383,9 @@
    "launchDate": "2031-01-01",
    "uptime": 0.95,
    "loadK": 1,
-   "slotsPerDay": 4,
+   "slotsPerDay": 3,
    "capacity": 10,
    "prices": [
-    750,
     750,
     750,
     750
@@ -402,14 +395,12 @@
  ],
  "slotMix": [
   0.15,
-  0.15,
-  0.3,
+  0.45,
   0.4
  ],
  "slotNames": [
   "Доля спроса — Утренний слот",
-  "Доля спроса — Дневной слот 1",
-  "Доля спроса — Дневной слот 2",
+  "Доля спроса — Дневной слот",
   "Доля спроса — Вечерний слот"
  ],
  "opexFixed": [
