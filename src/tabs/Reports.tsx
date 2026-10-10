@@ -19,11 +19,11 @@ const growthAt = (g: number, k: number) => Math.pow(1 + g, Math.floor(k / 12))
 // Активные модули в операционный месяц k (по launchDate, как в модели).
 function modulesAt(params: Params, k: number): ModuleSpec[] {
   const [y0, m0] = params.meta.openingDate.slice(0, 7).split('-').map(Number)
-  const t = y0 * 12 + (m0 - 1) + k
-  const at = Math.floor(t / 12) * 100 + (t % 12) + 1 // YYYYMM для сравнения с launchDate
-  return params.modules.filter(
-    (m) => m.status === 'Активен' && Number(m.launchDate.replace('-', '')) <= at,
-  )
+  const at = y0 * 12 + (m0 - 1) + k // месяцы от эпохи для сравнения с launchDate
+  return params.modules.filter((m) => {
+    const [ly, lm] = m.launchDate.slice(0, 7).split('-').map(Number)
+    return m.status === 'Активен' && ly * 12 + (lm - 1) <= at
+  })
 }
 
 function revenueHints(params: Params, r: ModelResult) {
