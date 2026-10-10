@@ -40,7 +40,8 @@ function revenueHints(params: Params, r: ModelResult) {
   const gAt = (k: number) => growthAt(sc.priceGrowth, k)
   const sumLine = (m: (typeof R)[0]) =>
     `Аренда ${e0(m.rental)} + Парения ${e0(m.steamTotal)} + Массаж ${e0(m.massageTotal)} ` +
-    `+ Доп.услуги ${e0(m.extraTotal)} + Глэмпинг ${e0(m.glamping)} + Членства ${e0(m.membershipTotal)} + F&B ${e0(m.fb)}`
+    `+ Доп.услуги ${e0(m.extraTotal)} + Глэмпинг ${e0(m.glamping)} + Членства ${e0(m.membershipTotal)} + F&B ${e0(m.fb)}` +
+    (m.publicBath + m.restaurant > 0 ? ` + Общ.баня ${e0(m.publicBath)} + Ресторан ${e0(m.restaurant)}` : '')
 
   return {
     load: (i: number): CellHint => {
@@ -121,10 +122,29 @@ function revenueHints(params: Params, r: ModelResult) {
     },
     fb: (i: number): CellHint => {
       const m = R[i]
+      const fbGuests = m.guests - m.publicGuests
       return {
         title: 'F&B (чайная зона)',
-        text: 'Представительские продажи: гости × средний чек на гостя × рост цен.',
-        calc: `${fmt(m.guests)} гостей × ${e1(params.prices.fbPerGuest)} × рост ${gAt(i).toFixed(2)} = ${e0(m.fb)}`,
+        text: 'Представительские продажи: гости × средний чек на гостя × рост цен. Гости общественной бани сюда не входят — питаются в ресторане.',
+        calc: `${fmt(fbGuests)} гостей × ${e1(params.prices.fbPerGuest)} × рост ${gAt(i).toFixed(2)} = ${e0(m.fb)}`,
+      }
+    },
+    publicBath: (i: number): CellHint => {
+      const m = R[i]
+      const pb = params.publicBath
+      return {
+        title: 'Общественная баня (оч. 2)',
+        text: `Посетители = 30 дн × пропускная ${pb?.capacity ?? 0} чел/день × загрузка сценария (% пропускной) × сезонность × рампа оч. 2. Билет = вход + все зоны.`,
+        calc: `${fmt(m.publicGuests)} гостей × ${e0(pb?.ticketEur ?? 0)} × рост ${gAt(i).toFixed(2)} = ${e0(m.publicBath)}`,
+      }
+    },
+    restaurant: (i: number): CellHint => {
+      const m = R[i]
+      const rest = params.restaurant
+      return {
+        title: 'Ресторан (оч. 2)',
+        text: `Посадки = 30 дн × ${rest?.seats ?? 0} мест × ${rest?.turnsPerDay ?? 0} оборота × загрузка; чек индексируется инфляцией. Плейсхолдер-поток.`,
+        calc: `${e0(m.restaurant)} (чек ${e0(rest?.avgCheck ?? 0)} × инфляция года)`,
       }
     },
     total: (i: number): CellHint => {
@@ -163,6 +183,12 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
     { label: 'Глэмпинг', values: stream((m) => m.glamping), hint: h.glamping },
     { label: 'Членства + сертификаты', values: stream((m) => m.membershipTotal), hint: h.membership },
     { label: 'F&B', values: stream((m) => m.fb), hint: h.fb },
+    ...(R.some((m) => m.publicBath > 0)
+      ? [{ label: 'Общественная баня (оч. 2)', values: stream((m) => m.publicBath), hint: h.publicBath }]
+      : []),
+    ...(R.some((m) => m.restaurant > 0)
+      ? [{ label: 'Ресторан (оч. 2)', values: stream((m) => m.restaurant), hint: h.restaurant }]
+      : []),
     { label: 'ИТОГО ВЫРУЧКА', values: stream((m) => m.total), bold: true, hint: h.total },
   ]
   return <MonthTable rows={rows} labels={labels} withSum />
@@ -387,7 +413,7 @@ export function Capex({ r }: { r: ModelResult }) {
   const groups: { name: string; items: typeof capex.items; total: number }[] = []
   const gidx = new Map<string, number>()
   for (const it of capex.items) {
-    const g = it.group ?? 'Прочее'
+    const g = `${it.phase === 2 ? 'Оч.2 · ' : ''}${it.group ?? 'Прочее'}`
     const ix = gidx.get(g)
     if (ix === undefined) {
       gidx.set(g, groups.length)
@@ -569,10 +595,25 @@ export function Capex({ r }: { r: ModelResult }) {
               )
             })}
           <tr className="bold">
-            <td className="sticky">ИТОГО CAPEX</td>
+            <td className="sticky">ИТОГО CAPEX — очередь 1</td>
             <td /><td /><td />
-            <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций: смета стройки, наполнение (оборудование и мебель из номенклатуры), закуп стартовых запасов, IT-пакет и земля.' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
+            <td><Hint hint={{ title: 'Итого CAPEX очереди 1', text: 'Сумма инвестиционных позиций стартового контура: смета стройки, наполнение (оборудование и мебель из номенклатуры), закуп стартовых запасов, IT-пакет и земля.' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
           </tr>
+          {capex.phase2Eur > 0 && (
+            <tr className="bold">
+              <td className="sticky">ИТОГО CAPEX — очередь 2</td>
+              <td /><td /><td />
+              <td>
+                <Hint hint={{
+                  title: 'CAPEX очереди 2',
+                  text: 'Сумма строк phase=2 включённых объектов (объектные + общие строки) и закупа стартовых запасов оч. 2. Отток растянут по окну стройки 2029–2030; свой буфер — из блока «Очередь 2» в Допущениях.',
+                  calc: `смета ${e0(capex.phase2Eur)} × буфер ${1 + (params.phase2?.capexAdj ?? 0)} = ${e0(capex.phase2AdjEur)}`,
+                }}>
+                  <span className="cellval">{fmt(capex.phase2AdjEur)}</span>
+                </Hint>
+              </td>
+            </tr>
+          )}
           <tr className="bold">
             <td className="sticky">С буфером сценария</td>
             <td /><td /><td />
@@ -629,22 +670,22 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
       tex: String.raw`\mathrm{НДС}=\mathrm{выручка}\cdot\frac{r}{1+r}`,
       hint: (ci) => {
         const m = R[ci]
-        const base = m.rental + m.steamTotal + m.massageTotal + m.extraTotal + m.membershipTotal
+        const base = m.rental + m.steamTotal + m.massageTotal + m.extraTotal + m.membershipTotal + m.publicBath
         return {
           title: 'НДС выходной 19%',
-          text: 'Выручка бань + услуг + членств × доля НДС в цене.',
+          text: 'Выручка бань + услуг + членств + общественной бани (оч. 2) × доля НДС в цене.',
           calc: `${e0(base)} × ${pc(eff19, 2)} = ${e0(T[ci].vatOut19)}`,
         }
       },
     },
     {
-      label: `НДС ${pc(t.vatGlamp)} (глэмпинг+F&B)`, values: T.map((m) => m.vatOut9),
-      tip: 'Пониженная ставка НДС на размещение и F&B.',
+      label: `НДС ${pc(t.vatGlamp)} (глэмпинг+F&B+ресторан)`, values: T.map((m) => m.vatOut9),
+      tip: 'Пониженная ставка НДС на размещение и F&B; ресторан оч. 2 идёт по ставке F&B.',
       hint: (ci) => {
         const m = R[ci]
         return {
           title: 'НДС выходной 9%',
-          calc: `глэмпинг ${e0(m.glamping)}×${pc(t.vatGlamp / (1 + t.vatGlamp), 2)} + F&B ${e0(m.fb)}×${pc(t.vatFb / (1 + t.vatFb), 2)} = ${e0(T[ci].vatOut9)}`,
+          calc: `глэмпинг ${e0(m.glamping)}×${pc(t.vatGlamp / (1 + t.vatGlamp), 2)} + F&B+ресторан ${e0(m.fb + m.restaurant)}×${pc(t.vatFb / (1 + t.vatFb), 2)} = ${e0(T[ci].vatOut9)}`,
         }
       },
     },
@@ -862,13 +903,13 @@ export function CashFlow({ r }: { r: ModelResult }) {
       tip: `Инвестиции по S-кривой освоения за ${capM} мес строительства${sc.constructionDelayMonths ? ` (включая задержку ${sc.constructionDelayMonths} мес)` : ''}: проект/разрешения → основной объём → импорт и монтаж.`,
       hint: (ci) => ({
         title: 'CAPEX',
-        calc: C[ci].capex ? `−(${e0(r.capex.adjustedEur)} − отложенные ${e0(r.capex.deferred.reduce((s, d) => s + d.eur, 0))}) × вес ${pc(weights[ci] ?? 0)} = ${e0(C[ci].capex)}` : '—',
+        calc: C[ci].capex ? `−(${e0(r.capex.adjustedEur)} − отложенные оч.1 ${e0(r.capex.deferredPhase1Total)}) × вес ${pc(weights[ci] ?? 0)} = ${e0(C[ci].capex)}` : '—',
       }),
     },
     ...(r.capex.deferred.length
       ? [{
-          label: 'CAPEX модулей (отложенный)', values: C.map((m) => m.deferredCapex),
-          tip: 'Real option: модуль со статусом «Активен» и вводом после открытия платит свою долю помодульного CAPEX в месяц запуска, а не в стройке.',
+          label: 'CAPEX отложенный (оч.1/оч.2)', values: C.map((m) => m.deferredCapex),
+          tip: 'Отложенные платежи: модули оч. 1 с вводом после открытия платят в месяц запуска; очередь 2 — помесячный отток по окну стройки (2029–2030), а не траншем при вводе.',
           hint: (ci: number): CellHint => ({ title: 'Отложенный CAPEX', calc: C[ci].deferredCapex ? e0(C[ci].deferredCapex) : '—' }),
         }]
       : []),
@@ -927,6 +968,13 @@ export function CashFlow({ r }: { r: ModelResult }) {
       label: 'CF после распределения', values: C.map((m) => m.totalCf), bold: true,
       hint: (ci) => ({ title: 'CF после распределения', calc: `${e0(C[ci].fcff)} + ${e0(C[ci].dividends)} = ${e0(C[ci].totalCf)}` }),
     },
+    ...(r.cashflow.some((m) => m.phase2Equity > 0)
+      ? [{
+          label: '  в т.ч. транш оч. 2 (equity)', values: C.map((m) => m.phase2Equity),
+          tip: 'Финансирование очереди 2 режимом «Отдельный транш»: акционеры вносят ровно отток стройки месяца — входит в строку equity-транша ниже, отдельно не суммируется.',
+          hint: (ci: number): CellHint => ({ title: 'Транш очереди 2 (в составе equity)', calc: C[ci].phase2Equity ? e0(C[ci].phase2Equity) : '—' }),
+        }]
+      : []),
     {
       label: '+ Equity-транш акционеров', values: C.map((m) => m.equityIn),
       tip: 'Взнос, закрывающий кассовый разрыв месяца: касса не уходит в минус. Σ траншей — потребность в собственном капитале.',
@@ -976,7 +1024,7 @@ function SourcesUses({ r }: { r: ModelResult }) {
   const build = C.filter((m) => !m.isOps)
   const uses: [string, number][] = [
     ['Строительный CAPEX (с буфером)', -sum((m) => m.capex)],
-    ['CAPEX модулей (отложенный)', -sum((m) => m.deferredCapex)],
+    ['CAPEX отложенный (оч.1/оч.2)', -sum((m) => m.deferredCapex)],
     ['Maintenance CAPEX и капремонт', -sum((m) => m.maintCapex)],
     ['Pre-opening и аренда земли в стройке', -sum((m) => m.preopen + m.landLease)],
     ['Операционные убытки (месяцы с OCF < 0)', -sum((m) => Math.min(0, m.operatingCf))],

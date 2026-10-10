@@ -21,19 +21,26 @@ export function computeVat(
   params: Params,
   revenue: RevenueMonth[],
   opex: OpexMonth[],
-  capex: { amortizableEur: number; deferred: { month: number; eur: number }[] },
+  capex: {
+    amortizableEur: number
+    deferred: { month: number; eur: number }[]
+    deferredPhase1Total: number
+  },
 ): VatMonth[] {
   const r = params.taxes
   const reimb = params.meta.vatMode === 'С возмещением'
   const capexVat = (eur: number) => (eur * r.vatInput) / (1 + r.vatInput)
+  // Входной НДС отложенного CAPEX приходит в месяц оплаты: модули очереди 1 —
+  // в их ввод, очередь 2 — помесячно по окну стройки 2029–2030 (это уже
+  // операционные месяцы — кредит сразу работает против выходного НДС).
   const deferredVat = new Map<number, number>()
   for (const d of capex.deferred) {
     const k = d.month - params.meta.capexMonths - 1 // 1-based CF-месяц → ops-месяц
     deferredVat.set(k, (deferredVat.get(k) ?? 0) + capexVat(d.eur))
   }
-  const upfrontVat = capexVat(
-    capex.amortizableEur - capex.deferred.reduce((s, d) => s + d.eur, 0),
-  )
+  // Upfront — только очередь 1: отложенный CAPEX очереди 2 не входит в
+  // amortizableEur и вычитается отдельной суммой.
+  const upfrontVat = capexVat(capex.amortizableEur - capex.deferredPhase1Total)
   const out: VatMonth[] = []
   let credit = 0
   // Квартальная уплата: начисленное за календарный квартал уходит кэшем через
@@ -45,10 +52,12 @@ export function computeVat(
   for (let k = 0; k < revenue.length; k++) {
     const rev = revenue[k]
     const vatOut19 =
-      ((rev.rental + rev.steamTotal + rev.massageTotal + rev.extraTotal + rev.membershipTotal) *
+      ((rev.rental + rev.steamTotal + rev.massageTotal + rev.extraTotal + rev.membershipTotal +
+        rev.publicBath) *
         r.vatStd) / (1 + r.vatStd)
     const vatOut9 =
-      (rev.glamping * r.vatGlamp) / (1 + r.vatGlamp) + (rev.fb * r.vatFb) / (1 + r.vatFb)
+      (rev.glamping * r.vatGlamp) / (1 + r.vatGlamp) +
+      ((rev.fb + rev.restaurant) * r.vatFb) / (1 + r.vatFb)
     const vatOut = vatOut19 + vatOut9
     const inputVat = reimb
       ? ((opex[k].fixedTotal + opex[k].variableTotal + opex[k].itTotal) * r.vatInput) / (1 + r.vatInput) +

@@ -4,7 +4,7 @@
     "constructionStart": "2027-01-01",
     "openingDate": "2028-01-01",
     "capexMonths": 12,
-    "opsMonths": 60,
+    "opsMonths": 72,
     "mode": "Да",
     "scenario": "Base",
     "vatMode": "С возмещением"
@@ -294,7 +294,8 @@
         250,
         250
       ],
-      "avgPrice": null
+      "avgPrice": null,
+      "phase": 1
     },
     {
       "id": 2,
@@ -310,7 +311,8 @@
         500,
         500
       ],
-      "avgPrice": null
+      "avgPrice": null,
+      "phase": 1
     },
     {
       "id": 3,
@@ -326,11 +328,13 @@
         750,
         750
       ],
-      "avgPrice": null
+      "avgPrice": null,
+      "phase": 1
     },
     {
       "id": 4,
       "status": "В резерве",
+      "phase": 2,
       "launchDate": "2031-01-01",
       "uptime": 0.95,
       "loadK": 1,
@@ -347,6 +351,7 @@
     {
       "id": 5,
       "status": "В резерве",
+      "phase": 2,
       "launchDate": "2031-01-01",
       "uptime": 0.95,
       "loadK": 1,
@@ -363,16 +368,34 @@
     {
       "id": 6,
       "status": "В резерве",
+      "phase": 2,
       "launchDate": "2031-01-01",
       "uptime": 0.95,
       "loadK": 1,
       "slotsPerDay": 4,
-      "capacity": 6,
+      "capacity": 4,
       "prices": [
-        500,
-        500,
-        500,
-        500
+        350,
+        350,
+        350,
+        350
+      ],
+      "avgPrice": null
+    },
+    {
+      "id": 7,
+      "status": "В резерве",
+      "phase": 2,
+      "launchDate": "2031-01-01",
+      "uptime": 0.95,
+      "loadK": 1,
+      "slotsPerDay": 4,
+      "capacity": 10,
+      "prices": [
+        750,
+        750,
+        750,
+        750
       ],
       "avgPrice": null
     }
@@ -1224,6 +1247,249 @@
       "group": "Прачечная (своя)",
       "ifLaundry": true,
       "priceEur": 800
+    },
+    {
+      "name": "Оч.2 — Общественный комплекс: здание ~450 м² (модульная сборка с отделкой и MEP)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 250000,
+      "row": 40,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Баня на 12 чел (печь, пологи, отделка)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 60000,
+      "row": 41,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Бассейн 14×5 м, скиммерный, с подогревом",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 70000,
+      "row": 42,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Купели ×4 (2 холодные + 2 горячие)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 34000,
+      "row": 43,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Раздевалки М/Ж (душевые, санузлы, мебель)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 12000,
+      "row": 44,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Кухня ресторана (доготовочная)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 45000,
+      "row": 45,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Мебель зала ресторана на 40 мест",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 22000,
+      "row": 46,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Ресепшн и детская комната",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 25000,
+      "row": 47,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Терраса/благоустройство 723,64 м²",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 80000,
+      "row": 48,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — Объект 32 м² у бассейна",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 18000,
+      "row": 49,
+      "phase": 2,
+      "object": "public",
+      "group": "Общественный комплекс"
+    },
+    {
+      "name": "Оч.2 — VIP-1: здание 200 м² (4–6 чел)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 84000,
+      "row": 50,
+      "phase": 2,
+      "object": "vip1",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-1: наполнение (купели, парная, массажная, мебель)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 70000,
+      "row": 51,
+      "phase": 2,
+      "object": "vip1",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-2: здание 200 м² (4–6 чел)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 84000,
+      "row": 52,
+      "phase": 2,
+      "object": "vip2",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-2: наполнение",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 70000,
+      "row": 53,
+      "phase": 2,
+      "object": "vip2",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-3: здание 184 м² (2–4 чел)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 77000,
+      "row": 54,
+      "phase": 2,
+      "object": "vip3",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-3: наполнение",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 62000,
+      "row": 55,
+      "phase": 2,
+      "object": "vip3",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-4: здание 240 м² (8–10 чел)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 101000,
+      "row": 56,
+      "phase": 2,
+      "object": "vip4",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — VIP-4: наполнение",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 80000,
+      "row": 57,
+      "phase": 2,
+      "object": "vip4",
+      "group": "VIP-комплексы"
+    },
+    {
+      "name": "Оч.2 — Инженерия: подводки ЭОМ/ВК/канализация, КНС",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 55000,
+      "row": 58,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
+    },
+    {
+      "name": "Оч.2 — Проектная документация АР+КР+MEP",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 40000,
+      "row": 59,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
+    },
+    {
+      "name": "Оч.2 — Разрешительная документация",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 10000,
+      "row": 60,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
+    },
+    {
+      "name": "Оч.2 — Авторский надзор и стройконтроль (24 мес)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 25000,
+      "row": 61,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
+    },
+    {
+      "name": "Оч.2 — Транспорт и логистика",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 25000,
+      "row": 62,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
+    },
+    {
+      "name": "Оч.2 — Благоустройство связки (дорожки, освещение)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 30000,
+      "row": 63,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
+    },
+    {
+      "name": "Оч.2 — Непредвиденные расходы (~5%)",
+      "unit": "компл",
+      "qty": 1,
+      "priceEur": 72000,
+      "row": 64,
+      "phase": 2,
+      "group": "Общие работы Оч.2"
     }
   ],
   "it": {
@@ -1301,5 +1567,25 @@
     0.08,
     0.06,
     0.05
-  ]
+  ],
+  "phase2": {
+    "constructionStart": "2029-01",
+    "months": 24,
+    "capexAdj": 0.1,
+    "rampMonths": 9,
+    "funding": "ops"
+  },
+  "publicBath": {
+    "enabled": false,
+    "ticketEur": 35,
+    "capacity": 40,
+    "launchDate": "2031-01",
+    "serviceSpendPerVisit": 15
+  },
+  "restaurant": {
+    "seats": 40,
+    "avgCheck": 28,
+    "turnsPerDay": 1.5,
+    "foodCostPct": 0.35
+  }
 }

@@ -45,20 +45,26 @@ export function Scenarios() {
             <Head />
             <tbody>
               {([
-                ['ЗАГРУЗКА БАНЬ', 'baths', 'Бани', true],
-                ['ПАРЕНИЯ', 'steam', 'Парения', true],
-                ['МАССАЖ', 'massage', 'Массаж', true],
-                ['ДОП. УСЛУГИ', 'extra', 'Допы', true],
-                ['ГЛЭМПИНГ', 'glamping', 'Глэмпинг', true],
-                ['МЕСЯЧНЫЕ ЧЛЕНСТВА, чел', 'membersMonth', 'Членов', false],
-              ] as const).map(([title, key, label, pct]) => (
+                ['ЗАГРУЗКА БАНЬ', 'baths', 'Бани', true, undefined],
+                ['ПАРЕНИЯ', 'steam', 'Парения', true, undefined],
+                ['МАССАЖ', 'massage', 'Массаж', true, undefined],
+                ['ДОП. УСЛУГИ', 'extra', 'Допы', true, undefined],
+                ['ГЛЭМПИНГ', 'glamping', 'Глэмпинг', true, undefined],
+                ['ОБЩЕСТВЕННАЯ БАНЯ (ОЧ. 2)', 'publicBath', 'Билеты', true,
+                  'Доля пропускной ёмкости общественной бани (40 чел/день, визит ≈ весь день 9–23). Поток с даты ввода очереди 2; до неё вектор не влияет.'],
+                ['РЕСТОРАН (ОЧ. 2)', 'restaurant', 'Посадки', true,
+                  'Доля занятости ресторана: % от мест × оборотов посадки в день. Плейсхолдер-поток с даты ввода общественной бани.'],
+                ['МЕСЯЧНЫЕ ЧЛЕНСТВА, чел', 'membersMonth', 'Членов', false, undefined],
+              ] as const).map(([title, key, label, pct, sectHint]) => (
                 <Fragment key={key}>
-                  <tr className="section"><td className="sticky" colSpan={4}>{title}</td></tr>
+                  <tr className="section"><td className="sticky" colSpan={4}>
+                    {sectHint ? <Hint hint={{ text: sectHint }}><span>{title}</span></Hint> : title}
+                  </td></tr>
                   {YEAR_KEYS.map((y, i) => (
                     <Row key={y} label={`${label} — Год ${i + 1}`} path={`${key}.${y}`} pct={pct}
-                      hint={pct
+                      hint={sectHint ?? (pct
                         ? `Среднегодовая загрузка потока в год ${i + 1} — доля максимальной ёмкости.`
-                        : `Число активных месячных членов в год ${i + 1}, в человеках.`
+                        : `Число активных месячных членов в год ${i + 1}, в человеках.`)
                       }
                     />
                   ))}

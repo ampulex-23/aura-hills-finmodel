@@ -342,6 +342,7 @@ export async function exportWorkbook(
   const CX: Record<string, number> = {}
   let modulesRow = 0 // строка «Банные модуля» — для Checks
   const itemRows: number[] = []
+  const itemRowsP2: number[] = []
   {
     const ws = wb.addWorksheet('CAPEX')
     ws.properties.tabColor = { argb: 'FFBF8F00' }
@@ -356,7 +357,7 @@ export async function exportWorkbook(
     const groups: { name: string; items: typeof r.capex.items }[] = []
     const gix = new Map<string, number>()
     for (const it of r.capex.items) {
-      const g = it.group ?? 'Прочее'
+      const g = `${it.phase === 2 ? 'Оч.2 · ' : ''}${it.group ?? 'Прочее'}`
       const ix = gix.get(g)
       if (ix === undefined) { gix.set(g, groups.length); groups.push({ name: g, items: [it] }) }
       else groups[ix].items.push(it)
@@ -367,7 +368,7 @@ export async function exportWorkbook(
       const itemEurCells: string[] = []
       for (const it of g.items) {
         const ir = ws.addRow([it.name, it.unit ?? '', it.qty ?? '', it.rate ?? '', ''])
-        itemRows.push(ir.number)
+        ;(it.phase === 2 ? itemRowsP2 : itemRows).push(ir.number)
         itemEurCells.push(`$E$${ir.number}`)
         if (it.name.includes('Банные модуля')) modulesRow = ir.number
         ir.getCell(1).font = { ...ARIAL, bold: true }
@@ -480,11 +481,28 @@ export async function exportWorkbook(
       totalRow.getCell(1).font = { ...ARIAL, bold: true }
       totalRow.eachCell((c) => (c.border = thinTop))
     })
-    CX.total = ws.addRow(['ИТОГО CAPEX', '', '', '', '']).number
+    CX.total = ws.addRow(['ИТОГО CAPEX — очередь 1', '', '', '', '']).number
     const totE = ws.getCell(CX.total, 5)
     totE.value = { formula: `SUM(${itemRows.map((x) => `E${x}`).join(',')})`, result: r.capex.totalEur }
     totE.numFmt = FMT_EUR
     ws.getRow(CX.total).eachCell((c) => { c.font = { ...ARIAL, bold: true }; c.border = dblTop })
+    let CXp2: number | null = null
+    if (r.capex.phase2Eur > 0) {
+      CXp2 = ws.addRow(['ИТОГО CAPEX — очередь 2', '', '', '', '']).number
+      const p2e = ws.getCell(CXp2, 5)
+      p2e.value = {
+        formula: itemRowsP2.length ? `SUM(${itemRowsP2.map((x) => `E${x}`).join(',')})` : '0',
+        result: r.capex.phase2Eur,
+      }
+      p2e.numFmt = FMT_EUR
+      ws.getRow(CXp2).eachCell((c) => { c.font = { ...ARIAL, bold: true }; c.border = thinTop })
+      const p2a = ws.addRow(['С буфером оч. 2 (в т.ч. закуп)', '', '', '', ''])
+      const p2ae = p2a.getCell(5)
+      p2ae.value = r.capex.phase2AdjEur
+      p2ae.numFmt = FMT_EUR
+      p2ae.font = { ...ARIAL, bold: true, color: { argb: GREEN } }
+      p2a.getCell(1).font = { ...ARIAL, bold: true }
+    }
     CX.adj = ws.addRow(['С буфером сценария', '', '', '', '']).number
     const adjE = ws.getCell(CX.adj, 5)
     adjE.value = { formula: `$E$${CX.total}*(1+${A$('capexAdj')})`, result: r.capex.adjustedEur }
@@ -494,7 +512,7 @@ export async function exportWorkbook(
     const amortSum = (A.amortRows as number[])
       .map((x) => `'Допущения'!$B$${x}/('Допущения'!$C$${x}*12)`)
       .join('+')
-    CX.amort = ws.addRow(['Амортизация, €/мес', '', '', '', '']).number
+    CX.amort = ws.addRow(['Амортизация оч.1, €/мес (старт)', '', '', '', '']).number
     const amE = ws.getCell(CX.amort, 5)
     amE.value = {
       formula: `($E$${CX.adj}-${A$('land')}*(1+${A$('capexAdj')}))*(${amortSum})`,
@@ -502,7 +520,7 @@ export async function exportWorkbook(
     }
     amE.numFmt = FMT_EUR
     amE.font = { ...ARIAL, color: { argb: GREEN } }
-    ws.getCell(CX.amort, 1).note = 'Линейная: амортизируемая база × Σ доля группы / (срок лет × 12)'
+    ws.getCell(CX.amort, 1).note = 'Линейная: амортизируемая база оч.1 × Σ доля группы / (срок лет × 12). Амортизация оч.2 стартует с месяца ввода — в P&L значениями.'
   }
   const CX$ = (r2: number) => `'CAPEX'!$E$${r2}`
 
@@ -550,7 +568,8 @@ export async function exportWorkbook(
     },
     {
       label: 'Амортизация',
-      cells: r.pnl.map((m) => f(`${CX$(CX.amort)}`, m.amortization)),
+      // помесячная: старт оч.1 + ввод объектов оч.2 → пишем значениями (форма CX.amort только оч.1)
+      cells: r.pnl.map((m) => m.amortization),
     },
     { label: 'EBIT', bold: true, cells: r.pnl.map((m, i) => f(`${L(i + 2)}4-${L(i + 2)}5`, m.ebit)) },
     {
@@ -597,7 +616,13 @@ export async function exportWorkbook(
     // OCF=5, CAPEX=6, отложенный=7, пресейл=8, прогорание=9, земля=10, preopen=11,
     // maint=12, FCFF=13, дивиденды=14, удержано=15, CF=16, equity=17, касса=18,
     // накопл.FCFF=19, DF=20, NPV=21 — нужны для перекрёстных формул.
+    // Строки очереди 2 пишутся в конец (24=стройка оч.2, 25=транш оч.2) —
+    // позиции 2–23 не сдвигаются.
     const CF_DEF = 7
+    const CF_P2 = 24
+    const CF_P2EQ = 25 // справочно: транш оч.2 входит в строку 17, не суммируется отдельно
+    // помесячный отток стройки оч.2 по абсолютному месяцу
+    const p2out = new Map(r.capex.phase2Outflow.map((x) => [x.month, x.eur]))
     // S-кривая стройки — входы на листе Cash-Flow (строка весов ниже таблицы)
     const cfLabels = r.cashflow.map((m) => m.label)
     const cf = monthSheet(wb, 'Cash-Flow', cfLabels, [
@@ -630,7 +655,11 @@ export async function exportWorkbook(
             ? f(`-(${CX$(CX.adj)}+SUM($B$${CF_DEF}:${L(1 + cfTotal)}$${CF_DEF}))*${L(i + 2)}$23`, m.capex)
             : 0),
       },
-      { label: 'CAPEX модулей (отложенный)', cells: nums(r.cashflow.map((m) => m.deferredCapex)) },
+      {
+        label: 'CAPEX отложенный оч.1 (модули)',
+        // deferredCapex = −(оч.1 + оч.2): вычитаем помесячный отток оч.2 → остаётся оч.1
+        cells: nums(r.cashflow.map((m, i) => m.deferredCapex + (p2out.get(i) ?? 0))),
+      },
       { label: 'Пре-сейл', cells: nums(r.cashflow.map((m) => m.presale)), style: 'input' },
       { label: 'Прогорание пресейла', cells: nums(r.cashflow.map((m) => m.presaleUnwind)) },
       { label: 'Аренда земли (стройка)', cells: nums(r.cashflow.map((m) => m.landLease)), style: 'input' },
@@ -638,7 +667,7 @@ export async function exportWorkbook(
       { label: 'Maintenance CAPEX', cells: nums(r.cashflow.map((m) => m.maintCapex)), style: 'input' },
       {
         label: 'FCFF', bold: true, border: 'top',
-        cells: r.cashflow.map((m, i) => f(`SUM(${L(i + 2)}5:${L(i + 2)}12)`, m.fcff)),
+        cells: r.cashflow.map((m, i) => f(`SUM(${L(i + 2)}5:${L(i + 2)}12)+${L(i + 2)}$${CF_P2}`, m.fcff)),
       },
       {
         label: 'Дивиденды брутто',
@@ -661,6 +690,7 @@ export async function exportWorkbook(
       },
       {
         label: 'Касса на конец месяца', bold: true,
+        // equityIn уже включает транш оч.2 (cashflow.ts: equityIn = phase2Equity + закрытие разрыва)
         cells: r.cashflow.map((m, i) =>
           f(i === 0 ? `${L(i + 2)}16+${L(i + 2)}17` : `${L(i + 1)}18+${L(i + 2)}16+${L(i + 2)}17`, m.cash)),
       },
@@ -684,6 +714,14 @@ export async function exportWorkbook(
       {
         label: 'Вес S-кривой стройки (вход)', fmt: '0.0%',
         cells: r.cashflow.map((m, i) => (m.isOps ? null : sCurve[i])), style: 'input',
+      },
+      {
+        label: 'CAPEX оч.2 (стройка 2029–30)',
+        cells: nums(r.cashflow.map((m, i) => -(p2out.get(i) ?? 0))),
+      },
+      {
+        label: '  в т.ч. транш оч. 2 (equity, справочно)',
+        cells: nums(r.cashflow.map((m) => m.phase2Equity)),
       },
     ], 'FF548235')
     const CF = {

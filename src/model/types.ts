@@ -20,6 +20,8 @@ export interface ModelMeta {
 export interface ModuleSpec {
   id: number
   status: string
+  /** Очередь стройки: 1 — стартовый контур (2028), 2 — вторая очередь (ввод 2031) */
+  phase?: 1 | 2
   launchDate: string
   uptime: number
   loadK: number
@@ -47,6 +49,9 @@ export interface NomenclatureItem {
    *  обычного учёта позиции: для OPEX/Спецификации это стартовый комплект,
    *  который потом пополняется помесячной нормой. */
   initialQty?: number
+  /** Стартовый запас под очередь 2 — вторая партия закупа к вводу 2031
+   *  (Смета закупа, группа «Очередь 2»); отток в окне стройки очереди 2. */
+  initialQtyP2?: number
   /** Себестоимость единицы при своей прачечной (params.laundry.enabled):
    *  расходники на цикл стирки вместо аутсорс-тарифа в `price`. Только для
    *  спековых позиций категории «Прачечная / текстиль». */
@@ -114,6 +119,11 @@ export interface CapexItem {
   wbsQty?: number
   /** Условная строка: включается в CAPEX только при своей прачечной (params.laundry.enabled) */
   ifLaundry?: boolean
+  /** Очередь стройки: 1 (дефолт) — стройка 2027; 2 — окно 2029–2030, ввод 2031 */
+  phase?: 1 | 2
+  /** Привязка к объекту очереди 2: 'vip1'..'vip4' | 'public'. Без object —
+   *  общая строка очереди 2: платится, если включён хотя бы один объект. */
+  object?: string
 }
 
 /** CAPM-блок стоимости собственного капитала: ke = rf + β·ERP + страновая + size/startup премии */
@@ -227,6 +237,45 @@ export interface Params {
     opex: { name: string; base: number }[]
     capex: { name: string; eur: number }[]
   }
+  // Очередь 2: окно стройки и параметры запуска новых объектов.
+  // Включение — помодульное (status объектов и publicBath.enabled).
+  phase2?: {
+    /** Старт стройки очереди 2 ('YYYY-MM' или ISO) */
+    constructionStart: string
+    /** Длительность стройки, мес */
+    months: number
+    /** Свой буфер CAPEX для строк phase=2 (вместо общего capexAdj сценария) */
+    capexAdj: number
+    /** Своя рампа новых мощностей — месяцев от их launchDate */
+    rampMonths: number
+    /** 'ops' — стройка гасится операционным CF; 'equity' — отдельный транш акционеров */
+    funding: 'ops' | 'equity'
+    /** Профиль освоения CAPEX по месяцам окна (как capexSCurve; пусто → равномерно) */
+    sCurve?: number[]
+  }
+  // Общественный банный комплекс очереди 2: билет = вход + все зоны
+  // (бассейн, купели, баня), НЕ слотовая система — посетители/день.
+  publicBath?: {
+    enabled: boolean
+    /** Цена входа на гостя, € */
+    ticketEur: number
+    /** Пропускная ёмкость, чел/день (визит ≈ весь день 9–23) */
+    capacity: number
+    launchDate: string
+    /** Средний сервисный чек посетителя сверх билета (парения/массаж), € */
+    serviceSpendPerVisit?: number
+  }
+  // Ресторан общественного комплекса — плейсхолдер-поток:
+  // чек рыночный, индексируется инфляцией; работает на внешних и гостей бани.
+  restaurant?: {
+    enabled?: boolean
+    seats: number
+    /** Средний чек на гостя, € */
+    avgCheck: number
+    /** Обороты посадки в день (суммарно внешние + гости бани) */
+    turnsPerDay: number
+    foodCostPct: number
+  }
   // Прачечная — переключатель режима. enabled=false (база): стирка на аутсорсе —
   // спековые позиции NC-159/NC-210 списываются по тарифу прачечной (price).
   // enabled=true (своя): в CAPEX включаются строки capexItems с флагом ifLaundry
@@ -272,6 +321,10 @@ export interface ScenarioMatrix {
   constructionDelayMonths: number[]
   /** Множитель энергетических статей OPEX (электроэнергия, отопление) */
   energyCostMult: number[]
+  /** Загрузка общественной бани (% пропускной ёмкости 40 чел/день) — очередь 2 */
+  publicBath?: YearVectors
+  /** Загрузка ресторана (% от seats × turnsPerDay) — очередь 2 */
+  restaurant?: YearVectors
 }
 
 // Резолвленный сценарий: все годовые векторы раскрыты на 5 лет
@@ -293,6 +346,10 @@ export interface ResolvedScenario {
   avgCapacity: number
   constructionDelayMonths: number
   energyCostMult: number
+  /** Загрузка общественной бани по годам (% пропускной ёмкости) */
+  publicBathLoad: number[]
+  /** Загрузка ресторана по годам (% ёмкости посадок) */
+  restLoad: number[]
 }
 
 export interface RevenueMonth {
@@ -327,6 +384,12 @@ export interface RevenueMonth {
   certificates: number
   membershipTotal: number
   fb: number
+  /** Гости общественной бани за месяц (очередь 2) — входят в guests/COGS */
+  publicGuests: number
+  /** Выручка общественной бани: посетители × билет */
+  publicBath: number
+  /** Выручка ресторана очереди 2 (плейсхолдер-поток) */
+  restaurant: number
   total: number
 }
 
@@ -352,7 +415,7 @@ export interface OpexMonth {
     amount: number
   }[]
   variableTotal: number
-  pct: { acquiring: number; maintenance: number; fbCost: number; ota: number }
+  pct: { acquiring: number; maintenance: number; fbCost: number; ota: number; restCost: number }
   pctTotal: number
   total: number
 }
@@ -417,7 +480,9 @@ export interface CashFlowMonth {
   vatTiming: number
   operatingCf: number
   capex: number
-  deferredCapex: number // CAPEX модулей, запускаемых после открытия (real option)
+  deferredCapex: number // CAPEX модулей и объектов очереди 2, оплачиваемый после открытия
+  /** Отдельный equity-транш под окно стройки очереди 2 (phase2.funding='equity') */
+  phase2Equity: number
   presale: number
   presaleUnwind: number // отток «деньги уже получены» в deferred-режиме (≤0)
   prepaidPool: number // остаток обязательств по предоплатам (deferred revenue)
@@ -498,6 +563,10 @@ export interface ModelResult {
       eur: number
       /** Раздел сметы (группировка в отчёте) */
       group?: string
+      /** Очередь стройки (2 — объекты второй очереди) */
+      phase?: 1 | 2
+      /** Привязка к объекту очереди 2 ('vip1'..'vip4' | 'public') */
+      object?: string
       /** Расчёт строки: единица/кол-во/ставка в EUR для показа в смете */
       unit?: string
       qty?: number
@@ -509,11 +578,25 @@ export interface ModelResult {
     }[]
     totalEur: number
     adjustedEur: number
+    /** Сумма строк phase=2 включённых объектов (до буфера) */
+    phase2Eur: number
+    /** phase2Eur × (1 + phase2.capexAdj) */
+    phase2AdjEur: number
     monthlyAmort: number
     amortizableEur: number
     monthlyTaxDepr: number
-    /** Отложенный CAPEX резервных модулей: {month — 1-based месяц CF, eur} */
+    /** Амортизация по операционным месяцам: очередь 1 с открытия,
+     *  очередь 2 — с месяца ввода её объектов */
+    amortMonthly: number[]
+    /** Налоговая амортизация (capital allowances) по месяцам */
+    taxDeprMonthly: number[]
+    /** Отложенный CAPEX: модули после открытия + окно стройки очереди 2
+     *  ({month — 1-based месяц CF, eur}) */
     deferred: { month: number; eur: number }[]
+    /** Часть deferred, относящаяся к очереди 1 (для входного НДС стройки) */
+    deferredPhase1Total: number
+    /** Отток очереди 2 помесячно по окну стройки (для equity-транша) */
+    phase2Outflow: { month: number; eur: number }[]
   }
   citByYear: number[]
   kpis: Kpis

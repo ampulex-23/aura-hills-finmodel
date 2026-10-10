@@ -9,6 +9,7 @@ const COL = {
   name: 'Наименование позиции — правится в Номенклатуре.',
   unit: 'Единица измерения — справочно.',
   qty: 'Стартовый запас на открытие: landed × кол-во уходит разово в CAPEX («Закуп: стартовые запасы»). Дальше запас пополняется нормой OPEX.',
+  qty2: 'Стартовый запас под очередь 2: вторая партия закупа к вводу объектов оч. 2 — уходит в их CAPEX-отток окна 2029–2030 («Закуп: стартовые запасы очереди 2»).',
   landed: 'Полная себестоимость единицы: цена + max(дост. €/ед, цена × дост. %). Правится в Номенклатуре.',
   eur: 'Сумма закупа в евро: кол-во × landed.',
 }
@@ -23,6 +24,7 @@ export function Zakup() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const stockEur = nomenclatureStockEur(items)
+  const stock2Eur = items.reduce((s, i) => s + landedCost(i) * (i.initialQtyP2 ?? 0), 0)
   const stockCount = items.filter((i) => i.use !== 'CAPEX' && (i.initialQty ?? 0) > 0).length
 
   const groups = useMemo(() => {
@@ -59,7 +61,8 @@ export function Zakup() {
   return (
     <div>
       <p className="note">
-        {stockCount} позиций с запасом · закуп на открытие: <b>€{fmt(stockEur)}</b> — идёт в CAPEX строкой «Закуп: стартовые запасы» и амортизируется в общем графике.
+        {stockCount} позиций с запасом · закуп на открытие: <b>€{fmt(stockEur)}</b> — идёт в CAPEX строкой «Закуп: стартовые запасы»
+        {stock2Eur > 0 && <> · закуп оч. 2: <b>€{fmt(stock2Eur)}</b> — в отток окна стройки 2029–2030</>}.
         Оборудование и мебель — «Наполнение» в смете стройки; цены и доставка правятся в Номенклатуре.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
@@ -93,14 +96,17 @@ export function Zakup() {
               <th><Hint hint={{ text: COL.name }}><span>Наименование</span></Hint></th>
               <th><Hint hint={{ text: COL.unit }}><span>Ед.</span></Hint></th>
               <th><Hint hint={{ text: COL.qty }}><span>Закуп на открытие</span></Hint></th>
+              <th><Hint hint={{ text: COL.qty2 }}><span>Закуп оч. 2</span></Hint></th>
               <th><Hint hint={{ text: COL.landed }}><span>Landed €</span></Hint></th>
               <th><Hint hint={{ text: COL.eur }}><span>Сумма €</span></Hint></th>
+              <th><Hint hint={{ text: COL.eur }}><span>Сумма оч.2 €</span></Hint></th>
             </tr>
           </thead>
           <tbody>
             {groups.map(([cat, arr]) => {
               const open = filtering || expanded.has(cat)
               const catSum = arr.reduce((s, { item }) => s + landedCost(item) * (item.initialQty ?? 0), 0)
+              const catSum2 = arr.reduce((s, { item }) => s + landedCost(item) * (item.initialQtyP2 ?? 0), 0)
               return [
                 <tr
                   key={`cat-${cat}`}
@@ -108,12 +114,13 @@ export function Zakup() {
                   style={{ cursor: 'pointer' }}
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={4} className="sticky">
+                  <td colSpan={5} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
                   <td></td>
                   <td><b>{fmt(catSum)}</b></td>
+                  <td><b>{fmt(catSum2)}</b></td>
                 </tr>,
                 ...(open
                   ? arr.map(({ item: it, index: i }) => (
@@ -122,8 +129,10 @@ export function Zakup() {
                         <td className="lft">{it.name}</td>
                         <td>{it.unit}</td>
                         <td><NumField value={it.initialQty ?? 0} onChange={(v) => setItem(i, { initialQty: v })} step={1} /></td>
+                        <td><NumField value={it.initialQtyP2 ?? 0} onChange={(v) => setItem(i, { initialQtyP2: v || undefined })} step={1} /></td>
                         <td>{fmt(landedCost(it), 2)}</td>
                         <td><b>{fmt(landedCost(it) * (it.initialQty ?? 0))}</b></td>
+                        <td><b>{fmt(landedCost(it) * (it.initialQtyP2 ?? 0))}</b></td>
                       </tr>
                     ))
                   : []),

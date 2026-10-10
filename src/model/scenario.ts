@@ -45,5 +45,8 @@ export function resolveScenario(
     avgCapacity,
     constructionDelayMonths: Math.max(0, Math.round(pick(matrix.constructionDelayMonths ?? [0, 0, 0]))),
     energyCostMult: pick(matrix.energyCostMult ?? [1, 1, 1]),
+    // Очередь 2: загрузки новых потоков; отсутствие строк = поток выключен
+    publicBathLoad: matrix.publicBath ? years(matrix.publicBath) : [0, 0, 0, 0, 0],
+    restLoad: matrix.restaurant ? years(matrix.restaurant) : [0, 0, 0, 0, 0],
   }
 }

@@ -144,6 +144,11 @@ export function computeOpexMonth(
   const maintenance = params.opexPct.maintenance * rev.total
   // Себестоимость F&B — % от выручки F&B (не от общей), продукты/расходники кухни
   const fbCost = params.fb.enabled ? params.fb.foodCostPct * rev.fb : 0
+  // Себестоимость ресторана очереди 2 — foodCostPct от его выручки (плейсхолдер)
+  const restCost =
+    params.restaurant?.enabled !== false && params.restaurant
+      ? params.restaurant.foodCostPct * rev.restaurant
+      : 0
   // OTA-комиссия глэмпинга: доля ночей через Booking/Airbnb × ставка комиссии
   const ota = params.glampOta.enabled
     ? rev.glamping * params.glampOta.share * params.glampOta.commissionPct
@@ -160,9 +165,9 @@ export function computeOpexMonth(
     variable,
     variableDetail,
     variableTotal,
-    pct: { acquiring, maintenance, fbCost, ota },
-    pctTotal: acquiring + maintenance + fbCost + ota,
-    total: fixedTotal + itTotal + landRent + variableTotal + acquiring + maintenance + fbCost + ota,
+    pct: { acquiring, maintenance, fbCost, ota, restCost },
+    pctTotal: acquiring + maintenance + fbCost + ota + restCost,
+    total: fixedTotal + itTotal + landRent + variableTotal + acquiring + maintenance + fbCost + ota + restCost,
   }
 }
 

@@ -18,6 +18,8 @@ const COL = {
   price: 'Цена за единицу в евро — смета хранится в EUR.',
   eur: 'Сумма в евро: кол-во × цена €. Помодульные строки — по текущему числу активных модулей.',
   group: 'Раздел сметы для группировки в отчёте CAPEX.',
+  phase: 'Очередь стройки: 1 — стартовый контур (строится в период стройки); 2 — объекты второй очереди, отток в окне 2029–2030, ввод по launchDate объектов.',
+  object: 'Привязка строки очереди 2 к объекту: платится только при включённом объекте (тоглы в Допущениях). «Общая» — платится, если включён хотя бы один объект очереди 2.',
   cond: 'Условная строка: входит в CAPEX только при включённой опции «Прачечная: своя» (Допущения).',
   wbs: 'WBS-детализация строки: секции и позиции сметы (кол-во × ставка = сумма). Цена строки выводится из ΣWBS — нажмите для редактирования.',
   wbsCode: 'Код позиции WBS — справочно, для связи со сметой подрядчика.',
@@ -58,14 +60,35 @@ export function Smeta() {
   const [deleteAsk, setDeleteAsk] = useState<{ it: CapexItem; index: number } | null>(null)
 
   const rows = params.capexItems
-  const modulesNow = activeModuleCount(params)
   const fillerEur = nomenclatureEquipEur(items)
   const laundryOn = !!params.laundry?.enabled
+
+  // Активность объектов очереди 2: vipN = N-й модуль phase=2 со статусом «Активен»,
+  // public = флаг общественной бани. Общие строки (без object) — если есть ≥1 объект.
+  const mods2 = params.modules
+    .filter((m) => (m.phase ?? 1) === 2)
+    .sort((a, b) => a.id - b.id)
+  const objectEnabled = (object?: string): boolean => {
+    if (!object) return true
+    if (object === 'public') return !!params.publicBath?.enabled
+    const m = /^vip(\d+)$/.exec(object)
+    if (m) {
+      const mod = mods2[+m[1] - 1]
+      return !!mod && mod.status === 'Активен'
+    }
+    return true
+  }
+  const anyP2 = !!params.publicBath?.enabled || mods2.some((m) => m.status === 'Активен')
+  // Помодульные строки масштабируются активными модулями СВОЕЙ очереди
+  const modulesNow = (phase: 1 | 2) =>
+    phase === 2
+      ? mods2.filter((m) => m.status === 'Активен').length
+      : activeModuleCount(params) - mods2.filter((m) => m.status === 'Активен').length
 
   const rowEur = (it: CapexItem): number => {
     if (it.row === FILLER_ROW) return fillerEur
     const n = perModuleN(it.qty)
-    const qty = n !== null ? n * modulesNow : Number(it.qty ?? 0)
+    const qty = n !== null ? n * modulesNow(it.phase ?? 1) : Number(it.qty ?? 0)
     return qty * Number(it.priceEur ?? 0)
   }
 
@@ -104,8 +127,14 @@ export function Smeta() {
       return next
     })
 
-  const isActive = (it: CapexItem) => !it.ifLaundry || laundryOn
-  const totalEur = rows.filter(isActive).reduce((s, it) => s + rowEur(it), 0)
+  // Строка активна: не условная по прачечной и (очередь 1 | объект оч.2 включён |
+  // общая строка оч.2 при хотя бы одном включённом объекте)
+  const isActive = (it: CapexItem) =>
+    (!it.ifLaundry || laundryOn) &&
+    ((it.phase ?? 1) === 1 || (anyP2 && objectEnabled(it.object)))
+  const p1Eur = rows.filter((it) => isActive(it) && (it.phase ?? 1) === 1).reduce((s, it) => s + rowEur(it), 0)
+  const p2Eur = rows.filter((it) => isActive(it) && it.phase === 2).reduce((s, it) => s + rowEur(it), 0)
+  const totalEur = p1Eur + p2Eur
   const condEur = rows.filter((it) => !isActive(it)).reduce((s, it) => s + rowEur(it), 0)
 
   const set = (index: number, patch: Partial<CapexItem>) => {
@@ -205,8 +234,9 @@ export function Smeta() {
     <div>
       <p className="note">
         {rows.length} строк · смета: <b>€{fmt(totalEur)}</b>
-        {condEur > 0 && <> (+ €{fmt(condEur)} условных строк — «Прачечная: своя» выключена)</>}
-        {' '}· итог отчёта = смета × (1 + буфер CAPEX сценария).
+        {' '}(оч. 1: €{fmt(p1Eur)} · оч. 2: €{fmt(p2Eur)})
+        {condEur > 0 && <> (+ €{fmt(condEur)} выключенных строк — условные/объекты оч. 2 вне плана)</>}
+        {' '}· итог отчёта = смета × (1 + буфер CAPEX).
         IT-пакет, земля и наполнение номенклатуры правятся на своих вкладках.
       </p>
       <div className="controls" style={{ marginBottom: 10 }}>
@@ -230,6 +260,8 @@ export function Smeta() {
               <th><Hint hint={{ text: COL.price }}><span>Цена €</span></Hint></th>
               <th><Hint hint={{ text: COL.eur }}><span>Сумма €</span></Hint></th>
               <th><Hint hint={{ text: COL.group }}><span>Раздел</span></Hint></th>
+              <th><Hint hint={{ text: COL.phase }}><span>Оч.</span></Hint></th>
+              <th><Hint hint={{ text: COL.object }}><span>Объект</span></Hint></th>
               <th><Hint hint={{ text: COL.cond }}><span>Усл.</span></Hint></th>
               <th></th>
             </tr>
@@ -240,7 +272,7 @@ export function Smeta() {
               const sub = arr.filter(({ it }) => isActive(it)).reduce((s, { it }) => s + rowEur(it), 0)
               return [
                 <tr key={`g-${g}`} className="section spec-head" onClick={() => toggle(g)}>
-                  <td colSpan={9} className="sticky">
+                  <td colSpan={11} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {g} <small>· {arr.length} стр. · €{fmt(sub)}</small>
                   </td>
@@ -314,6 +346,31 @@ export function Smeta() {
                             />
                           </td>
                           <td>
+                            <Select
+                              size="xs" w={62}
+                              data={['1', '2']}
+                              value={String(it.phase ?? 1)} allowDeselect={false}
+                              onChange={(v) => set(i, { phase: v === '2' ? 2 : 1, ...(v !== '2' ? { object: undefined } : {}) })}
+                            />
+                          </td>
+                          <td>
+                            {(it.phase ?? 1) === 2 ? (
+                              <Select
+                                size="xs" w={104}
+                                data={[
+                                  { value: '', label: 'общая' },
+                                  { value: 'public', label: 'Общ. баня' },
+                                  { value: 'vip1', label: 'VIP-1' },
+                                  { value: 'vip2', label: 'VIP-2' },
+                                  { value: 'vip3', label: 'VIP-3' },
+                                  { value: 'vip4', label: 'VIP-4' },
+                                ]}
+                                value={it.object ?? ''} allowDeselect={false}
+                                onChange={(v) => set(i, { object: v || undefined })}
+                              />
+                            ) : <span className="note">—</span>}
+                          </td>
+                          <td>
                             <Checkbox
                               size="xs"
                               checked={!!it.ifLaundry}
@@ -328,7 +385,7 @@ export function Smeta() {
                         </tr>,
                         wbsOpen.has(i) && hasWbs ? (
                           <tr key={`wbs-${i}`}>
-                            <td colSpan={9} className="wbs-cell">
+                            <td colSpan={11} className="wbs-cell">
                               <div className="wbs-editor">
                                 <p className="note">
                                   WBS «{it.name}» · Σ = €{fmt(wbsSum(it.wbs))}
@@ -441,6 +498,27 @@ export function Smeta() {
             <Group grow>
               <NumberInput label="Кол-во" value={Number(draft.qty) || 0} min={0} onChange={(v) => setD({ qty: Number(v) || 0 })} />
               <NumberInput label="Цена €" value={Number(draft.priceEur) || 0} min={0} step={500} onChange={(v) => setD({ priceEur: Number(v) || 0 })} />
+            </Group>
+            <Group grow>
+              <Select
+                label="Очередь" data={[{ value: '1', label: 'Очередь 1' }, { value: '2', label: 'Очередь 2' }]}
+                value={String(draft.phase ?? 1)} allowDeselect={false}
+                onChange={(v) => setD({ phase: v === '2' ? 2 : 1, ...(v !== '2' ? { object: undefined } : {}) })}
+              />
+              {(draft.phase ?? 1) === 2 ? (
+                <Select
+                  label="Объект очереди 2" data={[
+                    { value: '', label: 'общая строка' },
+                    { value: 'public', label: 'Общественная баня' },
+                    { value: 'vip1', label: 'VIP-1' },
+                    { value: 'vip2', label: 'VIP-2' },
+                    { value: 'vip3', label: 'VIP-3' },
+                    { value: 'vip4', label: 'VIP-4' },
+                  ]}
+                  value={draft.object ?? ''} allowDeselect={false}
+                  onChange={(v) => setD({ object: v || undefined })}
+                />
+              ) : <div />}
             </Group>
             <Group grow>
               <Checkbox label="Помодульная (кол-во на каждый активный модуль)" checked={!!draft._perModule} onChange={(e) => setD({ _perModule: e.currentTarget.checked })} />

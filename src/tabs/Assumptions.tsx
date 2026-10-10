@@ -1,4 +1,4 @@
-import { Select, SegmentedControl } from '@mantine/core'
+import { Select, SegmentedControl, Tabs } from '@mantine/core'
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt, fmtPct } from '../components/ui'
 import { capmWacc } from '../model/run'
@@ -419,55 +419,69 @@ export function Assumptions() {
       <div className="form-row">
       <fieldset>
         <legend>Модули бань</legend>
-        <div className="table-wrap">
-          <table className="month-table spec">
-            <thead>
-              <tr>
-                <th>Модуль</th>
-                <th><Hint hint={{ text: 'Активен — модуль продаёт слоты и считается в ёмкости; помодульные строки сметы CAPEX зависят от числа активных. «В резерве» — вне модели до активации.' }}><span>Статус</span></Hint></th>
-                <th><Hint hint={{ text: 'Месяц ввода в эксплуатацию (ГГГГ-ММ). До этой даты модуль не генерирует выручку.' }}><span>Ввод с</span></Hint></th>
-                <th><Hint hint={{ text: 'Доля дней в работе: ~95% ≈ 1.5 дня/мес на профилактику печей и водоёмов.' }}><span>Uptime</span></Hint></th>
-                <th><Hint hint={{ text: 'Слотов в день: утро, день 1, день 2, вечер.' }}><span>Слотов/д</span></Hint></th>
-                <th><Hint hint={{ text: 'Гостей в одном слоте.' }}><span>Мест</span></Hint></th>
-                <th><Hint hint={{ text: 'Помодульный множитель заполняемости: 1.0 = общая загрузка сценария; ниже — если модуль продаётся хуже.' }}><span>Коэфф. загр.</span></Hint></th>
-                <th colSpan={4}><Hint hint={{ text: 'Прайс слота по времени суток, € — влияет на разложение слотов, не на выручку бани (депозит фиксирован).' }}><span>Цены слотов €</span></Hint></th>
-                <th><Hint hint={{ text: 'Средневзвешенная цена слота по долям спроса (slotMix ниже).' }}><span>Ср.-взв. €</span></Hint></th>
-              </tr>
-            </thead>
-            <tbody>
-              {P.modules.map((m, i) => {
-                const avg = m.prices.reduce((s, p, j) => s + p * P.slotMix[j], 0)
-                return (
-                  <tr key={m.id}>
-                    <td className="lft"><b>№{m.id}</b> <small>({m.capacity} гостей)</small></td>
-                    <td>
-                      <SegmentedControl
-                        size="xs"
-                        data={['Активен', 'В резерве']}
-                        value={m.status}
-                        onChange={(v) => setParam(`modules.${i}.status`, v)}
-                      />
-                    </td>
-                    <td>
-                      <TextCell w={84} value={m.launchDate.slice(0, 7)} placeholder="ГГГГ-ММ"
-                        onChange={(v) => setParam(`modules.${i}.launchDate`, `${v}-01`)} />
-                    </td>
-                    <td><NumField value={m.uptime} onChange={(v) => setParam(`modules.${i}.uptime`, v)} pct step={0.01} /></td>
-                    <td><NumField value={m.slotsPerDay} onChange={(v) => setParam(`modules.${i}.slotsPerDay`, v)} step={1} /></td>
-                    <td><NumField value={m.capacity} onChange={(v) => setParam(`modules.${i}.capacity`, v)} step={1} /></td>
-                    <td><NumField value={m.loadK} onChange={(v) => setParam(`modules.${i}.loadK`, v)} pct step={0.05} /></td>
-                    {m.prices.map((p, j) => (
-                      <td key={j}>
-                        <NumField value={p} onChange={(v) => setParam(`modules.${i}.prices.${j}`, v)} step={25} />
-                      </td>
-                    ))}
-                    <td><b>{fmt(avg)}</b></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Tabs defaultValue="q1" variant="outline">
+          <Tabs.List>
+            <Tabs.Tab value="q1">Очередь 1 — комплексы №1–3</Tabs.Tab>
+            <Tabs.Tab value="q2">
+              <Hint hint={{ text: 'Вторая очередь: VIP-комплексы №4–7, ввод 2031. «Активен» = объект включён в план стройки — его CAPEX платится в окне 2029–2030; «В резерве» = частичная реализация без этого объекта.' }}>
+                <span>Очередь 2 — VIP-комплексы</span>
+              </Hint>
+            </Tabs.Tab>
+          </Tabs.List>
+          {([1, 2] as const).map((phase) => (
+            <Tabs.Panel key={phase} value={`q${phase}`} pt="xs">
+              <div className="table-wrap">
+                <table className="month-table spec">
+                  <thead>
+                    <tr>
+                      <th>Модуль</th>
+                      <th><Hint hint={{ text: phase === 1 ? 'Активен — модуль продаёт слоты и считается в ёмкости; помодульные строки сметы CAPEX зависят от числа активных. «В резерве» — вне модели до активации.' : '«Активен» — объект включён в план стройки очереди 2: платит свой CAPEX в окне стройки и продаёт слоты с launchDate. «В резерве» — выключен (частичная реализация).' }}><span>Статус</span></Hint></th>
+                      <th><Hint hint={{ text: 'Месяц ввода в эксплуатацию (ГГГГ-ММ). До этой даты модуль не генерирует выручку.' }}><span>Ввод с</span></Hint></th>
+                      <th><Hint hint={{ text: 'Доля дней в работе: ~95% ≈ 1.5 дня/мес на профилактику печей и водоёмов.' }}><span>Uptime</span></Hint></th>
+                      <th><Hint hint={{ text: 'Слотов в день: утро, день 1, день 2, вечер.' }}><span>Слотов/д</span></Hint></th>
+                      <th><Hint hint={{ text: 'Гостей в одном слоте.' }}><span>Мест</span></Hint></th>
+                      <th><Hint hint={{ text: 'Помодульный множитель заполняемости: 1.0 = общая загрузка сценария; ниже — если модуль продаётся хуже.' }}><span>Коэфф. загр.</span></Hint></th>
+                      <th colSpan={4}><Hint hint={{ text: 'Прайс слота по времени суток, € — влияет на разложение слотов, не на выручку бани (депозит фиксирован).' }}><span>Цены слотов €</span></Hint></th>
+                      <th><Hint hint={{ text: 'Средневзвешенная цена слота по долям спроса (slotMix ниже).' }}><span>Ср.-взв. €</span></Hint></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {P.modules.map((m, i) => ({ m, i })).filter(({ m }) => (m.phase ?? 1) === phase).map(({ m, i }) => {
+                      const avg = m.prices.reduce((s, p, j) => s + p * P.slotMix[j], 0)
+                      return (
+                        <tr key={m.id}>
+                          <td className="lft"><b>№{m.id}</b> <small>({m.capacity} гостей)</small></td>
+                          <td>
+                            <SegmentedControl
+                              size="xs"
+                              data={['Активен', 'В резерве']}
+                              value={m.status}
+                              onChange={(v) => setParam(`modules.${i}.status`, v)}
+                            />
+                          </td>
+                          <td>
+                            <TextCell w={84} value={m.launchDate.slice(0, 7)} placeholder="ГГГГ-ММ"
+                              onChange={(v) => setParam(`modules.${i}.launchDate`, `${v}-01`)} />
+                          </td>
+                          <td><NumField value={m.uptime} onChange={(v) => setParam(`modules.${i}.uptime`, v)} pct step={0.01} /></td>
+                          <td><NumField value={m.slotsPerDay} onChange={(v) => setParam(`modules.${i}.slotsPerDay`, v)} step={1} /></td>
+                          <td><NumField value={m.capacity} onChange={(v) => setParam(`modules.${i}.capacity`, v)} step={1} /></td>
+                          <td><NumField value={m.loadK} onChange={(v) => setParam(`modules.${i}.loadK`, v)} pct step={0.05} /></td>
+                          {m.prices.map((p, j) => (
+                            <td key={j}>
+                              <NumField value={p} onChange={(v) => setParam(`modules.${i}.prices.${j}`, v)} step={25} />
+                            </td>
+                          ))}
+                          <td><b>{fmt(avg)}</b></td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Tabs.Panel>
+          ))}
+        </Tabs>
         <div className="controls" style={{ marginTop: 8 }}>
           <small className="note" style={{ marginRight: 8 }}>Доли спроса по слотам:</small>
           {P.slotNames.map((n, j) => (
@@ -488,6 +502,79 @@ export function Assumptions() {
           Цена слота фиксирована баней (250/500/750 €): доли спроса по времени суток влияют только на разложение
           слотов по колонкам, не на выручку. Доли между банями равные — следуют из одинаковых «слотов/день».
         </p>
+      </fieldset>
+      </div>
+
+      <div className="form-row">
+      <fieldset>
+        <legend>Очередь 2 — стройка и финансирование</legend>
+        <label className="field">
+          <Hint hint={{ text: 'Месяц старта стройки очереди 2 (ГГГГ-ММ). CAPEX растянут помесячно по окну.' }}><span>Старт стройки</span></Hint>
+          <TextCell w={84} value={P.phase2?.constructionStart ?? ''} placeholder="ГГГГ-ММ"
+            onChange={(v) => setParam('phase2.constructionStart', v)} />
+        </label>
+        <Row label="Длительность, мес" path="phase2.months" value={P.phase2?.months ?? 0} step={1}
+          hint="Окно освоения CAPEX очереди 2 — отток делится равномерно на столько месяцев от даты старта." />
+        <Row label="Буфер CAPEX оч. 2" path="phase2.capexAdj" value={P.phase2?.capexAdj ?? 0} pct step={0.05}
+          hint="Свой буфер непредвиденных для строк phase=2 — применяется к сумме включённых объектов, а не к общему capexAdj сценария." />
+        <Row label="Рампа оч. 2, мес" path="phase2.rampMonths" value={P.phase2?.rampMonths ?? 1} step={1}
+          hint="Раскачка новых мощностей (VIP, общественная баня, ресторан) от их даты ввода — независимо от общей rampMonths сценария." />
+        <div className="field">
+          <Hint hint={{ text: '«Операционный CF» — стройка гасится кэшем бизнеса, equityIn закрывает только разрывы. «Отдельный транш» — акционеры вносят ровно отток стройки каждый месяц окна.' }}>
+            <span>Финансирование оч. 2</span>
+          </Hint>
+          <Select
+            size="xs" w={220}
+            data={[
+              { value: 'ops', label: 'Из операционного CF' },
+              { value: 'equity', label: 'Отдельный транш акционеров' },
+            ]}
+            value={P.phase2?.funding ?? 'ops'}
+            onChange={(v) => v && setParam('phase2.funding', v)}
+            allowDeselect={false}
+          />
+        </div>
+        <small className="note">Ввод объектов — единый (launchDate у VIP и общественной бани). Частичная реализация — помодульными тоглами: общие строки сметы оч. 2 платятся, если включён ≥1 объект.</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Общественный банный комплекс (оч. 2)</legend>
+        <div className="field">
+          <Hint hint={{ text: 'Вкл — объект в плане стройки: платит свои строки CAPEX и генерирует поток посетителей. Выкл — частичная реализация без него.' }}>
+            <span>Включён в план</span>
+          </Hint>
+          <SegmentedControl
+            size="xs"
+            data={[{ value: 'true', label: 'Активен' }, { value: 'false', label: 'В резерве' }]}
+            value={String(P.publicBath?.enabled ?? false)}
+            onChange={(v) => setParam('publicBath.enabled', v === 'true')}
+          />
+        </div>
+        <Row label="Билет, €" path="publicBath.ticketEur" value={P.publicBath?.ticketEur ?? 0} step={1}
+          hint="Цена входа на гостя: вход + пользование всеми зонами комплекса (бассейн, купели, баня, терраса). Прачка сюда не входит." />
+        <Row label="Пропускная, чел/день" path="publicBath.capacity" value={P.publicBath?.capacity ?? 0} step={5}
+          hint="Потолок посетителей в день: визит ≈ весь рабочий день 9–23, поэтому это и есть дневная ёмкость. Загрузка (% пропускной) задаётся в матрице сценариев." />
+        <label className="field">
+          <Hint hint={{ text: 'Месяц ввода в эксплуатацию (ГГГГ-ММ). До этой даты потока нет; с неё стартует рампа очереди 2 и амортизация объекта.' }}><span>Ввод с</span></Hint>
+          <TextCell w={84} value={P.publicBath?.launchDate ?? ''} placeholder="ГГГГ-ММ"
+            onChange={(v) => setParam('publicBath.launchDate', v)} />
+        </label>
+        <Row label="Сервисный чек, €/визит" path="publicBath.serviceSpendPerVisit" value={P.publicBath?.serviceSpendPerVisit ?? 0} step={1}
+          hint="Средний чек сверх билета (парения, массаж, допы) — разносится по потокам услуг в пропорции пакета, как членский чек." />
+        <small className="note">Посетителей/мес = 30 дн × пропускная × загрузка сценария × сезонность × рампа. НЕ слотовая система. Гости несут нормативные COGS на гостя, в F&B-кафе очереди 1 не засчитываются.</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Ресторан (оч. 2, плейсхолдер)</legend>
+        <Row label="Посадочных мест" path="restaurant.seats" value={P.restaurant?.seats ?? 0} step={5}
+          hint="Мест в зале ресторана общественного комплекса." />
+        <Row label="Средний чек, €" path="restaurant.avgCheck" value={P.restaurant?.avgCheck ?? 0} step={1}
+          hint="Чек на гостя — оценка по Кипру; индексируется общей инфляцией, не priceGrowth услуг. Детальная экономика ресторана — отдельной итерацией." />
+        <Row label="Оборотов посадки/день" path="restaurant.turnsPerDay" value={P.restaurant?.turnsPerDay ?? 0} step={0.25}
+          hint="Сколько раз за день занимается одно посадочное место (внешние гости + гости бани суммарно). Загрузка — % ёмкости в матрице сценариев." />
+        <Row label="Food-cost" path="restaurant.foodCostPct" value={P.restaurant?.foodCostPct ?? 0} pct step={0.05}
+          hint="Себестоимость продуктов и расходников кухни — доля выручки ресторана." />
+        <small className="note">Выручка/мес = 30 × места × обороты × загрузка × чек. Работает при включённой общественной бане (в её здании). Плейсхолдер: поток заменят детальной моделью позже.</small>
       </fieldset>
       </div>
     </div>

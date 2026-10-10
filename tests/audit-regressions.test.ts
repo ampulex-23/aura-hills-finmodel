@@ -80,11 +80,12 @@ describe('аудит-регрессии', () => {
     p.land.mode = 'purchase'
     p.meta.vatMode = 'С возмещением'
     p.modules[3].status = 'Активен'
+    p.modules[3].phase = 1 // иначе модуль — объект очереди 2 (vip1) с окном 2029–30
     p.modules[3].launchDate = '2029-01-01' // запуск → ops месяц 12 (дефолт сдвинут на 2031-01)
     const r = runModel(p, matrix, items, services, 'Base')
     const vatRate = p.taxes.vatInput / (1 + p.taxes.vatInput)
-    // месяц 0: (amortizable − deferred) × extracted-ставка
-    const defTotal = r.capex.deferred.reduce((s, d) => s + d.eur, 0)
+    // месяц 0: (amortizable − deferred очереди 1) × extracted-ставка
+    const defTotal = r.capex.deferredPhase1Total
     const expected0 = (r.capex.amortizableEur - defTotal) * vatRate
     const opexPart0 = (r.opex[0].fixedTotal + r.opex[0].variableTotal + r.opex[0].itTotal) * vatRate
     expect(r.taxes[0].inputVat).toBeCloseTo(opexPart0 + expected0, 2)
@@ -153,6 +154,7 @@ describe('аудит-регрессии', () => {
   it('MODULES_COUNT:N — отложенный модуль платит полный помодульный CAPEX', () => {
     const p = clone()
     p.modules[3].status = 'Активен' // launch 2029-01
+    p.modules[3].phase = 1 // deferred-механика очереди 1; иначе это vip1 с окном 2029–30
     const r = runModel(p, matrix, items, services, 'Base')
     // 7M (корпус) + 2×1M (Афродита) = 9M RUB = €90k
     // (печи и купели переехали в номенклатурное наполнение — там не помодульные)

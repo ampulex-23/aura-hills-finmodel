@@ -7,7 +7,7 @@ export function computePnl(
   opex: OpexMonth[],
   fot: FotMonth[],
   taxes: TaxMonth[],
-  monthlyAmort: number,
+  amortMonthly: number[],
 ): PnlMonth[] {
   return revenue.map((rev, k) => {
     // Нетто-выручка = брутто − НАЧИСЛЕННЫЙ выходной НДС. Уплаченный НДС
@@ -17,7 +17,7 @@ export function computePnl(
     const revenueNet = rev.total - taxes[k].vatOut
     const marginalProfit = revenueNet - opex[k].variableTotal - opex[k].pctTotal
     const ebitda = marginalProfit - opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total
-    const ebit = ebitda - monthlyAmort
+    const ebit = ebitda - amortMonthly[k]
     const netProfit = ebit - taxes[k].cit
     return {
       revenueNet,
@@ -31,7 +31,7 @@ export function computePnl(
       fixedOpex: opex[k].fixedTotal + opex[k].itTotal + opex[k].landRent,
       fot: fot[k].total,
       ebitda,
-      amortization: monthlyAmort,
+      amortization: amortMonthly[k],
       ebit,
       cit: taxes[k].cit,
       netProfit,

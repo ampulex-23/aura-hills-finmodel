@@ -79,7 +79,7 @@ export function runModel(
   // векторы загрузки и планы членства умножаются на один коэффициент.
   if (overrides.loadMult !== undefined) {
     const L = overrides.loadMult
-    for (const key of ['bathsLoad', 'steamLoad', 'massageLoad', 'extraLoad', 'glampLoad'] as const)
+    for (const key of ['bathsLoad', 'steamLoad', 'massageLoad', 'extraLoad', 'glampLoad', 'publicBathLoad', 'restLoad'] as const)
       sc[key] = sc[key].map((v) => v * L)
     sc.membersMonth = sc.membersMonth.map((v) => v * L)
   }
@@ -93,19 +93,22 @@ export function runModel(
   const ebit = revenue.map(
     (r, k) =>
       r.total - vat[k].vatOut - opex[k].variableTotal - opex[k].pctTotal -
-      opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total - capex.monthlyAmort,
+      opex[k].fixedTotal - opex[k].itTotal - opex[k].landRent - fot[k].total - capex.amortMonthly[k],
   )
   // CIT не зависит от чистой прибыли → первый проход даёт корректный CIT.
   // Дивиденды берут ЧП с лагом 12 мес → второй проход с реальной базой.
   // CIT считается от налоговой базы: EBIT с налоговой амортизацией (capital
   // allowances) вместо бухгалтерской — на Кипре они разные графики.
-  const citEbit = ebit.map((e) => e + capex.monthlyAmort - capex.monthlyTaxDepr)
+  const citEbit = ebit.map((e, k) => e + capex.amortMonthly[k] - capex.taxDeprMonthly[k])
   const citPass = computeProfitTaxes(p, revenue, citEbit, citEbit.map(() => 0), vat)
   const netPreDiv = ebit.map((e, k) => e - citPass.taxes[k].cit)
   const { taxes, citByYear } = computeProfitTaxes(p, revenue, citEbit, netPreDiv, vat)
 
-  const pnl = computePnl(p, revenue, opex, fot, taxes, capex.monthlyAmort)
-  const cashflow = computeCashFlow(p, pnl, capex.adjustedEur, sc.presaleMonthly, capex.deferred, capex.amortizableEur)
+  const pnl = computePnl(p, revenue, opex, fot, taxes, capex.amortMonthly)
+  const cashflow = computeCashFlow(
+    p, pnl, capex.adjustedEur, sc.presaleMonthly, capex.deferred,
+    capex.amortizableEur, capex.deferredPhase1Total, capex.phase2Outflow,
+  )
   const balance = computeBalance(cashflow)
   const kpis = computeKpis(p, cashflow, pnl)
 
@@ -129,4 +132,7 @@ function applyPriceMult(p: Params, mult: number): void {
   p.deposit.base *= mult
   p.deposit.steamBase *= mult
   p.deposit.massageBase *= mult
+  if (p.publicBath) p.publicBath.ticketEur *= mult
+  if (p.restaurant) p.restaurant.avgCheck *= mult
+  if (p.publicBath?.serviceSpendPerVisit != null) p.publicBath.serviceSpendPerVisit *= mult
 }

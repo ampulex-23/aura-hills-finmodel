@@ -40,11 +40,19 @@ export function computeCashFlow(
   presaleMonthly: number,
   deferredCapex: { month: number; eur: number }[] = [],
   amortizableEur = capexAdjustedEur,
+  deferredPhase1Total?: number,
+  phase2Outflow: { month: number; eur: number }[] = [],
 ): CashFlowMonth[] {
   const total = params.meta.capexMonths + params.meta.opsMonths
-  const deferredTotal = deferredCapex.reduce((s, d) => s + d.eur, 0)
+  // В освоение стройки очереди 1 вычитаются только её отложенные суммы —
+  // CAPEX очереди 2 не входит в capexAdjustedEur и приходит отдельным
+  // помесячным графиком (deferredCapex месяцы окна 2029–2030).
+  const deferredTotal = deferredPhase1Total ?? deferredCapex.reduce((s, d) => s + d.eur, 0)
   const weights = capexWeights(params)
   const buildCapex = capexAdjustedEur - deferredTotal
+  // Финансирование очереди 2: 'equity' — выделенный транш акционеров под
+  // отток стройки; 'ops' — гасится операционным CF (equityIn только на разрыв).
+  const p2EquityMode = params.phase2?.funding === 'equity'
   const presaleEnd = params.meta.capexMonths
   const presaleStart = presaleEnd - params.units.presaleMonths + 1 // 1-based
   const deferred = params.units.presaleMode === 'deferred'
@@ -108,7 +116,11 @@ export function computeCashFlow(
     const totalCf = fcff + dividends
 
     cumCash += totalCf
-    const equityIn = Math.max(0, -(cash + totalCf))
+    // Транш под очередь 2 идёт первым — до автоматического закрытия разрыва.
+    const phase2Equity = p2EquityMode
+      ? phase2Outflow.filter((d) => d.month === m1).reduce((s, d) => s + d.eur, 0)
+      : 0
+    const equityIn = phase2Equity + Math.max(0, -(cash + totalCf + phase2Equity))
     cash = cash + totalCf + equityIn
     cumFcff += fcff
     const discountFactor = 1 / Math.pow(1 + rM, m1)
@@ -119,7 +131,7 @@ export function computeCashFlow(
       label, isOps, netProfit, amortization, vatTiming, operatingCf, capex, deferredCapex: defCapex,
       presale, presaleUnwind, prepaidPool: pool,
       landLease, preopen, maintCapex, fcff, dividends, sdc, gesy, totalCf,
-      equityIn, cash, cumCash, cumFcff, discountFactor, discountedFcff, cumDcf,
+      equityIn, phase2Equity, cash, cumCash, cumFcff, discountFactor, discountedFcff, cumDcf,
     })
   }
   return out

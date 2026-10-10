@@ -58,6 +58,16 @@ export function computeRevenueMonth(
   const bathsLoad = Math.min(1, dm * sc.bathsLoad[yearIdx] * seas * ramp)
   const glampLoad = Math.min(1, dm * sc.glampLoad[yearIdx] * seasG * ramp)
 
+  // Рампа очереди 2: новые мощности раскачиваются со своей rampMonths от
+  // собственной даты ввода, а не с открытия очереди 1.
+  const ramp2 = Math.max(1, params.phase2?.rampMonths ?? 1)
+  const monthsSince = (launch: string) => {
+    const [ly, lm] = launch.slice(0, 7).split('-').map(Number)
+    return at.year * 12 + at.month - (ly * 12 + lm) + 1
+  }
+  const moduleRamp = (m: (typeof params.modules)[0]) =>
+    (m.phase ?? 1) === 2 ? Math.min(1, monthsSince(m.launchDate) / ramp2) : 1
+
   // Слоты и выручка по модулям (Выручка!C13/C14): 30 дн × слоты/день × uptime × загрузка
   let slots = 0
   let guests = 0
@@ -71,8 +81,8 @@ export function computeRevenueMonth(
     if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) return
     capSum += m.capacity
     capN++
-    capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK
-    const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad
+    capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK * moduleRamp(m)
+    const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad * moduleRamp(m)
     slots += s
     guests += s * m.capacity
     bathCounts[i] = s
@@ -123,6 +133,16 @@ export function computeRevenueMonth(
     for (let j = 0; j < bathCounts.length; j++) bathCounts[j] *= scale
     guests *= scale
   }
+  // Очередь 2 — общественный банный комплекс: НЕ слотовый поток.
+  // Посетителей/мес = 30 дн × пропускная ёмкость × загрузка (% пропускной).
+  // Билет = вход + все зоны (бассейн, купели, баня); прачка сюда не входит.
+  const pb = params.publicBath
+  const pbActive = !!pb?.enabled && moduleActive(params, pb.launchDate, at)
+  const pbRamp = pbActive ? Math.min(1, monthsSince(pb!.launchDate) / ramp2) : 0
+  const pubLoad = Math.min(1, dm * sc.publicBathLoad[yearIdx] * seas * pbRamp)
+  const publicGuests = pbActive ? 30 * pb!.capacity * pubLoad : 0
+  const publicBathRev = publicGuests * (pb?.ticketEur ?? 0) * growth
+
   guests += memberGuests + certGuests
 
   const up = sc.effectiveUptake
@@ -167,14 +187,19 @@ export function computeRevenueMonth(
   // (парения : массаж : допы = steamBase : massageBase : кошелёк допов) и внутри
   // потока — по весам ступеней. Так members-гости несут COGS спек и KPI-бонусы.
   const memberSpend = memberGuests * (params.members.serviceSpendPerVisit ?? 0) * growth
+  // Сервисный чек посетителей общественной бани сверх билета (парения/массаж/допы)
+  // — разносится по потокам той же пропорцией, что членский чек, и попадает
+  // в counts спецификаций (KPI-труд/COGS) через выручку ступеней.
+  const publicSpend = publicGuests * (params.publicBath?.serviceSpendPerVisit ?? 0) * growth
+  const streamSpend = memberSpend + publicSpend
   const wE = params.service.walletExtraShare
   const baseW = (1 - wE) * (params.deposit.steamBase + params.deposit.massageBase) + wE * params.deposit.base
   const addStream = (arr: number[], set: { prices: number[]; weights: number[] }, share: number) => {
     const tot = swp(set)
     if (tot <= 0) return
-    set.prices.forEach((p, j) => { arr[j] += memberSpend * share * (set.weights[j] * p) / tot })
+    set.prices.forEach((p, j) => { arr[j] += streamSpend * share * (set.weights[j] * p) / tot })
   }
-  if (memberSpend > 0 && baseW > 0) {
+  if (streamSpend > 0 && baseW > 0) {
     addStream(steam, params.procedures.steam, (1 - wE) * params.deposit.steamBase / baseW)
     addStream(massage, params.procedures.massage, (1 - wE) * params.deposit.massageBase / baseW)
     addStream(extra, params.procedures.extra, wE * params.deposit.base / baseW)
@@ -201,10 +226,27 @@ export function computeRevenueMonth(
   const certificates = certsSold * params.prices.certificate * growth
   const membershipTotal = membersMonth + membersYear + certificates
 
+  // Очередь 2 — ресторан общественного комплекса (плейсхолдер):
+  // посадки = 30 дн × места × оборотов; чек рыночный, индексируется инфляцией
+  // (общая инфляция, не priceGrowth услуг — по решению из плана).
+  const rest = params.restaurant
+  const restActive =
+    !!rest && rest.enabled !== false && pbActive && sc.restLoad[yearIdx] > 0
+  const restInfl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+  const restCovers = restActive
+    ? 30 * rest!.seats * rest!.turnsPerDay * Math.min(1, dm * sc.restLoad[yearIdx] * seas * pbRamp)
+    : 0
+  const restaurant = restCovers * (rest?.avgCheck ?? 0) * restInfl
+
   const fb = guests * params.prices.fbPerGuest * growth
+  // Гости общественной бани входят в guests — несут нормативные COGS на гостя
+  // (текстиль, расходники). В F&B-кафе очереди 1 не засчитываются: питаются
+  // в ресторане, fb выше посчитан до добавления publicGuests.
+  guests += publicGuests
 
   const total =
-    rental + steamTotal + massageTotal + extraTotal + glamping + membershipTotal + fb
+    rental + steamTotal + massageTotal + extraTotal + glamping + membershipTotal + fb +
+    publicBathRev + restaurant
 
   return {
     yearIdx,
@@ -238,6 +280,9 @@ export function computeRevenueMonth(
     certificates,
     membershipTotal,
     fb,
+    publicGuests,
+    publicBath: publicBathRev,
+    restaurant,
     total,
   }
 }
