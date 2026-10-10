@@ -35,6 +35,9 @@ export function Zakup() {
     const filtered = items
       .map((item, index) => ({ item, index }))
       .filter(({ item }) => item.use !== 'CAPEX')
+      // Позиции с ownPrice — «цикл стирки» (NC-159/210): не складируемый
+      // материал, списывается в спеках. Стартовый запас им не нужен.
+      .filter(({ item }) => item.ownPrice == null)
       .filter(({ item }) => showAll || (item.initialQty ?? 0) > 0)
       .filter(({ item }) =>
         !query ||
