@@ -11,7 +11,15 @@ export function baselineParams(): Params {
   const p = JSON.parse(JSON.stringify(paramsJson)) as Params
   p.it.enabled = false // IT/АСУ нет в оракуле
   p.units.presaleMode = 'incremental' // deferred-пресейл — расширение
-  p.fb.enabled = false // F&B-слой
+  // Опциональные слои выручки: в оракуле членства/сертификаты/глэмпинг и
+  // выручка F&B были — включаем; fb.enabled дополнительно глушит food-cost
+  // и повара — их в оракуле не было, обнуляем ставками.
+  p.members.enabled = true
+  p.units.certsEnabled = true
+  p.glamping.enabled = true
+  p.fb.enabled = true
+  p.fb.foodCostPct = 0
+  p.fb.cookCount = 0
   p.preopen.enabled = false // pre-opening
   p.members.consumeSlots = false // ёмкость членов
   p.members.serviceSpendPerVisit = 0 // сервисный чек членов (аудит 14)

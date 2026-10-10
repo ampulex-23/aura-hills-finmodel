@@ -103,6 +103,13 @@ export function scenarioView(r: ModelResult, params: Params) {
   }
 
   return {
+    // Опциональные слои выручки (тоглы Допущений; выключенный слой = 0 в потоках)
+    features: {
+      members: !!params.members.enabled,
+      certs: !!params.units.certsEnabled,
+      fb: !!params.fb.enabled,
+      glamping: !!params.glamping?.enabled,
+    },
     horizon: {
       constructionStart: params.meta.constructionStart.slice(0, 7),
       openingDate: params.meta.openingDate.slice(0, 7),

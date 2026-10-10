@@ -21,11 +21,14 @@ export function resolveScenario(
     activeMods.reduce((s, m) => s + m.capacity, 0) / Math.max(1, activeMods.length)
   const membersMonth = years(matrix.membersMonth)
 
-  // Пре-сейл: сертификаты + мес. членства (год 1) + годовые план/12
+  // Пре-сейл: сертификаты + мес. членства (год 1) + годовые план/12.
+  // Слагаемые следуют тоглам слоёв: выключенный поток в пресейле не продаётся.
   const presaleMonthly =
-    params.units.certsPerMonth * params.prices.certificate +
-    membersMonth[0] * params.prices.membershipMonth +
-    (params.units.annualMembersPlan[0] * params.prices.membershipYear) / 12
+    (params.units.certsEnabled ? params.units.certsPerMonth * params.prices.certificate : 0) +
+    (params.members.enabled
+      ? membersMonth[0] * params.prices.membershipMonth +
+        (params.units.annualMembersPlan[0] * params.prices.membershipYear) / 12
+      : 0)
 
   return {
     name,

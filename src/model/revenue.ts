@@ -95,21 +95,28 @@ export function computeRevenueMonth(
     })
   })
 
+  // Опциональные слои выручки (Допущения → тоглы; дефолт — выкл):
+  // членства, сертификаты, F&B, глэмпинг.
+  const membersOn = !!params.members.enabled
+  const certsOn = !!params.units.certsEnabled
+  const glampOn = !!params.glamping?.enabled
+  const fbOn = !!params.fb?.enabled
+
   // Члены клуба. Год 1: когорта продана пресейлом до открытия (deferred-режим),
   // поэтому рампа к ней не применяется — иначе «продали всё в стройке, а в
   // месяц 1 активны 11%» (аудит 14, W-12). Со 2-го года — сценарный вектор.
-  const presold = params.units.presaleMode === 'deferred' && params.units.presaleMonths > 0
+  const presold = membersOn && params.units.presaleMode === 'deferred' && params.units.presaleMonths > 0
   const memberRamp = yearIdx === 0 && presold ? 1 : ramp
-  const membersMonthCount = dm * sc.membersMonth[yearIdx] * memberRamp
-  const annualActive = dm * params.units.annualMembersPlan[yearIdx] * memberRamp
-  const memberGuests = params.members.consumeSlots
+  const membersMonthCount = membersOn ? dm * sc.membersMonth[yearIdx] * memberRamp : 0
+  const annualActive = membersOn ? dm * params.units.annualMembersPlan[yearIdx] * memberRamp : 0
+  const memberGuests = membersOn && params.members.consumeSlots
     ? (membersMonthCount + annualActive) * params.members.visitsPerMonth * params.members.partySize
     : 0
   // Сертификаты: продажи с сезонностью (пик — декабрь); погашенная доля —
   // это гости, занимающие ёмкость и несущие COGS/F&B (аудит 14, W-8), выручка
   // сертификата и есть оплата их визита — отдельно аренда/услуги им не начисляются.
   const seasC = params.seasonality.certificates?.[at.month - 1] ?? 1
-  const certsSold = params.units.certsPerMonth * dm * ramp * seasC
+  const certsSold = certsOn ? params.units.certsPerMonth * dm * ramp * seasC : 0
   const certGuests = certsSold * (params.units.certRedemptionRate ?? 0) * (params.units.certGuestsPerCert ?? 1)
   // Средняя вместимость слота — по модулям, запущенным к этому месяцу
   // (раньше считалась по всем активным статусам → будущие модули занижали
@@ -215,15 +222,16 @@ export function computeRevenueMonth(
   const massageCounts = cnt(massage, params.procedures.massage)
   const extraCounts = cnt(extra, params.procedures.extra)
 
-  const glamping =
-    30 *
-    (params.units.glampSmall * glampLoad * params.prices.glampSmall +
-      params.units.glampBig * glampLoad * params.prices.glampBig) * growth
+  const glamping = glampOn
+    ? 30 *
+      (params.units.glampSmall * glampLoad * params.prices.glampSmall +
+        params.units.glampBig * glampLoad * params.prices.glampBig) * growth
+    : 0
 
-  const membersMonth = membersMonthCount * params.prices.membershipMonth * growth
-  const membersYearCount = (dm * params.units.annualMembersPlan[yearIdx] / 12) * memberRamp
+  const membersMonth = membersOn ? membersMonthCount * params.prices.membershipMonth * growth : 0
+  const membersYearCount = membersOn ? (dm * params.units.annualMembersPlan[yearIdx] / 12) * memberRamp : 0
   const membersYear = membersYearCount * params.prices.membershipYear * growth
-  const certificates = certsSold * params.prices.certificate * growth
+  const certificates = certsOn ? certsSold * params.prices.certificate * growth : 0
   const membershipTotal = membersMonth + membersYear + certificates
 
   // Очередь 2 — ресторан общественного комплекса (плейсхолдер):
@@ -238,7 +246,7 @@ export function computeRevenueMonth(
     : 0
   const restaurant = restCovers * (rest?.avgCheck ?? 0) * restInfl
 
-  const fb = guests * params.prices.fbPerGuest * growth
+  const fb = fbOn ? guests * params.prices.fbPerGuest * growth : 0
   // Гости общественной бани входят в guests — несут нормативные COGS на гостя
   // (текстиль, расходники). В F&B-кафе очереди 1 не засчитываются: питаются
   // в ресторане, fb выше посчитан до добавления publicGuests.

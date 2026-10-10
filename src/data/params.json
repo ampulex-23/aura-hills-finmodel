@@ -56,7 +56,8 @@
   "presaleMode": "deferred",
   "presaleRecognizeMonths": 12,
   "certRedemptionRate": 0.85,
-  "certGuestsPerCert": 1
+  "certGuestsPerCert": 1,
+  "certsEnabled": false
  },
  "amort": {
   "shares": [
@@ -80,7 +81,7 @@
   "maintenance": 0.03
  },
  "fb": {
-  "enabled": true,
+  "enabled": false,
   "foodCostPct": 0.35,
   "cookSalary": 1500,
   "cookCount": 1
@@ -99,7 +100,8 @@
   "visitsPerMonth": 2,
   "partySize": 2,
   "peakShare": 0.3,
-  "serviceSpendPerVisit": 40
+  "serviceSpendPerVisit": 40,
+  "enabled": false
  },
  "taxDepr": {
   "enabled": true,
@@ -2586,5 +2588,8 @@
   "avgCheck": 28,
   "turnsPerDay": 1.5,
   "foodCostPct": 0.35
+ },
+ "glamping": {
+  "enabled": false
  }
 }

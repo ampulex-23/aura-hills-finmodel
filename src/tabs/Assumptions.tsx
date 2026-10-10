@@ -21,6 +21,24 @@ export function Assumptions() {
     </label>
   )
 
+  // Тогл опционального слоя модели: выкл — поток не участвует в расчётах.
+  const Toggle = ({ label, path, value, hint }: any) => (
+    <label className="field">
+      {hint ? <Hint hint={{ text: hint }}><span>{label}</span></Hint> : <span>{label}</span>}
+      <SegmentedControl
+        size="xs"
+        data={[{ value: 'on', label: 'Вкл' }, { value: 'off', label: 'Выкл' }]}
+        value={value ? 'on' : 'off'}
+        onChange={(v) => setParam(path, v === 'on')}
+      />
+    </label>
+  )
+  // Приглушённая группа полей выключенного слоя (read-only для глаза;
+  // значения сохраняются и подхватятся при включении).
+  const Dim = ({ off, children }: any) => (
+    <div style={off ? { opacity: 0.45, pointerEvents: 'none' } : undefined}>{children}</div>
+  )
+
   return (
     <div className="form-rows">
       <div className="form-row">
@@ -245,15 +263,18 @@ export function Assumptions() {
           hint="Переменная часть маркетинга — растёт вместе с продажами, когда превышает базу. Отрасль 3–6%." />
         <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50}
           hint="Полисы комплекса — постоянная статья с индексацией инфляцией. Рынок €800–2 000/мес." />
-        <Row label="Доля глэмпинга через OTA" path="glampOta.share" value={P.glampOta.share} pct step={0.05}
-          hint="Доля ночей, проданных через Booking/Airbnb. Только эти ночи облагаются комиссией; 0% = «только прямые продажи»." />
-        <Row label="Комиссия OTA" path="glampOta.commissionPct" value={P.glampOta.commissionPct} pct step={0.01}
-          hint="Тариф агрегатора: OPEX = выручка глэмпинга × доля OTA × комиссия. Цена ночи не уменьшается — комиссия идёт расходом." />
-        <small className="note">Маркетинг = max(min €/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес. OTA: Booking/Airbnb ~15–18%.</small>
+        <small className="note">Маркетинг = max(min €/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес.</small>
       </fieldset>
 
       <fieldset>
-        <legend>Членства, сертификаты и ёмкость</legend>
+        <legend>Членства клуба</legend>
+        <Toggle label="Поток членств" path="members.enabled" value={P.members.enabled}
+          hint="Месячные и годовые абонементы: выручка по вектору сценария, визиты членов занимают ёмкость (при «занимают слоты») и несут сервисный чек + F&B. Выкл — поток не участвует в расчётах (и не продаётся в пресейле)." />
+        <Dim off={!P.members.enabled}>
+        <Row label="Месячное членство, €" path="prices.membershipMonth" value={P.prices.membershipMonth}
+          hint="Абонемент на месяц. Выручка = число месячных членов (вектор сценария по годам) × цена × рост цен." />
+        <Row label="Годовое членство, €" path="prices.membershipYear" value={P.prices.membershipYear}
+          hint="Годовой абонемент. План активных годовых членов 30/50/80/120/120 по годам; каждый даёт цена/12 в месяц. Год 1 продаётся пресейлом." />
         <Row label="Визитов члена/мес" path="members.visitsPerMonth" value={P.members.visitsPerMonth} step={0.5}
           hint="Сколько раз в месяц приходит один член клуба (месячный или годовой). Визиты × гостей в визите = гости-члены месяца → ёмкость, сервисный чек, F&B и нормы «на гостя»." />
         <Row label="Гостей в визите" path="members.partySize" value={P.members.partySize} step={0.5}
@@ -272,42 +293,94 @@ export function Assumptions() {
           hint="Какая часть членских и сертификатных визитов приходится на пиковое время. Только она вытесняет платные слоты; остальные визиты занимают свободную ёмкость." />
         <Row label="Сервисный чек члена, €/визит" path="members.serviceSpendPerVisit" value={P.members.serviceSpendPerVisit} step={5}
           hint="Средние траты гостя-члена на услуги за визит. Разносятся по потокам парений/массажа/допов в пропорции пакета (50:60:22) → COGS спек и KPI-бонусы мастеров." />
-        <Row label="Сертификаты: доля погашения" path="units.certRedemptionRate" value={P.units.certRedemptionRate} pct step={0.05}
-          hint="Доля проданных сертификатов, которую реально используют. Погашённые — гости с ёмкостью, COGS и F&B; непогашённые — чистая выручка (breakage)." />
-        <Row label="Гостей на сертификат" path="units.certGuestsPerCert" value={P.units.certGuestsPerCert} step={0.5}
-          hint="Сколько гостей приходит по одному сертификату — масштабирует ёмкостную и F&B-нагрузку погашений." />
+        </Dim>
         <small className="note">
           Платные слоты вытесняют только членские/сертификатные визиты в пик (доля выше) — остальные заполняют свободную ёмкость.
           Гости-члены покупают услуги на сервисный чек (распределяется по потокам в пропорции пакета → COGS спек и KPI).
-          Погашённые сертификаты — гости, занимающие ёмкость и несущие COGS/F&B; непогашённые — чистая выручка (breakage).
         </small>
       </fieldset>
 
       <fieldset>
-        <legend>Цены</legend>
-        <Row label="Месячное членство, €" path="prices.membershipMonth" value={P.prices.membershipMonth}
-          hint="Абонемент на месяц. Выручка = число месячных членов (вектор сценария по годам) × цена × рост цен." />
-        <Row label="Годовое членство, €" path="prices.membershipYear" value={P.prices.membershipYear}
-          hint="Годовой абонемент. План активных годовых членов 30/50/80/120/120 по годам; каждый даёт цена/12 в месяц. Год 1 продаётся пресейлом." />
+        <legend>Сертификаты и пре-сейл</legend>
+        <Toggle label="Поток сертификатов" path="units.certsEnabled" value={P.units.certsEnabled}
+          hint="Подарочные сертификаты: продажи/мес × сезонность × цена; погашенная доля — гости с ёмкостью и COGS/F&B, непогашенная — breakage (чистая выручка). Выкл — поток не участвует в расчётах." />
+        <Dim off={!P.units.certsEnabled}>
         <Row label="Сертификат, €" path="prices.certificate" value={P.prices.certificate}
-          hint="Подарочный сертификат: 65 шт/мес × сезонность сертификатов (пик декабрь) × рампа × цена. Погашается на 85%." />
-        <Row label="F&B на гостя, €" path="prices.fbPerGuest" value={P.prices.fbPerGuest}
-          hint="Средний чек кафе-бара очереди 1 на одного гостя (слоты, члены, сертификаты, VIP). Посетители общественной бани едят в ресторане оч. 2 и сюда не входят." />
-        <Row label="Глэмпинг малый, €/ночь" path="prices.glampSmall" value={P.prices.glampSmall}
-          hint="Тариф малого юнита: 30 ночей × 2 юнита × загрузка × летняя сезонность × цена × рост цен." />
-        <Row label="Глэмпинг большой, €/ночь" path="prices.glampBig" value={P.prices.glampBig}
-          hint="Тариф большого юнита (1 шт), та же формула. Все цены блока индексируются «ростом цен» сценария." />
+          hint="Подарочный сертификат: 65 шт/мес × сезонность сертификатов (пик декабрь) × рампа × цена." />
+        <Row label="Сертификатов/мес" path="units.certsPerMonth" value={P.units.certsPerMonth} step={1}
+          hint="Плановые продажи сертификатов в месяц (до сезонности, рампы и мультипликатора спроса). Также входит в месячную сумму пресейла." />
+        <Row label="Сертификаты: доля погашения" path="units.certRedemptionRate" value={P.units.certRedemptionRate} pct step={0.05}
+          hint="Доля проданных сертификатов, которую реально используют. Погашённые — гости с ёмкостью, COGS и F&B; непогашённые — чистая выручка (breakage)." />
+        <Row label="Гостей на сертификат" path="units.certGuestsPerCert" value={P.units.certGuestsPerCert} step={0.5}
+          hint="Сколько гостей приходит по одному сертификату — масштабирует ёмкостную и F&B-нагрузку погашений." />
+        </Dim>
+        <Dim off={!P.units.certsEnabled && !P.members.enabled}>
+        <Row label="Пре-сейл, мес до открытия" path="units.presaleMonths" value={P.units.presaleMonths} step={1}
+          hint="Длина окна предпродаж в конце стройки: каждый месяц приходит кэш = сертификаты + месячные члены года 1 + годовые/12 по плановым ценам. Продаёт только ВКЛЮЧЁННЫЕ потоки." />
+        <div className="field">
+          <Hint hint={{ text: '«Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке. «Доп. канал» — пресейл как отдельная выручка сверх плана (агрессивно).' }}>
+            <span>Режим пре-сейла</span>
+          </Hint>
+          <Select
+            size="xs" w={210}
+            data={[
+              { value: 'deferred', label: 'Предоплата (без двойного счёта)' },
+              { value: 'incremental', label: 'Доп. канал сверх плана' },
+            ]}
+            value={P.units.presaleMode}
+            onChange={(v) => v && setParam('units.presaleMode', v)}
+            allowDeselect={false}
+          />
+        </div>
+        <Row
+          label="Признание пре-сейла, мес" path="units.presaleRecognizeMonths"
+          value={P.units.presaleRecognizeMonths} step={1}
+          hint="Число месяцев, за которые равномерно признаётся выручка проданных в пресейле членств — разнесение предоплаты в P&L операционки."
+        />
+        </Dim>
+        <small className="note">
+          Погашённые сертификаты — гости, занимающие ёмкость и несущие COGS/F&B; непогашённые — чистая выручка (breakage).
+          «Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке
+          (рекомендуется). «Доп. канал» — поведение исходного Excel: пресейл как отдельная выручка сверх плана.
+        </small>
       </fieldset>
 
       <fieldset>
         <legend>F&B</legend>
+        <Toggle label="Поток F&B" path="fb.enabled" value={P.fb.enabled}
+          hint="Кафе-бар очереди 1: выручка = гости × чек, food-cost в OPEX, повар в ФОТ. Выкл — ни выручки, ни затрат слоя в расчётах нет." />
+        <Dim off={!P.fb.enabled}>
+        <Row label="F&B на гостя, €" path="prices.fbPerGuest" value={P.prices.fbPerGuest}
+          hint="Средний чек кафе-бара очереди 1 на одного гостя (слоты, члены, сертификаты, VIP). Посетители общественной бани едят в ресторане оч. 2 и сюда не входят." />
         <Row label="Себестоимость F&B, % выручки" path="fb.foodCostPct" value={P.fb.foodCostPct} pct
           hint="Food-cost кафе-бара оч. 1 — продукты и расходники кухни как доля выручки F&B (не общей). Ресторан оч. 2 имеет свой food-cost в блоке ниже." />
         <Row label="Оклад повара, €/мес gross" path="fb.cookSalary" value={P.fb.cookSalary} step={50}
           hint="Условная роль: входит в ФОТ (с взносами и инфляцией), пока включён слой F&B. Во вкладке «Штат» показана read-only." />
         <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5}
           hint="Число ставок повара — множитель оклада." />
+        </Dim>
         <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%). Ставка повара отображается во вкладке «Штат».</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Глэмпинг</legend>
+        <Toggle label="Поток глэмпинга" path="glamping.enabled" value={P.glamping?.enabled}
+          hint="Юниты размещения: 30 ночей × юниты × загрузка сценария × сезонность × тариф × рост цен. Выкл — выручки и OTA-комиссии нет." />
+        <Dim off={!P.glamping?.enabled}>
+        <Row label="Глэмпинг малых" path="units.glampSmall" value={P.units.glampSmall} step={1}
+          hint="Число малых юнитов размещения — ёмкость ночей по тарифу «малый»." />
+        <Row label="Глэмпинг больших" path="units.glampBig" value={P.units.glampBig} step={1}
+          hint="Число больших юнитов — ёмкость ночей по тарифу «большой»." />
+        <Row label="Глэмпинг малый, €/ночь" path="prices.glampSmall" value={P.prices.glampSmall}
+          hint="Тариф малого юнита: 30 ночей × юниты × загрузка × летняя сезонность × цена × рост цен." />
+        <Row label="Глэмпинг большой, €/ночь" path="prices.glampBig" value={P.prices.glampBig}
+          hint="Тариф большого юнита, та же формула. Цены индексируются «ростом цен» сценария." />
+        <Row label="Доля глэмпинга через OTA" path="glampOta.share" value={P.glampOta.share} pct step={0.05}
+          hint="Доля ночей, проданных через Booking/Airbnb. Только эти ночи облагаются комиссией; 0% = «только прямые продажи»." />
+        <Row label="Комиссия OTA" path="glampOta.commissionPct" value={P.glampOta.commissionPct} pct step={0.01}
+          hint="Тариф агрегатора: OPEX = выручка глэмпинга × доля OTA × комиссия. Цена ночи не уменьшается — комиссия идёт расходом." />
+        </Dim>
+        <small className="note">OTA: Booking/Airbnb ~15–18% комиссии с ночей, проданных через канал.</small>
       </fieldset>
 
       <fieldset>
@@ -375,42 +448,13 @@ export function Assumptions() {
       </fieldset>
 
       <fieldset>
-        <legend>Мощности и объёмы</legend>
-        <Row label="Глэмпинг малых" path="units.glampSmall" value={P.units.glampSmall} step={1}
-          hint="Число малых юнитов размещения — ёмкость ночей по тарифу «малый»." />
-        <Row label="Глэмпинг больших" path="units.glampBig" value={P.units.glampBig} step={1}
-          hint="Число больших юнитов — ёмкость ночей по тарифу «большой»." />
-        <Row label="Сертификатов/мес" path="units.certsPerMonth" value={P.units.certsPerMonth} step={1}
-          hint="Плановые продажи сертификатов в месяц (до сезонности, рампы и мультипликатора спроса). Также входит в месячную сумму пресейла." />
-        <Row label="Пре-сейл, мес до открытия" path="units.presaleMonths" value={P.units.presaleMonths} step={1}
-          hint="Длина окна предпродаж в конце стройки: каждый месяц приходит кэш = сертификаты + месячные члены года 1 + годовые/12 по плановым ценам." />
-        <label className="field">
-          <Hint hint={{ text: '«Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке. «Доп. канал» — пресейл как отдельная выручка сверх плана (агрессивно).' }}>
-            <span>Режим пре-сейла</span>
-          </Hint>
-          <Select
-            size="xs" w={210}
-            data={[
-              { value: 'deferred', label: 'Предоплата (без двойного счёта)' },
-              { value: 'incremental', label: 'Доп. канал сверх плана' },
-            ]}
-            value={P.units.presaleMode}
-            onChange={(v) => v && setParam('units.presaleMode', v)}
-            allowDeselect={false}
-          />
-        </label>
-        <small className="note">
-          «Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке
-          (рекомендуется). «Доп. канал» — поведение исходного Excel: пресейл как отдельная выручка сверх плана;
-          проданные так членства ёмкость не занимают — агрессивное допущение.
-        </small>
-        <Row
-          label="Признание пре-сейла, мес" path="units.presaleRecognizeMonths"
-          value={P.units.presaleRecognizeMonths} step={1}
-          hint="Число месяцев, за которые равномерно признаётся выручка проданных в пресейле членств — разнесение предоплаты в P&L операционки."
-        />
+        <legend>Pre-opening</legend>
+        <Toggle label="Pre-opening период" path="preopen.enabled" value={P.preopen.enabled}
+          hint="Последние месяцы стройки штат уже нанят, а коммуналка и подписки платятся — «мёртвый» отток в CF. Выкл — штат и фикс-расходы начинаются с открытия." />
+        <Dim off={!P.preopen.enabled}>
         <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1}
           hint="Сколько последних месяцев стройки штат уже нанят, а коммуналка и подписки платятся: оклады старта × (1+взносы) + постоянные + IT OPEX — отдельная строка CF." />
+        </Dim>
         <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
       </fieldset>
 

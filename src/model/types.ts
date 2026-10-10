@@ -158,6 +158,8 @@ export interface Params {
   }
   units: {
     glampSmall: number; glampBig: number
+    /** Поток подарочных сертификатов: продажи/мес → выручка + погашения (гости с ёмкостью и COGS/F&B) */
+    certsEnabled: boolean
     annualMembersPlan: number[]; certsPerMonth: number; presaleMonths: number
     // deferred: пресейл-члены прогорают без нового кэша в первые месяцы операционки;
     // incremental: пресейл — дополнительный канал сверх плана (поведение Excel).
@@ -186,6 +188,8 @@ export interface Params {
   // Члены клуба занимают ёмкость бань: активные члены × визитов/мес × гостей
   // визита → слоты, вычитаемые из доступной ёмкости до платных продаж.
   members: {
+    /** Поток членств (месячные+годовые абонементы, визиты членов, их сервисный чек) */
+    enabled: boolean
     consumeSlots: boolean; visitsPerMonth: number; partySize: number
     /** Доля членских визитов в пиковые слоты — только она вытесняет платные продажи */
     peakShare: number
@@ -196,6 +200,9 @@ export interface Params {
   // конструкции ~4%/год (25 лет), оборудование ~14% (7 лет), прочее/IT ~20% (5 лет).
   // Доли берутся из amort.shares, здесь только сроки. В Excel-оракуле нет.
   taxDepr: { enabled: boolean; years: number[] }
+  // Глэмпинг-поток: юниты × ночи × загрузка × тариф. При enabled=false
+  // глэмпинг не даёт выручки (и OTA-комиссия обнуляется вместе с ней).
+  glamping: { enabled: boolean }
   // OTA-канал глэмпинга: доля ночей через Booking/Airbnb × комиссия.
   // Комиссия — расход от выручки глэмпинга (pct-блок OPEX). В Excel-оракуле нет.
   glampOta: { enabled: boolean; share: number; commissionPct: number }

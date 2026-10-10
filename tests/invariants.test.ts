@@ -16,6 +16,12 @@ const params = ((): Params => {
   const p = JSON.parse(JSON.stringify(paramsJson)) as Params
   for (const m of p.modules) if (m.phase === 2) m.status = 'В резерве'
   if (p.publicBath) p.publicBath.enabled = false
+  // Опциональные слои выручки по умолчанию выключены; инварианты написаны
+  // под полную модель — включаем явно.
+  p.members.enabled = true
+  p.units.certsEnabled = true
+  p.glamping.enabled = true
+  p.fb.enabled = true
   return p
 })()
 const matrix = scenariosJson as ScenarioMatrix

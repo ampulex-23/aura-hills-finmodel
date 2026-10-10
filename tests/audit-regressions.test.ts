@@ -22,6 +22,11 @@ const clone = () => {
   const p = JSON.parse(JSON.stringify(paramsJson)) as Params
   for (const m of p.modules) if (m.phase === 2) m.status = 'В резерве'
   if (p.publicBath) p.publicBath.enabled = false
+  // Опциональные слои выручки выключены по умолчанию; регрессии — полная модель.
+  p.members.enabled = true
+  p.units.certsEnabled = true
+  p.glamping.enabled = true
+  p.fb.enabled = true
   return p
 }
 
