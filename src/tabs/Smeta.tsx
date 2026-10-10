@@ -108,7 +108,7 @@ export function Smeta() {
       map.set(f.it.group ?? 'Прочее', arr)
     }
     return [...map.entries()]
-  }, [rows, q])
+  }, [rows, q, phaseTab])
 
   const groupNames = [...new Set(rows.map((i) => i.group ?? 'Прочее'))]
   const unitNames = [...new Set([...rows.map((i) => i.unit), 'шт', 'компл', 'мес', 'общ', 'шт/модуль'])]
@@ -120,6 +120,7 @@ export function Smeta() {
     rows.flatMap((r) => r.wbs?.flatMap((s) => s.items.map((l) => l.tag)) ?? []),
   )].filter((t): t is string => !!t)
   const filtering = q.trim().length > 0
+  const visibleRows = groups.reduce((s, [, arr]) => s + arr.length, 0)
 
   const toggle = (g: string) =>
     setExpanded((prev) => {
@@ -235,7 +236,7 @@ export function Smeta() {
   return (
     <div>
       <p className="note">
-        {rows.length} строк · смета: <b>€{fmt(totalEur)}</b>
+        {visibleRows === rows.length ? rows.length : `${visibleRows} из ${rows.length}`} строк · смета: <b>€{fmt(totalEur)}</b>
         {' '}(оч. 1: €{fmt(p1Eur)} · оч. 2: €{fmt(p2Eur)})
         {condEur > 0 && <> (+ €{fmt(condEur)} выключенных строк — условные/объекты оч. 2 вне плана)</>}
         {' '}· итог отчёта = смета × (1 + буфер CAPEX).
