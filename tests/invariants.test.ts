@@ -10,7 +10,14 @@ import { baseSalariesMonthly } from '../src/model/fot'
 
 // Инварианты модели (аудит 14, I-12): не «какие числа», а «что всегда должно
 // сходиться» — на реальных данных, со всеми слоями включёнными.
-const params = paramsJson as Params
+// Очередь 2 включена по умолчанию в проде, но инварианты ниже написаны под
+// ядро очереди 1 — гасим её здесь (поведение оч. 2 покрыто phase2.test.ts).
+const params = ((): Params => {
+  const p = JSON.parse(JSON.stringify(paramsJson)) as Params
+  for (const m of p.modules) if (m.phase === 2) m.status = 'В резерве'
+  if (p.publicBath) p.publicBath.enabled = false
+  return p
+})()
 const matrix = scenariosJson as ScenarioMatrix
 const items = nomenclatureJson as NomenclatureItem[]
 const services = servicesJson.services as unknown as ServiceSpec[]

@@ -16,7 +16,14 @@ const matrix = (() => {
 })()
 const items = nomenclatureJson as NomenclatureItem[]
 const services = servicesJson.services as unknown as ServiceSpec[]
-const clone = () => JSON.parse(JSON.stringify(paramsJson)) as Params
+// Очередь 2 включена по умолчанию в проде; регрессии ниже — ядро очереди 1,
+// поэтому гасим её в клонах (поведение оч. 2 покрыто phase2.test.ts).
+const clone = () => {
+  const p = JSON.parse(JSON.stringify(paramsJson)) as Params
+  for (const m of p.modules) if (m.phase === 2) m.status = 'В резерве'
+  if (p.publicBath) p.publicBath.enabled = false
+  return p
+}
 
 describe('аудит-регрессии', () => {
   it('«С возмещением»: P&L берёт НАЧИСЛЕННЫЙ НДС, а не уплаченный', () => {

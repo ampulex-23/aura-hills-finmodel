@@ -42,6 +42,10 @@ export function baselineParams(): Params {
   // очереди 2 на 2031-01 появились после эталонов.
   p.fot.count = [6, 4, 2, 2, 1, 1, 2, 1, 2]
   p.fot.phases = []
+  // Очередь 2 — слой сверх эталонов: в проде включена по умолчанию, здесь гасим,
+  // чтобы golden/sensitivity сверяли ядро эпохи очереди 1.
+  for (const m of p.modules) if (m.phase === 2) m.status = 'В резерве'
+  if (p.publicBath) p.publicBath.enabled = false
   for (const m of p.modules) if (m.status !== 'Активен') m.launchDate = '2029-01-01'
   // Горизонт оракула — 60 операционных месяцев; 72 (под очередь 2) пришло после
   // эталонов — фиксируем старый, чтобы golden/sensitivity сверяли ядро.

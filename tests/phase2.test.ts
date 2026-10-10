@@ -32,6 +32,11 @@ describe('очередь 2: данные и инварианты', () => {
     expect(out[0].month).toBe(25) // янв 2029 — 25-й месяц CF (стройка оч.1 = мес 1–12)
     expect(out[23].month).toBe(48) // дек 2030
     expect(out.reduce((s, d) => s + d.eur, 0)).toBeCloseTo(r.capex.phase2AdjEur, 6)
+    // Σ позиций сходится с итогом своей очереди (items содержит обе)
+    const p1 = r.capex.items.filter((i) => (i.phase ?? 1) === 1).reduce((s, i) => s + i.eur, 0)
+    const p2 = r.capex.items.filter((i) => i.phase === 2).reduce((s, i) => s + i.eur, 0)
+    expect(p1).toBeCloseTo(r.capex.totalEur, 2)
+    expect(p2).toBeCloseTo(r.capex.phase2Eur, 2)
   })
 
   it('частичная реализация: vip1-only = объектные строки vip1 + общие', () => {
