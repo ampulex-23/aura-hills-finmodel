@@ -24,8 +24,9 @@ describe('очередь 2: данные и инварианты', () => {
 
   it('полная реализация: отток за 24 мес окна 2029–2030, сумма = phase2AdjEur', () => {
     const r = runModel(allP2(clone()), matrix, items, services, 'Base')
-    expect(r.capex.phase2Eur).toBeCloseTo(1_501_000, -3)
-    expect(r.capex.phase2AdjEur).toBeCloseTo(1_501_000 * 1.1, -3)
+    // смета из WBS-детализации (PLAN-phase2-smeta.md): 1 502 950
+    expect(r.capex.phase2Eur).toBeCloseTo(1_502_950, -3)
+    expect(r.capex.phase2AdjEur).toBeCloseTo(1_502_950 * 1.1, -3)
     const out = r.capex.phase2Outflow
     expect(out).toHaveLength(24)
     expect(out[0].month).toBe(25) // янв 2029 — 25-й месяц CF (стройка оч.1 = мес 1–12)
@@ -37,8 +38,8 @@ describe('очередь 2: данные и инварианты', () => {
     const p = clone()
     p.modules.find((m) => m.id === 4)!.status = 'Активен' // vip1
     const r = runModel(p, matrix, items, services, 'Base')
-    // 84к здание + 70к наполнение + общие (55+40+10+25+25+30+72=257к)
-    expect(r.capex.phase2Eur).toBeCloseTo(154_000 + 257_000, 0)
+    // 84к здание + 70к наполнение + общие (55+40+10+25.2+25+30+72=257.2к)
+    expect(r.capex.phase2Eur).toBeCloseTo(154_000 + 257_200, 0)
     // publicBath-строки не вошли
     expect(r.capex.items.filter((i) => i.phase === 2 && i.object === 'public')).toHaveLength(0)
   })
