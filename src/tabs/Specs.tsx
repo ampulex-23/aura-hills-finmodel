@@ -4,7 +4,7 @@ import {
   NumberInput, Select, TextInput, Tooltip,
 } from '@mantine/core'
 import { useModel, nextCode } from '../store'
-import { NumField, TextCell, fmt } from '../components/ui'
+import { Hint, NumField, TextCell, fmt } from '../components/ui'
 import { costAllServices } from '../model/spec'
 import { landedCost } from '../model/opex'
 import type { SpecItem } from '../model/types'
@@ -82,9 +82,13 @@ export function Specs() {
             <table className="month-table spec">
               <thead>
                 <tr>
-                  <th className="sticky">Услуга</th>
-                  <th className="lft">Цена €</th><th>Материалы €</th><th>Труд €</th>
-                  <th>Себес €</th><th>Маржа €</th><th>Марж. %</th><th></th>
+                  <th className="sticky"><Hint hint={{ text: 'Услуга и её состав — клик по строке раскрывает спецификацию (материалы и труд).' }}><span>Услуга</span></Hint></th>
+                  <th className="lft"><Hint hint={{ text: 'Розничный прайс услуги. От него считаются KPI-бонусы ролей и маржа.' }}><span>Цена €</span></Hint></th>
+                  <th><Hint hint={{ text: 'Σ (норма материала в спеке × landed cost из Номенклатуры).' }}><span>Материалы €</span></Hint></th>
+                  <th><Hint hint={{ text: 'Прайс × Σ(% ролей в спеке) — KPI-бонусы исполнителей за одну услугу.' }}><span>Труд €</span></Hint></th>
+                  <th><Hint hint={{ text: 'Себестоимость услуги = материалы + труд.' }}><span>Себес €</span></Hint></th>
+                  <th><Hint hint={{ text: 'Цена − себестоимость.' }}><span>Маржа €</span></Hint></th>
+                  <th><Hint hint={{ text: 'Маржа в доле цены. Зелёный ≥60%, жёлтый ≥30%, красный — ниже.' }}><span>Марж. %</span></Hint></th><th></th>
                 </tr>
               </thead>
               <tbody>

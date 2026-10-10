@@ -20,6 +20,13 @@ const COL = {
   group: 'Раздел сметы для группировки в отчёте CAPEX.',
   cond: 'Условная строка: входит в CAPEX только при включённой опции «Прачечная: своя» (Допущения).',
   wbs: 'WBS-детализация строки: секции и позиции сметы (кол-во × ставка = сумма). Цена строки выводится из ΣWBS — нажмите для редактирования.',
+  wbsCode: 'Код позиции WBS — справочно, для связи со сметой подрядчика.',
+  wbsName: 'Наименование работы или материала.',
+  wbsUnit: 'Единица измерения позиции — справочно.',
+  wbsQty: 'Количество. Если заданы кол-во и ставка — сумма позиции пересчитывается как кол-во × ставка.',
+  wbsRate: 'Цена за единицу. Изменение пересчитывает сумму позиции (кол-во × ставка).',
+  wbsEur: 'Сумма позиции в евро. Можно править напрямую — тогда кол-во и ставка становятся справочными. Σ позиций задаёт цену строки сметы (для эталонной детали — через wbsQty).',
+  wbsTag: 'Категория затрат — группировка детализации в отчёте CAPEX и Excel-экспорте.',
 }
 
 // Строка 30 — «Наполнение»: сумма считается из справочника номенклатуры,
@@ -325,9 +332,21 @@ export function Smeta() {
                               <div className="wbs-editor">
                                 <p className="note">
                                   WBS «{it.name}» · Σ = €{fmt(wbsSum(it.wbs))}
-                                  {(it.wbsQty ?? 1) > 1 && <> — эталон на {it.wbsQty} ед., цена за ед. = €{fmt(wbsSum(it.wbs) / (it.wbsQty ?? 1))}</>}
                                   {' '}· цена строки выводится из WBS, отдельно не редактируется.
                                 </p>
+                                <label className="field" style={{ marginBottom: 6 }}>
+                                  <Hint hint={{ text: 'Эталонный объём детализации: ΣWBS делится на это число, чтобы получить цену за единицу строки сметы. Пример: детализация банного модуля составлена на 3 модуля → wbsQty = 3, цена = Σ/3.' }}>
+                                    <span>Эталонный объём (wbsQty)</span>
+                                  </Hint>
+                                  <NumField
+                                    value={it.wbsQty ?? 1}
+                                    onChange={(v) => set(i, {
+                                      wbsQty: v > 1 ? v : undefined,
+                                      priceEur: Math.round(wbsSum(it.wbs) / (v || 1)),
+                                    })}
+                                    step={1}
+                                  />
+                                </label>
                                 {it.wbs!.map((sec, si) => (
                                   <div key={`${sec.code}-${si}`} className="wbs-sec">
                                     <div className="wbs-sec-head">
@@ -341,9 +360,14 @@ export function Smeta() {
                                     <table className="month-table nom wbs">
                                       <thead>
                                         <tr>
-                                          <th>Код</th><th>Позиция</th><th>Ед.</th>
-                                          <th>Кол-во</th><th>Ставка €</th><th>Сумма €</th>
-                                          <th>Категория</th><th></th>
+                                          <th><Hint hint={{ text: COL.wbsCode }}><span>Код</span></Hint></th>
+                                          <th><Hint hint={{ text: COL.wbsName }}><span>Позиция</span></Hint></th>
+                                          <th><Hint hint={{ text: COL.wbsUnit }}><span>Ед.</span></Hint></th>
+                                          <th><Hint hint={{ text: COL.wbsQty }}><span>Кол-во</span></Hint></th>
+                                          <th><Hint hint={{ text: COL.wbsRate }}><span>Ставка €</span></Hint></th>
+                                          <th><Hint hint={{ text: COL.wbsEur }}><span>Сумма €</span></Hint></th>
+                                          <th><Hint hint={{ text: COL.wbsTag }}><span>Категория</span></Hint></th>
+                                          <th></th>
                                         </tr>
                                       </thead>
                                       <tbody>

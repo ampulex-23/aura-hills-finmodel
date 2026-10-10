@@ -1,6 +1,6 @@
 import { Select, SegmentedControl } from '@mantine/core'
 import { useModel } from '../store'
-import { NumField, TextCell, fmt, fmtPct } from '../components/ui'
+import { Hint, NumField, TextCell, fmt, fmtPct } from '../components/ui'
 import { capmWacc } from '../model/run'
 
 // Форма «Допущения» — все входы модели, сгруппированные.
@@ -14,9 +14,9 @@ export function Assumptions() {
     </small>
   )
 
-  const Row = ({ label, path, value, pct, step, suffix }: any) => (
+  const Row = ({ label, path, value, pct, step, suffix, hint }: any) => (
     <label className="field">
-      <span>{label}</span>
+      {hint ? <Hint hint={{ text: hint }}><span>{label}</span></Hint> : <span>{label}</span>}
       <NumField value={value} onChange={(v) => setParam(path, v)} pct={pct} step={step} suffix={suffix} />
     </label>
   )
@@ -28,7 +28,9 @@ export function Assumptions() {
         <legend>Общие</legend>
         <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
         <div className="field">
-          <span>Ставка дисконтирования</span>
+          <Hint hint={{ text: 'CAPM — ставка собирается из rf + β·ERP + страновая и size-премии (поля ниже). Ручная — фиксированный WACC.' }}>
+            <span>Ставка дисконтирования</span>
+          </Hint>
           <Select
             size="xs" w={190}
             data={[
@@ -55,7 +57,9 @@ export function Assumptions() {
           </>
         )}
         <div className="field">
-          <span>Terminal value</span>
+          <Hint hint={{ text: 'Вкл — терминальная стоимость по модели Гордона от FCFF последнего года; выкл — консервативно, только горизонт 5 лет.' }}>
+            <span>Terminal value</span>
+          </Hint>
           <Select
             size="xs" w={190}
             data={[
@@ -75,7 +79,9 @@ export function Assumptions() {
       <fieldset>
         <legend>Режимы</legend>
         <label className="field">
-          <span>Пакетный режим (депозит)</span>
+          <Hint hint={{ text: '«Да» — каждый гость бани платит депозит: пакет услуг включён в слот (uptake = 100%). «Нет» — депозита нет, услуги продаются отдельно по доле реализации сценария.' }}>
+            <span>Пакетный режим (депозит)</span>
+          </Hint>
           <SegmentedControl
             size="xs"
             data={['Да', 'Нет']}
@@ -84,7 +90,9 @@ export function Assumptions() {
           />
         </label>
         <label className="field">
-          <span>Режим НДС</span>
+          <Hint hint={{ text: '«Гросс» — входной НДС не возмещается и идёт в расходы. «С возмещением» — входной НДС зачитывается/возмещается с поквартальной уплатой нетто.' }}>
+            <span>Режим НДС</span>
+          </Hint>
           <Select
             size="xs" w={150}
             data={['Гросс', 'С возмещением']}
@@ -93,9 +101,12 @@ export function Assumptions() {
             allowDeselect={false}
           />
         </label>
-        <Row label="Мультипликатор спроса" path="service.demandMult" value={P.service.demandMult} step={0.05} />
+        <Row label="Мультипликатор спроса" path="service.demandMult" value={P.service.demandMult} step={0.05}
+          hint="Глобальный множитель спроса поверх сценарных загрузок — единая ручка стресса/апсайда для всей модели." />
         <label className="field">
-          <span>Загрузка услуг по сценариям</span>
+          <Hint hint={{ text: '«Да» — у каждого потока услуг своя загрузка из матрицы сценариев (парения, массаж, допы). «Нет» — все услуги следуют загрузке бань.' }}>
+            <span>Загрузка услуг по сценариям</span>
+          </Hint>
           <SegmentedControl
             size="xs"
             data={['Да', 'Нет']}
@@ -115,9 +126,12 @@ export function Assumptions() {
         <Row label="Взносы работодателя" path="taxes.employerRate" value={P.taxes.employerRate} pct step={0.001} />
         <Row label="SDC на дивиденды" path="taxes.sdc" value={P.taxes.sdc} pct />
         <Row label="GESY на дивиденды" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
-        <Row label="Потолок базы GESY, €/год на лицо" path="taxes.gesyCap" value={P.taxes.gesyCap} step={10000} />
+        <Row label="Потолок базы GESY, €/год на лицо" path="taxes.gesyCap" value={P.taxes.gesyCap} step={10000}
+          hint="Максимальная годовая база взноса GESY на человека (€180k с 2025) — свыше потолка взнос не берётся." />
         <label className="field">
-          <span>Уплата НДС</span>
+          <Hint hint={{ text: 'По закону Кипра НДС платится поквартально — до 10-го числа 2-го месяца после квартала. «Помесячно» — упрощённое списание сразу.' }}>
+            <span>Уплата НДС</span>
+          </Hint>
           <SegmentedControl
             size="xs"
             data={[{ value: 'q', label: 'Квартально' }, { value: 'm', label: 'Помесячно' }]}
@@ -139,7 +153,11 @@ export function Assumptions() {
         <div className="table-wrap">
           <table className="month-table spec">
             <thead>
-              <tr><th>Партнёр</th><th>Доля</th><th>Налоговый статус</th></tr>
+              <tr>
+                <th><Hint hint={{ text: 'Имя партнёра — справочно.' }}><span>Партнёр</span></Hint></th>
+                <th><Hint hint={{ text: 'Доля распределяемой прибыли. Контроль: Σ долей + УК + резерв = 100%.' }}><span>Доля</span></Hint></th>
+                <th><Hint hint={{ text: 'Резидент-домицил: из дивидендов удерживаются SDC и GESY. Нерезидент / Non-Dom освобождён от обоих.' }}><span>Налоговый статус</span></Hint></th>
+              </tr>
             </thead>
             <tbody>
               {P.partners.names.map((n, i) => (
@@ -215,7 +233,9 @@ export function Assumptions() {
         <Row label="Визитов члена/мес" path="members.visitsPerMonth" value={P.members.visitsPerMonth} step={0.5} />
         <Row label="Гостей в визите" path="members.partySize" value={P.members.partySize} step={0.5} />
         <div className="field">
-          <span>Члены занимают слоты</span>
+          <Hint hint={{ text: '«Да» — членские и сертификатные визиты расходуют слоты ёмкости (вытесняют платных гостей в пик). «Нет» — идут сверх ёмкости, агрессивное допущение.' }}>
+            <span>Члены занимают слоты</span>
+          </Hint>
           <Select
             data={[{ value: 'true', label: 'Да — вычитаются из ёмкости' }, { value: 'false', label: 'Нет — члены вне слотов' }]}
             value={P.members.consumeSlots ? 'true' : 'false'}
@@ -254,7 +274,9 @@ export function Assumptions() {
       <fieldset>
         <legend>Прачечная</legend>
         <label className="field">
-          <span>Режим стирки</span>
+          <Hint hint={{ text: 'Аутсорс — стирка комплектов списывается в OPEX по тарифу прачечной. Своя — оборудование уходит в CAPEX стройки (амортизируется), в OPEX остаются только расходники цикла.' }}>
+            <span>Режим стирки</span>
+          </Hint>
           <SegmentedControl
             size="xs"
             data={[{ value: 'off', label: 'Аутсорс' }, { value: 'on', label: 'Своя' }]}
@@ -276,7 +298,9 @@ export function Assumptions() {
       <fieldset>
         <legend>Земля</legend>
         <label className="field">
-          <span>Режим владения участком</span>
+          <Hint hint={{ text: 'Своя — €0 и без потоков в модели. Аренда — €/мес в CF стройки и в OPEX операционки. Покупка — стоимость уходит в CAPEX (без амортизации).' }}>
+            <span>Режим владения участком</span>
+          </Hint>
           <Select
             size="xs" w={210}
             data={[
@@ -310,7 +334,9 @@ export function Assumptions() {
         <Row label="Сертификатов/мес" path="units.certsPerMonth" value={P.units.certsPerMonth} step={1} />
         <Row label="Пре-сейл, мес до открытия" path="units.presaleMonths" value={P.units.presaleMonths} step={1} />
         <label className="field">
-          <span>Режим пре-сейла</span>
+          <Hint hint={{ text: '«Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке. «Доп. канал» — пресейл как отдельная выручка сверх плана (агрессивно).' }}>
+            <span>Режим пре-сейла</span>
+          </Hint>
           <Select
             size="xs" w={210}
             data={[
@@ -330,6 +356,7 @@ export function Assumptions() {
         <Row
           label="Признание пре-сейла, мес" path="units.presaleRecognizeMonths"
           value={P.units.presaleRecognizeMonths} step={1}
+          hint="Число месяцев, за которые равномерно признаётся выручка проданных в пресейле членств — разнесение предоплаты в P&L операционки."
         />
         <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1} />
         <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
@@ -338,7 +365,9 @@ export function Assumptions() {
       <fieldset>
         <legend>Maintenance CAPEX и стройка</legend>
         <label className="field">
-          <span>Maintenance CAPEX</span>
+          <Hint hint={{ text: 'Годовой reserve for replacement: % амортизируемого CAPEX на замену печей, текстиля и IT-железа + разовый капремонт в заданном году.' }}>
+            <span>Maintenance CAPEX</span>
+          </Hint>
           <SegmentedControl
             size="xs"
             data={[{ value: 'on', label: 'Вкл' }, { value: 'off', label: 'Выкл' }]}
@@ -394,10 +423,15 @@ export function Assumptions() {
           <table className="month-table spec">
             <thead>
               <tr>
-                <th>Модуль</th><th>Статус</th><th>Ввод с</th><th>Uptime</th>
-                <th>Слотов/д</th><th>Мест</th><th>Коэфф. загр.</th>
-                <th>Утро €</th><th>День 1 €</th><th>День 2 €</th><th>Вечер €</th>
-                <th>Ср.-взв. €</th>
+                <th>Модуль</th>
+                <th><Hint hint={{ text: 'Активен — модуль продаёт слоты и считается в ёмкости; помодульные строки сметы CAPEX зависят от числа активных. «В резерве» — вне модели до активации.' }}><span>Статус</span></Hint></th>
+                <th><Hint hint={{ text: 'Месяц ввода в эксплуатацию (ГГГГ-ММ). До этой даты модуль не генерирует выручку.' }}><span>Ввод с</span></Hint></th>
+                <th><Hint hint={{ text: 'Доля дней в работе: ~95% ≈ 1.5 дня/мес на профилактику печей и водоёмов.' }}><span>Uptime</span></Hint></th>
+                <th><Hint hint={{ text: 'Слотов в день: утро, день 1, день 2, вечер.' }}><span>Слотов/д</span></Hint></th>
+                <th><Hint hint={{ text: 'Гостей в одном слоте.' }}><span>Мест</span></Hint></th>
+                <th><Hint hint={{ text: 'Помодульный множитель заполняемости: 1.0 = общая загрузка сценария; ниже — если модуль продаётся хуже.' }}><span>Коэфф. загр.</span></Hint></th>
+                <th colSpan={4}><Hint hint={{ text: 'Прайс слота по времени суток, € — влияет на разложение слотов, не на выручку бани (депозит фиксирован).' }}><span>Цены слотов €</span></Hint></th>
+                <th><Hint hint={{ text: 'Средневзвешенная цена слота по долям спроса (slotMix ниже).' }}><span>Ср.-взв. €</span></Hint></th>
               </tr>
             </thead>
             <tbody>

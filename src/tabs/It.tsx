@@ -1,6 +1,6 @@
 import { SegmentedControl } from '@mantine/core'
 import { useModel } from '../store'
-import { NumField } from '../components/ui'
+import { Hint, NumField } from '../components/ui'
 
 // Вкладка «IT»: кастомный цифровой слой — подписки/инфраструктура помесячно,
 // внедрение разово в CAPEX, IT-куратор в ФОТ.
@@ -19,7 +19,9 @@ export function It() {
         <fieldset>
           <legend>Режим</legend>
           <label className="field">
-            <span>Учитывать IT в модели</span>
+            <Hint hint={{ text: 'Выключает весь цифровой слой разом: CAPEX внедрения, помесячное содержание и ставку IT-куратора в ФОТ.' }}>
+              <span>Учитывать IT в модели</span>
+            </Hint>
             <SegmentedControl
               size="xs"
               data={['Да', 'Нет']}

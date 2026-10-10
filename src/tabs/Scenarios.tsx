@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { useModel } from '../store'
-import { NumField, fmtPct } from '../components/ui'
+import { Hint, NumField, fmtPct } from '../components/ui'
 import { YEAR_KEYS } from '../model/types'
 
 // Редактор матрицы сценариев — лист «Сценарии» в виде формы.
@@ -9,11 +9,11 @@ export function Scenarios() {
   const { matrix, setMatrixCell, scenario, params } = useModel()
   const packageMode = params.meta.mode === 'Да'
 
-  const Row = ({ label, path, pct, locked }: { label: string; path: string; pct?: boolean; locked?: boolean }) => {
+  const Row = ({ label, path, pct, locked, hint }: { label: string; path: string; pct?: boolean; locked?: boolean; hint?: string }) => {
     const vals = path.split('.').reduce((o: any, k) => o[k], matrix as any) as number[]
     return (
       <tr>
-        <td className="sticky">{label}</td>
+        <td className="sticky">{hint ? <Hint hint={{ text: hint }}><span>{label}</span></Hint> : label}</td>
         {vals.map((v, i) => (
           <td key={i}>
             <NumField
@@ -55,7 +55,12 @@ export function Scenarios() {
                 <Fragment key={key}>
                   <tr className="section"><td className="sticky" colSpan={4}>{title}</td></tr>
                   {YEAR_KEYS.map((y, i) => (
-                    <Row key={y} label={`${label} — Год ${i + 1}`} path={`${key}.${y}`} pct={pct} />
+                    <Row key={y} label={`${label} — Год ${i + 1}`} path={`${key}.${y}`} pct={pct}
+                      hint={pct
+                        ? `Среднегодовая загрузка потока в год ${i + 1} — доля максимальной ёмкости.`
+                        : `Число активных месячных членов в год ${i + 1}, в человеках.`
+                      }
+                    />
                   ))}
                 </Fragment>
               ))}
@@ -67,16 +72,22 @@ export function Scenarios() {
             <Head />
             <tbody>
               <tr className="section"><td className="sticky" colSpan={4}>ЭКОНОМИКА</td></tr>
-              <Row label="Рост цен, годовой" path="priceGrowth" pct />
-              <Row label="Корректировка CAPEX" path="capexAdj" pct />
-              <Row label="Период выхода на план, мес." path="rampMonths" />
+              <Row label="Рост цен, годовой" path="priceGrowth" pct
+                hint="Годовая индексация всех прайсов сверх инфляции — реальный рост цен." />
+              <Row label="Корректировка CAPEX" path="capexAdj" pct
+                hint="Буфер к стоимости стройки и закупа — сценарное удорожание CAPEX целиком." />
+              <Row label="Период выхода на план, мес." path="rampMonths"
+                hint="Месяцев от открытия до выхода загрузки на сценарный уровень (линейная рампа)." />
               <Row
                 label={packageMode ? 'Доля реализации услуг (=100% в пакетном режиме)' : 'Доля реализации услуг (непакетная)'}
                 path="uptake" pct locked={packageMode}
+                hint="Доля гостей, реально покупающих услуги. В пакетном режиме депозит обязателен — uptake зафиксирован на 100%."
               />
               <tr className="section"><td className="sticky" colSpan={4}>СТРЕССЫ СТРОЙКИ И ЗАТРАТ</td></tr>
-              <Row label="Задержка стройки, мес." path="constructionDelayMonths" />
-              <Row label="Множитель энергозатрат" path="energyCostMult" />
+              <Row label="Задержка стройки, мес." path="constructionDelayMonths"
+                hint="Сдвигает дату открытия и удлиняет стройку: +N мес CAPEX-графика, аренды земли и pre-opening до первой выручки." />
+              <Row label="Множитель энергозатрат" path="energyCostMult"
+                hint="Масштабирует электроэнергию и отопление — стресс тарифов или потребления." />
             </tbody>
           </table>
         </div>

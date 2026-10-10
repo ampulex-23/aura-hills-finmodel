@@ -541,11 +541,11 @@ export function Capex({ r }: { r: ModelResult }) {
         <table className="month-table scen capex-table">
           <thead>
             <tr>
-              <th className="sticky">Статья затрат / элемент работ</th>
-              <th>Ед.</th>
-              <th>Кол-во</th>
-              <th>Ставка, €</th>
-              <th>Сумма, €</th>
+              <th className="sticky"><Hint hint={{ text: 'Клик по разделу раскрывает строки сметы; у строк с WBS — детализацию работ и материалов.' }}><span>Статья затрат / элемент работ</span></Hint></th>
+              <th><Hint hint={{ text: 'Единица измерения.' }}><span>Ед.</span></Hint></th>
+              <th><Hint hint={{ text: 'Количество единиц (для помодульных строк — с учётом активных модулей).' }}><span>Кол-во</span></Hint></th>
+              <th><Hint hint={{ text: 'Цена за единицу / ставка работ.' }}><span>Ставка, €</span></Hint></th>
+              <th><Hint hint={{ text: 'Кол-во × ставка. Для WBS-строк — сумма позиций детализации.' }}><span>Сумма, €</span></Hint></th>
             </tr>
           </thead>
           <tbody>
@@ -571,7 +571,7 @@ export function Capex({ r }: { r: ModelResult }) {
           <tr className="bold">
             <td className="sticky">ИТОГО CAPEX</td>
             <td /><td /><td />
-            <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций, включая наполнение из справочника номенклатуры (landed-цена × кол-во).' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
+            <td><Hint hint={{ title: 'Итого CAPEX', text: 'Сумма всех инвестиционных позиций: смета стройки, наполнение (оборудование и мебель из номенклатуры), закуп стартовых запасов, IT-пакет и земля.' }}><span className="cellval">{fmt(capex.totalEur)}</span></Hint></td>
           </tr>
           <tr className="bold">
             <td className="sticky">С буфером сценария</td>

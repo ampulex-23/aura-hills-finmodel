@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useModel } from '../store'
 import type { ModelResult } from '../model/types'
 import { computeSensitivity, computeTornado, T2_CAPEX } from '../model/sensitivity'
-import { fmt } from '../components/ui'
+import { Hint, fmt } from '../components/ui'
 
 // Пять таблиц чувствительности — реальный пересчёт (~100 точек).
 export function Sensitivity({ r }: { r: ModelResult }) {
@@ -77,7 +77,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
           <div className="table-wrap">
             <table className="month-table sens">
               <thead>
-                <tr><th className="sticky">Спрос \ WACC</th>{s.t1.waccAxis.map((w) => <th key={w}>{(w * 100).toFixed(1)}%</th>)}</tr>
+                <tr><th className="sticky"><Hint hint={{ text: 'Строки — множитель всего спроса; колонки — ставка дисконтирования. В ячейке: NPV и дисконтная окупаемость (мес).' }}><span>Спрос \ WACC</span></Hint></th>{s.t1.waccAxis.map((w) => <th key={w}>{(w * 100).toFixed(1)}%</th>)}</tr>
               </thead>
               <tbody>
                 {s.t1.rows.map((row) => (
@@ -100,7 +100,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
           <div className="table-wrap">
             <table className="month-table sens">
               <thead>
-                <tr><th className="sticky">Рост цен \ CAPEX</th>{T2_CAPEX.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
+                <tr><th className="sticky"><Hint hint={{ text: 'Строки — годовой рост цен; колонки — буфер CAPEX (удорожание стройки и закупа). В ячейке: NPV и IRR.' }}><span>Рост цен \ CAPEX</span></Hint></th>{T2_CAPEX.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
               </thead>
               <tbody>
                 {s.t2.rows.map((row) => (
@@ -125,7 +125,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
           <div className="table-wrap">
             <table className="month-table sens">
               <thead>
-                <tr><th className="sticky">Пакет \ Загрузка</th>{s.t4.loadAxis.map((l) => <th key={l}>×{l}</th>)}</tr>
+                <tr><th className="sticky"><Hint hint={{ text: 'Строки — доля гостей, купивших пакет (uptake); колонки — множитель загрузки бань. В ячейке: NPV и IRR.' }}><span>Пакет \ Загрузка</span></Hint></th>{s.t4.loadAxis.map((l) => <th key={l}>×{l}</th>)}</tr>
               </thead>
               <tbody>
                 {s.t4.rows.map((row) => (
@@ -152,7 +152,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
           <div className="table-wrap">
             <table className="month-table sens">
               <thead>
-                <tr><th className="sticky">Задержка \ CAPEX</th>{s.t5.capexAxis.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
+                <tr><th className="sticky"><Hint hint={{ text: 'Строки — задержка открытия (сдвигает дату и удлиняет стройку); колонки — буфер CAPEX. В ячейке: NPV и IRR.' }}><span>Задержка \ CAPEX</span></Hint></th>{s.t5.capexAxis.map((c) => <th key={c}>+{(c * 100).toFixed(0)}%</th>)}</tr>
               </thead>
               <tbody>
                 {s.t5.rows.map((row) => (
@@ -177,7 +177,7 @@ export function Sensitivity({ r }: { r: ModelResult }) {
       <h3>Уровень всех цен → NPV (IRR)</h3>
       <div className="table-wrap" style={{ display: 'inline-block' }}>
       <table className="month-table sens">
-        <thead><tr><th className="sticky">Цены</th>{s.t3.map((r) => <th key={r.priceMult}>×{r.priceMult}</th>)}</tr></thead>
+        <thead><tr><th className="sticky"><Hint hint={{ text: 'Множитель всех цен разом: депозит, членства, сертификаты, глэмпинг, F&B и прайсы услуг. Строки — NPV и IRR.' }}><span>Цены</span></Hint></th>{s.t3.map((r) => <th key={r.priceMult}>×{r.priceMult}</th>)}</tr></thead>
         <tbody>
           <tr>
             <td className="sticky">NPV</td>

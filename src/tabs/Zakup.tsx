@@ -70,11 +70,15 @@ export function Zakup() {
           w={360}
           size="sm"
         />
-        <Checkbox
-          label="показать все позиции (чтобы добавить запас)"
-          checked={showAll}
-          onChange={(e) => setShowAll(e.currentTarget.checked)}
-        />
+        <Hint hint={{ text: 'Показывает все позиции каталога, включая те, у которых запас сейчас 0 — задайте количество, чтобы добавить позицию в закуп.' }}>
+          <span>
+            <Checkbox
+              label="показать все позиции (чтобы добавить запас)"
+              checked={showAll}
+              onChange={(e) => setShowAll(e.currentTarget.checked)}
+            />
+          </span>
+        </Hint>
         {filtering && (
           <span className="note">
             найдено: {groups.reduce((s, [, arr]) => s + arr.length, 0)}

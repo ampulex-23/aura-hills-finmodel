@@ -1,7 +1,16 @@
 import { ActionIcon, Button, Group } from '@mantine/core'
 import { useModel } from '../store'
-import { NumField, TextCell, fmt } from '../components/ui'
+import { Hint, NumField, TextCell, fmt } from '../components/ui'
 import { baseSalariesMonthly } from '../model/fot'
+
+const COL = {
+  role: 'Должность — свободное название. На роль заводятся KPI-бонусы в «Спецификациях».',
+  countStart: 'Ставок на дату открытия (месяц 1 операционки).',
+  phase: 'Штат с этого месяца — фаза расширения. Число заменяет стартовое значение: 0 = роль ещё не нанята.',
+  salary: 'Оклад gross, €/мес — до взносов работодателя. Индексируется инфляцией ежегодно.',
+  fund: 'Фонд месяца старта: ставки × оклад.',
+  withEr: 'Фонд + взносы работодателя (Соц.страх, GESY и др.). Дальше сверху — KPI-бонусы по выручке месяца.',
+}
 
 // Вкладка «Штат»: единая картина фонда оплаты труда.
 // Штатное расписание (fot.*) редактируется здесь; условные роли (повар,
@@ -55,12 +64,14 @@ export function Staff() {
           <table className="month-table spec">
             <thead>
               <tr>
-                <th>Роль</th><th>Ставок (старт)</th>
+                <th><Hint hint={{ text: COL.role }}><span>Роль</span></Hint></th>
+                <th><Hint hint={{ text: COL.countStart }}><span>Ставок (старт)</span></Hint></th>
                 {phases.map((ph, pi) => (
-                  <th key={pi} title={ph.label}>{ph.from}</th>
+                  <th key={pi}><Hint hint={{ title: ph.label, text: COL.phase }}><span>{ph.from}</span></Hint></th>
                 ))}
-                <th>Оклад, €/мес gross</th>
-                <th>Фонд, €/мес</th><th>Со взносами, €/мес</th><th></th>
+                <th><Hint hint={{ text: COL.salary }}><span>Оклад, €/мес gross</span></Hint></th>
+                <th><Hint hint={{ text: COL.fund }}><span>Фонд, €/мес</span></Hint></th>
+                <th><Hint hint={{ text: COL.withEr }}><span>Со взносами, €/мес</span></Hint></th><th></th>
               </tr>
             </thead>
             <tbody>
