@@ -345,6 +345,9 @@ export function Assumptions() {
         </small>
       </fieldset>
 
+      </div>
+
+      <div className="form-row">
       <fieldset>
         <legend>F&B</legend>
         <Toggle label="Поток F&B" path="fb.enabled" value={P.fb.enabled}
