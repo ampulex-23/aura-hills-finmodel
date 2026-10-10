@@ -161,11 +161,53 @@ function revenueHints(params: Params, r: ModelResult) {
 export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
   const { params } = useModel()
   const R = r.revenue
-  const stream = (get: (m: (typeof R)[0]) => number) => R.map(get)
+  const sc = r.scenario
+  const stream = (get: (m: (typeof R)[0], k: number) => number) => R.map(get)
   const h = revenueHints(params, r)
+  const gAt = (k: number) => growthAt(sc.priceGrowth, k)
+  const avgPrice = (m: ModuleSpec) => m.prices.reduce((s, p, j) => s + p * params.slotMix[j], 0)
+  const slotLabels = params.slotNames.map((n) => n.replace(/^Доля спроса — /, '').toLowerCase())
+  const glampLoadAt = (m: (typeof R)[0]) =>
+    Math.min(1, params.service.demandMult * sc.glampLoad[m.yearIdx] * params.seasonality.glamping[m.monthOfYear - 1] * m.ramp)
+
+  const moduleKids: RowDef[] = params.modules.map((m, i) => ({
+    label: `— Модуль №${m.id} · ${m.capacity} гостей`,
+    values: stream((mm) => mm.bathCounts[i] ?? 0),
+    hint: (ci): CellHint => ({
+      title: `Модуль №${m.id}`,
+      text: 'Проданные слоты модуля — после вытеснения членами/сертификатами в пик (общий масштабирующий коэффициент).',
+      calc: `30 × ${m.slotsPerDay} сл/д × аптайм ${pc(m.uptime, 0)} × loadK ${pc(m.loadK, 0)} × загрузка ${pc(R[ci].bathsLoad)}${(m.phase ?? 1) === 2 ? ' × рампа оч. 2' : ''} = ${fmt(R[ci].bathCounts[i] ?? 0)}`,
+    }),
+  }))
+  const slotTypeKids: RowDef[] = slotLabels.map((n, j) => ({
+    label: `— ${n}`,
+    values: stream((mm) => mm.slotCounts[j] ?? 0),
+    tip: `Аналитика по времени суток: доля спроса ${pc(params.slotMix[j] ?? 0, 0)} от проданных слотов. Цена слота от времени не зависит.`,
+  }))
+  const rentalKids: RowDef[] = params.modules.map((m, i) => ({
+    label: `— №${m.id} · ${e0(avgPrice(m))}/слот`,
+    values: stream((mm, k) => (mm.bathCounts[i] ?? 0) * avgPrice(m) * gAt(k)),
+    hint: (ci): CellHint => ({
+      title: `Аренда — модуль №${m.id}`,
+      calc: `${fmt(R[ci].bathCounts[i] ?? 0)} слот × ${e1(avgPrice(m))} × рост ${gAt(ci).toFixed(2)} = ${e0((R[ci].bathCounts[i] ?? 0) * avgPrice(m) * gAt(ci))}`,
+    }),
+  }))
+  const menuKids = (key: 'steam' | 'massage' | 'extra'): RowDef[] =>
+    params.procedures[key].names.map((n, j) => ({
+      label: `— ${n}`,
+      values: stream((mm) => mm[key][j] ?? 0),
+      hint: (ci): CellHint => ({
+        title: n,
+        calc: `ступень меню: ${e0(params.procedures[key].prices[j] ?? 0)} × вес ${params.procedures[key].weights[j] ?? 0} = ${e0(R[ci][key][j] ?? 0)}`,
+      }),
+    }))
+
   const rows: RowDef[] = [
     { label: 'Загрузка бань', values: stream((m) => m.bathsLoad), fmt: 'pct' as const, hint: h.load },
-    { label: 'Слоты (шт)', values: stream((m) => m.slots), hint: h.slots },
+    {
+      label: 'Слоты (шт)', values: stream((m) => m.slots), hint: h.slots,
+      children: [...moduleKids, ...slotTypeKids],
+    },
     ...(params.members.consumeSlots
       ? [{
           label: '— в т.ч. слоты членов', values: stream((m) => m.memberSlots),
@@ -176,18 +218,70 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
           }),
         }]
       : []),
-    { label: 'Аренда бань', values: stream((m) => m.rental), hint: h.rental },
-    { label: 'Парения', values: stream((m) => m.steamTotal), hint: h.steam },
-    { label: 'Массаж', values: stream((m) => m.massageTotal), hint: h.massage },
-    { label: 'Доп.услуги', values: stream((m) => m.extraTotal), hint: h.extra },
-    { label: 'Глэмпинг', values: stream((m) => m.glamping), hint: h.glamping },
-    { label: 'Членства + сертификаты', values: stream((m) => m.membershipTotal), hint: h.membership },
-    { label: 'F&B', values: stream((m) => m.fb), hint: h.fb },
+    { label: 'Аренда бань', values: stream((m) => m.rental), hint: h.rental, children: rentalKids },
+    { label: 'Парения', values: stream((m) => m.steamTotal), hint: h.steam, children: menuKids('steam') },
+    { label: 'Массаж', values: stream((m) => m.massageTotal), hint: h.massage, children: menuKids('massage') },
+    { label: 'Доп.услуги', values: stream((m) => m.extraTotal), hint: h.extra, children: menuKids('extra') },
+    {
+      label: 'Глэмпинг', values: stream((m) => m.glamping), hint: h.glamping,
+      children: [
+        {
+          label: `— Малый ×${params.units.glampSmall}`,
+          values: stream((mm, k) => 30 * params.units.glampSmall * glampLoadAt(mm) * params.prices.glampSmall * gAt(k)),
+        },
+        {
+          label: `— Большой ×${params.units.glampBig}`,
+          values: stream((mm, k) => 30 * params.units.glampBig * glampLoadAt(mm) * params.prices.glampBig * gAt(k)),
+        },
+      ],
+    },
+    {
+      label: 'Членства + сертификаты', values: stream((m) => m.membershipTotal), hint: h.membership,
+      children: [
+        {
+          label: '— Месячные членства', values: stream((m) => m.membersMonth),
+          hint: (ci): CellHint => ({
+            title: 'Месячные членства',
+            calc: `${fmt(R[ci].membersMonthCount, 0)} членов × ${e0(params.prices.membershipMonth)} × рост ${gAt(ci).toFixed(2)} = ${e0(R[ci].membersMonth)}`,
+          }),
+        },
+        {
+          label: '— Годовые членства', values: stream((m) => m.membersYear),
+          tip: 'Активные годовые члены (план года ÷ 12, пропорция месячной оплаты).',
+        },
+        {
+          label: '— Сертификаты', values: stream((m) => m.certificates),
+          hint: (ci): CellHint => ({
+            title: 'Сертификаты',
+            calc: `${fmt(R[ci].certsSold, 0)} шт × ${e0(params.prices.certificate)} × рост ${gAt(ci).toFixed(2)} = ${e0(R[ci].certificates)}`,
+          }),
+        },
+      ],
+    },
+    {
+      label: 'F&B', values: stream((m) => m.fb), hint: h.fb,
+      children: [{
+        label: '— гостей чайной зоны (чел)', values: stream((m) => m.guests - m.publicGuests),
+        tip: 'Гости слотов + члены + погашенные сертификаты. Посетители общественной бани питаются в ресторане и сюда не входят.',
+      }],
+    },
     ...(R.some((m) => m.publicBath > 0)
-      ? [{ label: 'Общественная баня (оч. 2)', values: stream((m) => m.publicBath), hint: h.publicBath }]
+      ? [{
+          label: 'Общественная баня (оч. 2)', values: stream((m) => m.publicBath), hint: h.publicBath,
+          children: [{
+            label: '— посетителей (чел)', values: stream((m) => m.publicGuests),
+            tip: '30 дн × пропускная ёмкость × загрузка сценария × сезонность × рампа оч. 2.',
+          }],
+        }]
       : []),
     ...(R.some((m) => m.restaurant > 0)
-      ? [{ label: 'Ресторан (оч. 2)', values: stream((m) => m.restaurant), hint: h.restaurant }]
+      ? [{
+          label: 'Ресторан (оч. 2)', values: stream((m) => m.restaurant), hint: h.restaurant,
+          children: [{
+            label: '— посадок (чел)', values: stream((m) => m.restCovers),
+            tip: '30 дн × места × оборотов в день × загрузка ресторана × сезонность × рампа оч. 2.',
+          }],
+        }]
       : []),
     { label: 'ИТОГО ВЫРУЧКА', values: stream((m) => m.total), bold: true, hint: h.total },
   ]

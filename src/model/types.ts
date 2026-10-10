@@ -390,6 +390,8 @@ export interface RevenueMonth {
   publicBath: number
   /** Выручка ресторана очереди 2 (плейсхолдер-поток) */
   restaurant: number
+  /** Посадки ресторана за месяц (детализация потока — гости, не выручка) */
+  restCovers: number
   total: number
 }
 

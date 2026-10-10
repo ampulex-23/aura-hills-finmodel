@@ -283,6 +283,7 @@ export function computeRevenueMonth(
     publicGuests,
     publicBath: publicBathRev,
     restaurant,
+    restCovers,
     total,
   }
 }
