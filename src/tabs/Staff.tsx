@@ -8,8 +8,9 @@ const COL = {
   countStart: 'Ставок на дату открытия (месяц 1 операционки).',
   phase: 'Штат с этого месяца — фаза расширения. Число заменяет стартовое значение: 0 = роль ещё не нанята.',
   salary: 'Оклад gross, €/мес — до взносов работодателя. Индексируется инфляцией ежегодно.',
-  fund: 'Фонд месяца старта: ставки × оклад.',
-  withEr: 'Фонд + взносы работодателя (Соц.страх, GESY и др.). Дальше сверху — KPI-бонусы по выручке месяца.',
+  fund: 'Фонд месяца старта: ставки на открытие × оклад. Роль, нанятая в более поздней фазе (0 ставок на старте), здесь показывает 0 — она попадает в ФОТ со своего месяца найма.',
+  fundFinal: 'Фонд при штате последней фазы: ставки финальной колонки × оклад. Здесь видны роли, нанятые после открытия (Бронист, Инженер и т.д.).',
+  withEr: 'Фонд (финал) + взносы работодателя (Соц.страх, GESY и др.). Дальше сверху — KPI-бонусы по выручке месяца.',
 }
 
 // Вкладка «Штат»: единая картина фонда оплаты труда.
@@ -22,10 +23,15 @@ export function Staff() {
   const er = 1 + P.taxes.employerRate
 
   const phases = P.fot.phases ?? []
+  // Ставки роли при финальной численности: последняя фаза заменяет вектор целиком
+  const finalCount = (i: number) =>
+    phases.length ? phases[phases.length - 1].count[i] ?? P.fot.count[i] : P.fot.count[i]
   const staffMonthly = P.fot.count.reduce((s, c, i) => s + c * P.fot.salary[i], 0)
+  const staffMonthlyFinal = P.fot.salary.reduce((s, sal, i) => s + finalCount(i) * sal, 0)
   const cookMonthly = P.fb.enabled ? P.fb.cookCount * P.fb.cookSalary : 0
   const curatorMonthly = P.it.enabled ? P.it.curator : 0
   const totalBase = baseSalariesMonthly(P)
+  const totalBaseFinal = staffMonthlyFinal + cookMonthly + curatorMonthly
 
   const removeRole = (i: number) => {
     setParam('fot.roles', P.fot.roles.filter((_, j) => j !== i))
@@ -42,7 +48,9 @@ export function Staff() {
     <tr style={{ opacity: on ? 1 : 0.45 }}>
       <td className="lft">{name} <small className="note">· {src}</small></td>
       <td className="lft">{on ? fmt(count) : 'выкл.'}</td>
+      {phases.map((_, pi) => <td key={pi} className="lft">{on ? fmt(count) : '—'}</td>)}
       <td className="lft">{on ? fmt(salary) : '—'}</td>
+      <td className="lft">{on ? fmt(count * salary) : '—'}</td>
       <td className="lft">{on ? fmt(count * salary) : '—'}</td>
       <td className="lft">{on ? fmt(count * salary * er) : '—'}</td>
       <td />
@@ -70,13 +78,15 @@ export function Staff() {
                   <th key={pi}><Hint hint={{ title: ph.label, text: COL.phase }}><span>{ph.from}</span></Hint></th>
                 ))}
                 <th><Hint hint={{ text: COL.salary }}><span>Оклад, €/мес gross</span></Hint></th>
-                <th><Hint hint={{ text: COL.fund }}><span>Фонд, €/мес</span></Hint></th>
+                <th><Hint hint={{ text: COL.fund }}><span>Фонд (старт), €/мес</span></Hint></th>
+                <th><Hint hint={{ text: COL.fundFinal }}><span>Фонд (финал), €/мес</span></Hint></th>
                 <th><Hint hint={{ text: COL.withEr }}><span>Со взносами, €/мес</span></Hint></th><th></th>
               </tr>
             </thead>
             <tbody>
               {P.fot.roles.map((role, i) => {
                 const monthly = P.fot.count[i] * P.fot.salary[i]
+                const monthlyFinal = finalCount(i) * P.fot.salary[i]
                 return (
                   <tr key={i}>
                     <td className="lft"><TextCell w={190} value={role} onChange={(v) => setParam(`fot.roles.${i}`, v)} /></td>
@@ -88,7 +98,8 @@ export function Staff() {
                     ))}
                     <td><NumField value={P.fot.salary[i]} onChange={(v) => setParam(`fot.salary.${i}`, v)} step={50} /></td>
                     <td className="lft">{fmt(monthly)}</td>
-                    <td className="lft">{fmt(monthly * er)}</td>
+                    <td className="lft">{fmt(monthlyFinal)}</td>
+                    <td className="lft">{fmt(monthlyFinal * er)}</td>
                     <td>
                       <ActionIcon size="sm" variant="subtle" color="red" onClick={() => removeRole(i)}>✕</ActionIcon>
                     </td>
@@ -105,7 +116,8 @@ export function Staff() {
                 ))}
                 <td />
                 <td className="lft"><b>{fmt(totalBase)}</b></td>
-                <td className="lft"><b>{fmt(totalBase * er)}</b></td>
+                <td className="lft"><b>{fmt(totalBaseFinal)}</b></td>
+                <td className="lft"><b>{fmt(totalBaseFinal * er)}</b></td>
                 <td />
               </tr>
             </tbody>
@@ -137,6 +149,9 @@ export function Staff() {
           <div className="field"><span>+ условные роли</span><b>€{fmt(cookMonthly + curatorMonthly)}</b></div>
           <div className="field"><span>= оклады базы</span><b>€{fmt(totalBase)}</b></div>
           <div className="field"><span>+ взносы {(P.taxes.employerRate * 100).toFixed(2)}%</span><b>€{fmt(totalBase * er)}</b></div>
+          {phases.length > 0 && (
+            <div className="field"><span>При полном штате ({phases[phases.length - 1].from})</span><b>€{fmt(totalBaseFinal * er)}</b></div>
+          )}
           <small className="note">
             Дальше сверху ложатся KPI-бонусы (по выручке месяца) и годовая индексация
             инфляцией. Помесячную динамику ФОТ см. в отчёте «ФОТ».
