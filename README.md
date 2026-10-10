@@ -17,13 +17,15 @@
 
 ```
 src/
-├── data/            # params.json, scenarios.json, nomenclature.json (источник истины)
+├── data/            # params.json, scenarios.json, nomenclature.json, services.json
+│                    #   (источник истины)
 ├── model/           # ядро: types, scenario, revenue, opex, fot, capex, taxes, pnl,
-│                    #   cashflow, balance, kpis, sensitivity, run (оркестратор)
+│                    #   cashflow, balance, kpis, sensitivity, view, run (оркестратор)
 ├── tabs/            # вкладки UI = листы исходной книги
 ├── export/excel.ts  # генерация .xlsx из текущего состояния
 └── store.ts         # состояние + localStorage + JSON import/export
-tests/               # golden-master + audit-regressions + invariants + sensitivity
+tests/               # golden-master + audit-regressions + invariants + phase2
+│                    #   + sensitivity + docrender
 ```
 
 ## Разработка
@@ -38,10 +40,14 @@ npm run deploy  # push main + VDS: pull → npm ci → build → pm2 restart (sh
 
 ## Горизонт модели
 
-12 мес. стройка (янв–дек 2027) + 60 мес. операционки (янв 2028–дек 2032);
-сценарная задержка стройки удлиняет горизонт. Выручка: 7 потоков (аренда
-бань, парения, массаж, доп.услуги, глэмпинг, членства/сертификаты, F&B).
-Два режима: пакетный депозит €110/гость vs uptake-раскрытие. НДС:
+12 мес. стройка очереди 1 (янв–дек 2027) + 72 мес. операционки
+(янв 2028–дек 2033) = 84 строки Cash-Flow; сценарная задержка стройки
+удлиняет горизонт. Очередь 2 (общественная баня, ресторан, 4 VIP-комплекса)
+строится в 2029–2030 на фоне эксплуатации, ввод объектов — 01.2031.
+Выручка: 10 потоков (аренда бань, парения, массаж, доп.услуги, глэмпинг,
+членства/сертификаты, F&B, общественная баня оч. 2, ресторан оч. 2).
+Банные модули работают в 3 слота в день (утро/день/вечер). Два режима
+услуг: пакетный депозит €110/гость vs uptake-раскрытие. НДС:
 «С возмещением» (дефолт) / «Гросс», квартальная уплата. CIT 15% (реформа
 Кипра 2026) с переносом убытков, дивиденды 90% ЧП с лагом 12 мес,
 SDC 5% + GESY 2.65% (потолок €180k/год) удерживаются из дивиденд.
@@ -49,9 +55,10 @@ WACC — CAPM (≈17.4%) или ручной.
 
 ## Верификация
 
-53 теста, 5 файлов: golden-master (ядро воспроизводит Excel-эталон **до евро**
+71+ тестов, 6 файлов: golden-master (ядро воспроизводит Excel-эталон **до евро**
 при спинах входов эпохи оракула — `tests/_baseline.ts`), audit-regressions
 (налоговые и CF-механики), invariants (баланс, ΣFCFF=NPV, WBS, монотонность),
-sensitivity (100 точек реального пересчёта за ~1с). Excel-экспорт проверяется
-скриптами `scripts/_gen-xlsx.ts` + `_check-xlsx.py` + `_verify-xlsx.py`:
+phase2 (инварианты очереди 2), sensitivity (100 точек реального пересчёта за ~1с),
+docrender (рендер руководства). Excel-экспорт проверяется скриптами
+`scripts/_gen-xlsx.ts` + `_check-xlsx.py` + `_verify-xlsx.py`:
 2 623 формулы, 0 ошибок, 8/8 независимых Checks.

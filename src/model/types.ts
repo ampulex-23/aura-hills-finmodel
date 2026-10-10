@@ -27,7 +27,7 @@ export interface ModuleSpec {
   loadK: number
   slotsPerDay: number
   capacity: number
-  prices: number[] // цены слотов [утро, день1, день2, вечер]
+  prices: number[] // цены слотов [утро, день, вечер]
   avgPrice: number | null // вычисляется через slotMix
 }
 

@@ -71,7 +71,7 @@ function revenueHints(params: Params, r: ModelResult) {
       const avgPrice = m.slots ? m.rental / (m.slots * g) : 0
       return {
         title: 'Аренда бань',
-        text: 'Проданные слоты × средняя цена слота (фикс-цена бани 250/500/750, доли бань равные) × годовой рост цен.',
+        text: 'Проданные слоты × цена слота модуля (фиксирована баней: оч. 1 — 250/500/750, VIP оч. 2 — 500/500/350/750; доли бань равные) × годовой рост цен.',
         tex: String.raw`\mathrm{rental}=\mathrm{slots}\cdot\overline{\mathrm{цена}}_{\mathrm{микс}}\cdot(1+\mathrm{рост})^{\mathrm{год}}`,
         calc: `${fmt(m.slots)} слот × ${e1(avgPrice)} × рост ${g.toFixed(2)} = ${e0(m.rental)}`,
       }
@@ -692,13 +692,13 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
     {
       label: 'Входной НДС', values: T.map((m) => m.inputVat),
       tip: reimb
-        ? 'Режим «С возмещением»: НДС с OPEX помесячно и с CAPEX в первом месяце (земля не даёт входного НДС; отложенные модули — в месяц их ввода).'
+        ? 'Режим «С возмещением»: НДС с OPEX помесячно; с CAPEX оч. 1 — в первом месяце операционки; модули оч. 1 с поздним вводом — в месяц ввода; стройка оч. 2 — помесячно в окне 2029–2030. Земля входного НДС не даёт.'
         : 'Режим «Гросс»: входной НДС не возмещается и включён в расходы.',
       hint: (ci) => ({
         title: 'Входной НДС',
         text: reimb ? undefined : 'В режиме «Гросс» входной НДС не возмещается — всегда 0.',
         calc: reimb
-          ? `(OPEX ${e0(r.opex[ci].fixedTotal + r.opex[ci].variableTotal)}${ci === 0 ? ` + CAPEX без земли ${e0(r.capex.amortizableEur)}` : ''}) × ${pc(eff19, 2)} = ${e0(T[ci].inputVat)}`
+          ? `(OPEX ${e0(r.opex[ci].fixedTotal + r.opex[ci].variableTotal + r.opex[ci].itTotal)}${ci === 0 ? ` + CAPEX оч. 1 без земли и отложенного ${e0(r.capex.amortizableEur - r.capex.deferredPhase1Total)}` : ''}${r.capex.deferred.some((d) => d.month - params.meta.capexMonths - 1 === ci) ? ` + отложенный CAPEX месяца ${e0(r.capex.deferred.filter((d) => d.month - params.meta.capexMonths - 1 === ci).reduce((s, d) => s + d.eur, 0))}` : ''}) × ${pc(eff19, 2)} = ${e0(T[ci].inputVat)}`
           : '—',
       }),
     },
@@ -784,6 +784,7 @@ export function Taxes({ r, labels }: { r: ModelResult; labels: string[] }) {
 }
 
 export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
+  const { params } = useModel()
   const P = r.pnl
   const arith = (title: string, text: string, parts: (ci: number) => string) => (ci: number): CellHint => ({
     title, text, calc: parts(ci),
@@ -805,13 +806,13 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'Переменные расходы', values: P.map((m) => m.variableOpex),
-      tip: 'Расходники по справочнику номенклатуры (см. вкладку OPEX).',
-      hint: arith('Переменные', 'Расходники по нормам на слот/гостя/месяц.', (ci) => `Σ статей = ${e0(P[ci].variableOpex)}`),
+      tip: 'Расходники по справочнику номенклатуры: нормы на слот/гостя/месяц + материалы спецификаций по числу проведённых услуг (см. вкладку OPEX).',
+      hint: arith('Переменные', 'Нормативное списание + спековые материалы, по landed-цене с инфляцией.', (ci) => `Σ статей = ${e0(P[ci].variableOpex)}`),
     },
     {
       label: '% от выручки', values: P.map((m) => m.pctOpex),
-      tip: 'Эквайринг и ремонт — % от брутто-выручки; себестоимость F&B — % от выручки F&B.',
-      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. + ${e0(r.opex[ci].pct.fbCost)} F&B + ${e0(r.opex[ci].pct.ota)} OTA = ${e0(P[ci].pctOpex)}`),
+      tip: 'Эквайринг и ремонт — % от брутто-выручки; food-cost кафе-бара и ресторана оч. 2 — % от их выручки; OTA — от ночей глэмпинга через агрегаторы.',
+      hint: arith('% от выручки', '', (ci) => `${e0(r.opex[ci].pct.acquiring)} экв. + ${e0(r.opex[ci].pct.maintenance)} рем. + ${e0(r.opex[ci].pct.fbCost)} F&B + ${e0(r.opex[ci].pct.ota)} OTA${r.opex[ci].pct.restCost ? ` + ${e0(r.opex[ci].pct.restCost)} ресторан` : ''} = ${e0(P[ci].pctOpex)}`),
     },
     {
       label: 'Маржинальная прибыль', values: P.map((m) => m.marginalProfit), bold: true,
@@ -837,7 +838,7 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'Амортизация', values: P.map((m) => m.amortization),
-      hint: arith('Амортизация', 'Линейная по группам CAPEX — см. вкладку CAPEX.', () => `${e0(r.capex.monthlyAmort)}/мес`),
+      hint: arith('Амортизация', 'Линейная по группам CAPEX, помесячно по датам ввода: база оч. 1 с открытия, объекты оч. 2 — с их ввода (см. вкладку CAPEX).', (ci) => `${e0(P[ci].amortization)}/мес${P[ci].amortization > r.capex.monthlyAmort + 1 ? ` (оч. 1 ${e0(r.capex.monthlyAmort)} + оч. 2 / поздние модули ${e0(P[ci].amortization - r.capex.monthlyAmort)})` : ''}`),
     },
     {
       label: 'EBIT', values: P.map((m) => m.ebit), bold: true,
@@ -845,7 +846,7 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'CIT', values: P.map((m) => m.cit),
-      hint: arith('CIT', 'Корпоративный налог — авансы в июне и декабре.', (ci) => `${e0(P[ci].cit)}`),
+      hint: arith('CIT', `Корпоративный налог ${pc(params.taxes.cit)} по календарным годам с переносом убытков — провизиональные авансы в июле и декабре.`, (ci) => `${e0(P[ci].cit)}`),
     },
     {
       label: 'Чистая прибыль', values: P.map((m) => m.netProfit), bold: true,
@@ -857,7 +858,7 @@ export function Pnl({ r, labels }: { r: ModelResult; labels: string[] }) {
     },
     {
       label: 'SDC + GESY', values: P.map((m) => m.sdc + m.gesy),
-      hint: arith('SDC + GESY', 'Defence Tax 17% + здравоохранение 2.65% на дивиденды резидентов Кипра.', (ci) => `${e0(P[ci].sdc + P[ci].gesy)}`),
+      hint: arith('SDC + GESY', `Defence Tax ${pc(params.taxes.sdc)} + здравоохранение ${pc(params.taxes.gesy, 2)} — удерживаются из дивидендов резидентов-домицилов (Non-Dom освобождён); справочно, не отток компании.`, (ci) => `${e0(P[ci].sdc + P[ci].gesy)}`),
     },
     {
       label: 'ЧП после SDC', values: P.map((m) => m.netAfterSdc), bold: true,

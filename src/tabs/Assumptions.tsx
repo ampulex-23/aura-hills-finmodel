@@ -26,7 +26,8 @@ export function Assumptions() {
       <div className="form-row">
       <fieldset>
         <legend>Общие</legend>
-        <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct />
+        <Row label="Инфляция" path="general.inflation" value={P.general.inflation} pct
+          hint="Годовая индексация затрат: оклады, постоянные OPEX, нормы расходников, IT-подписки, аренда земли и чек ресторана оч. 2 умножаются на (1+i)^год — ступенькой раз в 12 месяцев. Цены услуг индексируются отдельно — «ростом цен» сценария." />
         <div className="field">
           <Hint hint={{ text: 'CAPM — ставка собирается из rf + β·ERP + страновая и size-премии (поля ниже). Ручная — фиксированный WACC.' }}>
             <span>Ставка дисконтирования</span>
@@ -43,21 +44,27 @@ export function Assumptions() {
           />
         </div>
         {P.general.waccMode === 'manual' ? (
-          <Row label="WACC (ручная)" path="general.wacc" value={P.general.wacc} pct />
+          <Row label="WACC (ручная)" path="general.wacc" value={P.general.wacc} pct
+            hint="Фиксированная эффективная годовая ставка дисконтирования. Помесячно применяется (1+WACC)^(1/12)−1. CAPM-поля игнорируются." />
         ) : (
           <>
-            <Row label="Безрисковая (rf, EUR 10Y)" path="general.capm.rf" value={P.general.capm.rf} pct step={0.001} />
-            <Row label="Бета (leisure, unlevered)" path="general.capm.beta" value={P.general.capm.beta} step={0.05} />
-            <Row label="Премия за риск (ERP)" path="general.capm.erp" value={P.general.capm.erp} pct step={0.005} />
-            <Row label="Страновая премия (Кипр)" path="general.capm.countryPremium" value={P.general.capm.countryPremium} pct step={0.005} />
-            <Row label="Size / startup премия" path="general.capm.sizePremium" value={P.general.capm.sizePremium} pct step={0.005} />
+            <Row label="Безрисковая (rf, EUR 10Y)" path="general.capm.rf" value={P.general.capm.rf} pct step={0.001}
+              hint="Доходность 10-летних гособлигаций в евро — первое слагаемое CAPM: ke = rf + β·ERP + страновая + size." />
+            <Row label="Бета (leisure, unlevered)" path="general.capm.beta" value={P.general.capm.beta} step={0.05}
+              hint="Чувствительность отрасли leisure/hospitality к рынку. β>1 — проект волатильнее рынка; умножает премию ERP." />
+            <Row label="Премия за риск (ERP)" path="general.capm.erp" value={P.general.capm.erp} pct step={0.005}
+              hint="Equity risk premium зрелого рынка — надбавка акций над безрисковой ставкой; умножается на бету." />
+            <Row label="Страновая премия (Кипр)" path="general.capm.countryPremium" value={P.general.capm.countryPremium} pct step={0.005}
+              hint="Спред риска Кипра над развитым рынком — прибавляется к стоимости капитала как есть." />
+            <Row label="Size / startup премия" path="general.capm.sizePremium" value={P.general.capm.sizePremium} pct step={0.005}
+              hint="Премия за малый размер и стадию запуска — крупнейший «мягкий» компонент ставки. Снижайте по мере выхода проекта на устойчивую работу." />
             <small className="note">
               ke = rf + β·ERP + страновая + size = <b>{fmtPct(capmWacc(P))}</b>. Долга нет → WACC = ke. Эффективная годовая; помесячно (1+WACC)^(1/12)−1.
             </small>
           </>
         )}
         <div className="field">
-          <Hint hint={{ text: 'Вкл — терминальная стоимость по модели Гордона от FCFF последнего года; выкл — консервативно, только горизонт 5 лет.' }}>
+          <Hint hint={{ text: 'Вкл — терминальная стоимость по модели Гордона от FCFF последнего (6-го) операционного года, показывается отдельной метрикой «NPV с TV»; выкл — консервативно, только явный горизонт 72 мес.' }}>
             <span>Terminal value</span>
           </Hint>
           <Select
@@ -71,9 +78,11 @@ export function Assumptions() {
             allowDeselect={false}
           />
         </div>
-        <Row label="Рост после горизонта (g)" path="tv.growth" value={P.tv.growth} pct step={0.005} />
-        <Row label="Exit-мультипликатор EV/EBITDA" path="tv.exitMultiple" value={P.tv.exitMultiple} step={0.5} suffix="×" />
-        <small className="note">TV = FCFF 5-го года (после maintenance CAPEX) × (1+g) / (WACC−g); exit-multiple — cross-check (leisure 5–7×). «NPV с TV» — отдельная метрика, база без TV.</small>
+        <Row label="Рост после горизонта (g)" path="tv.growth" value={P.tv.growth} pct step={0.005}
+          hint="Вечный темп роста FCFF в формуле Гордона. Должен быть заметно ниже WACC, иначе TV «взрывается»; обычно ≈ инфляция." />
+        <Row label="Exit-мультипликатор EV/EBITDA" path="tv.exitMultiple" value={P.tv.exitMultiple} step={0.5} suffix="×"
+          hint="Отраслевой мультипликатор продажи бизнеса (leisure 5–7×) — cross-check гордоновской TV: EBITDA последнего года × множитель, дисконтированная на конец горизонта." />
+        <small className="note">TV = FCFF последнего года (после maintenance CAPEX) × (1+g) / (WACC−g); exit-multiple — cross-check (leisure 5–7×). «NPV с TV» — отдельная метрика, база без TV.</small>
       </fieldset>
 
       <fieldset>
@@ -118,14 +127,22 @@ export function Assumptions() {
 
       <fieldset>
         <legend>Налоги и взносы</legend>
-        <Row label="CIT" path="taxes.cit" value={P.taxes.cit} pct />
-        <Row label="НДС стандартный" path="taxes.vatStd" value={P.taxes.vatStd} pct />
-        <Row label="НДС глэмпинг" path="taxes.vatGlamp" value={P.taxes.vatGlamp} pct />
-        <Row label="НДС F&B" path="taxes.vatFb" value={P.taxes.vatFb} pct />
-        <Row label="НДС входной" path="taxes.vatInput" value={P.taxes.vatInput} pct />
-        <Row label="Взносы работодателя" path="taxes.employerRate" value={P.taxes.employerRate} pct step={0.001} />
-        <Row label="SDC на дивиденды" path="taxes.sdc" value={P.taxes.sdc} pct />
-        <Row label="GESY на дивиденды" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001} />
+        <Row label="CIT" path="taxes.cit" value={P.taxes.cit} pct
+          hint="Налог на прибыль Кипра (15% с реформы 2026). База — EBIT с налоговой амортизацией (capital allowances) и переносом убытков по календарным годам; платится авансами 31 июля и 31 декабря." />
+        <Row label="НДС стандартный" path="taxes.vatStd" value={P.taxes.vatStd} pct
+          hint="Ставка внутри цен бань, услуг, членств, сертификатов и билета общественной бани. Начисленный НДС изымается из выручки в P&L: нетто = брутто × 1/(1+r)." />
+        <Row label="НДС глэмпинг" path="taxes.vatGlamp" value={P.taxes.vatGlamp} pct
+          hint="Пониженная ставка размещения — применяется к выручке глэмпинга." />
+        <Row label="НДС F&B" path="taxes.vatFb" value={P.taxes.vatFb} pct
+          hint="Пониженная ставка общепита — кафе-бар оч. 1 и ресторан оч. 2." />
+        <Row label="НДС входной" path="taxes.vatInput" value={P.taxes.vatInput} pct
+          hint="Ставка входного НДС на OPEX и CAPEX. В режиме «С возмещением» зачитывается против выходного; излишек переносится кредитом. CAPEX оч. 1 — в 1-й месяц операционки, оч. 2 — помесячно в окне стройки; земля входного НДС не даёт." />
+        <Row label="Взносы работодателя" path="taxes.employerRate" value={P.taxes.employerRate} pct step={0.001}
+          hint="Начисляются сверху на оклады И KPI-бонусы: SI 8.8% + GESY 2.9% + Social Cohesion 2% + Redundancy 1.2% + HRDA 0.5% = 15.4%." />
+        <Row label="SDC на дивиденды" path="taxes.sdc" value={P.taxes.sdc} pct
+          hint="Special Defence Contribution — удерживается ИЗ дивидендов партнёров-резидентов-домицилов (не отток компании). 5% с 2026; Non-Dom освобождён." />
+        <Row label="GESY на дивиденды" path="taxes.gesy" value={P.taxes.gesy} pct step={0.001}
+          hint="Взнос в систему здравоохранения с дивидендов резидентов — вместе с SDC, с годовым потолком базы на человека (поле ниже)." />
         <Row label="Потолок базы GESY, €/год на лицо" path="taxes.gesyCap" value={P.taxes.gesyCap} step={10000}
           hint="Максимальная годовая база взноса GESY на человека (€180k с 2025) — свыше потолка взнос не берётся." />
         <label className="field">
@@ -218,20 +235,29 @@ export function Assumptions() {
       <div className="form-row">
       <fieldset>
         <legend>Прочие OPEX</legend>
-        <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct />
-        <Row label="Ремонт/обслуживание, %" path="opexPct.maintenance" value={P.opexPct.maintenance} pct />
-        <Row label="Маркетинг, min €/мес" path="opexFixed.0.base" value={P.opexFixed[0]?.base ?? 0} step={250} />
-        <Row label="Маркетинг, % выручки" path="opexFixed.0.pctOfRevenue" value={P.opexFixed[0]?.pctOfRevenue ?? 0} pct step={0.005} />
-        <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50} />
-        <Row label="Доля глэмпинга через OTA" path="glampOta.share" value={P.glampOta.share} pct step={0.05} />
-        <Row label="Комиссия OTA" path="glampOta.commissionPct" value={P.glampOta.commissionPct} pct step={0.01} />
+        <Row label="Эквайринг, % выручки" path="opexPct.acquiring" value={P.opexPct.acquiring} pct
+          hint="Комиссия платёжного шлюза — % от всей брутто-выручки месяца (все десять потоков)." />
+        <Row label="Ремонт/обслуживание, %" path="opexPct.maintenance" value={P.opexPct.maintenance} pct
+          hint="FF&E-норма на текущий ремонт — % от выручки (отрасль premium leisure 3–4%). Не путать с maintenance CAPEX — тот идёт отдельным оттоком в CF." />
+        <Row label="Маркетинг, min €/мес" path="opexFixed.0.base" value={P.opexFixed[0]?.base ?? 0} step={250}
+          hint="Фиксированная база маркетинга (индексируется инфляцией). Статья = max(база, % выручки месяца)." />
+        <Row label="Маркетинг, % выручки" path="opexFixed.0.pctOfRevenue" value={P.opexFixed[0]?.pctOfRevenue ?? 0} pct step={0.005}
+          hint="Переменная часть маркетинга — растёт вместе с продажами, когда превышает базу. Отрасль 3–6%." />
+        <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50}
+          hint="Полисы комплекса — постоянная статья с индексацией инфляцией. Рынок €800–2 000/мес." />
+        <Row label="Доля глэмпинга через OTA" path="glampOta.share" value={P.glampOta.share} pct step={0.05}
+          hint="Доля ночей, проданных через Booking/Airbnb. Только эти ночи облагаются комиссией; 0% = «только прямые продажи»." />
+        <Row label="Комиссия OTA" path="glampOta.commissionPct" value={P.glampOta.commissionPct} pct step={0.01}
+          hint="Тариф агрегатора: OPEX = выручка глэмпинга × доля OTA × комиссия. Цена ночи не уменьшается — комиссия идёт расходом." />
         <small className="note">Маркетинг = max(min €/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес. OTA: Booking/Airbnb ~15–18%.</small>
       </fieldset>
 
       <fieldset>
         <legend>Членства, сертификаты и ёмкость</legend>
-        <Row label="Визитов члена/мес" path="members.visitsPerMonth" value={P.members.visitsPerMonth} step={0.5} />
-        <Row label="Гостей в визите" path="members.partySize" value={P.members.partySize} step={0.5} />
+        <Row label="Визитов члена/мес" path="members.visitsPerMonth" value={P.members.visitsPerMonth} step={0.5}
+          hint="Сколько раз в месяц приходит один член клуба (месячный или годовой). Визиты × гостей в визите = гости-члены месяца → ёмкость, сервисный чек, F&B и нормы «на гостя»." />
+        <Row label="Гостей в визите" path="members.partySize" value={P.members.partySize} step={0.5}
+          hint="Сколько гостей приводит член за один визит (включая себя)." />
         <div className="field">
           <Hint hint={{ text: '«Да» — членские и сертификатные визиты расходуют слоты ёмкости (вытесняют платных гостей в пик). «Нет» — идут сверх ёмкости, агрессивное допущение.' }}>
             <span>Члены занимают слоты</span>
@@ -242,10 +268,14 @@ export function Assumptions() {
             onChange={(v) => setParam('members.consumeSlots', v === 'true')}
           />
         </div>
-        <Row label="Доля визитов в пиковые слоты" path="members.peakShare" value={P.members.peakShare} pct step={0.05} />
-        <Row label="Сервисный чек члена, €/визит" path="members.serviceSpendPerVisit" value={P.members.serviceSpendPerVisit} step={5} />
-        <Row label="Сертификаты: доля погашения" path="units.certRedemptionRate" value={P.units.certRedemptionRate} pct step={0.05} />
-        <Row label="Гостей на сертификат" path="units.certGuestsPerCert" value={P.units.certGuestsPerCert} step={0.5} />
+        <Row label="Доля визитов в пиковые слоты" path="members.peakShare" value={P.members.peakShare} pct step={0.05}
+          hint="Какая часть членских и сертификатных визитов приходится на пиковое время. Только она вытесняет платные слоты; остальные визиты занимают свободную ёмкость." />
+        <Row label="Сервисный чек члена, €/визит" path="members.serviceSpendPerVisit" value={P.members.serviceSpendPerVisit} step={5}
+          hint="Средние траты гостя-члена на услуги за визит. Разносятся по потокам парений/массажа/допов в пропорции пакета (50:60:22) → COGS спек и KPI-бонусы мастеров." />
+        <Row label="Сертификаты: доля погашения" path="units.certRedemptionRate" value={P.units.certRedemptionRate} pct step={0.05}
+          hint="Доля проданных сертификатов, которую реально используют. Погашённые — гости с ёмкостью, COGS и F&B; непогашённые — чистая выручка (breakage)." />
+        <Row label="Гостей на сертификат" path="units.certGuestsPerCert" value={P.units.certGuestsPerCert} step={0.5}
+          hint="Сколько гостей приходит по одному сертификату — масштабирует ёмкостную и F&B-нагрузку погашений." />
         <small className="note">
           Платные слоты вытесняют только членские/сертификатные визиты в пик (доля выше) — остальные заполняют свободную ёмкость.
           Гости-члены покупают услуги на сервисный чек (распределяется по потокам в пропорции пакета → COGS спек и KPI).
@@ -255,19 +285,28 @@ export function Assumptions() {
 
       <fieldset>
         <legend>Цены</legend>
-        <Row label="Месячное членство, €" path="prices.membershipMonth" value={P.prices.membershipMonth} />
-        <Row label="Годовое членство, €" path="prices.membershipYear" value={P.prices.membershipYear} />
-        <Row label="Сертификат, €" path="prices.certificate" value={P.prices.certificate} />
-        <Row label="F&B на гостя, €" path="prices.fbPerGuest" value={P.prices.fbPerGuest} />
-        <Row label="Глэмпинг малый, €/ночь" path="prices.glampSmall" value={P.prices.glampSmall} />
-        <Row label="Глэмпинг большой, €/ночь" path="prices.glampBig" value={P.prices.glampBig} />
+        <Row label="Месячное членство, €" path="prices.membershipMonth" value={P.prices.membershipMonth}
+          hint="Абонемент на месяц. Выручка = число месячных членов (вектор сценария по годам) × цена × рост цен." />
+        <Row label="Годовое членство, €" path="prices.membershipYear" value={P.prices.membershipYear}
+          hint="Годовой абонемент. План активных годовых членов 30/50/80/120/120 по годам; каждый даёт цена/12 в месяц. Год 1 продаётся пресейлом." />
+        <Row label="Сертификат, €" path="prices.certificate" value={P.prices.certificate}
+          hint="Подарочный сертификат: 65 шт/мес × сезонность сертификатов (пик декабрь) × рампа × цена. Погашается на 85%." />
+        <Row label="F&B на гостя, €" path="prices.fbPerGuest" value={P.prices.fbPerGuest}
+          hint="Средний чек кафе-бара очереди 1 на одного гостя (слоты, члены, сертификаты, VIP). Посетители общественной бани едят в ресторане оч. 2 и сюда не входят." />
+        <Row label="Глэмпинг малый, €/ночь" path="prices.glampSmall" value={P.prices.glampSmall}
+          hint="Тариф малого юнита: 30 ночей × 2 юнита × загрузка × летняя сезонность × цена × рост цен." />
+        <Row label="Глэмпинг большой, €/ночь" path="prices.glampBig" value={P.prices.glampBig}
+          hint="Тариф большого юнита (1 шт), та же формула. Все цены блока индексируются «ростом цен» сценария." />
       </fieldset>
 
       <fieldset>
         <legend>F&B</legend>
-        <Row label="Себестоимость F&B, % выручки" path="fb.foodCostPct" value={P.fb.foodCostPct} pct />
-        <Row label="Оклад повара, €/мес gross" path="fb.cookSalary" value={P.fb.cookSalary} step={50} />
-        <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5} />
+        <Row label="Себестоимость F&B, % выручки" path="fb.foodCostPct" value={P.fb.foodCostPct} pct
+          hint="Food-cost кафе-бара оч. 1 — продукты и расходники кухни как доля выручки F&B (не общей). Ресторан оч. 2 имеет свой food-cost в блоке ниже." />
+        <Row label="Оклад повара, €/мес gross" path="fb.cookSalary" value={P.fb.cookSalary} step={50}
+          hint="Условная роль: входит в ФОТ (с взносами и инфляцией), пока включён слой F&B. Во вкладке «Штат» показана read-only." />
+        <Row label="Поваров, ставок" path="fb.cookCount" value={P.fb.cookCount} step={0.5}
+          hint="Число ставок повара — множитель оклада." />
         <small className="note">Рынок Кипр: повар €1,100–2,200 gross/мес. Себестоимость — доля выручки F&B (типично 30–35%). Ставка повара отображается во вкладке «Штат».</small>
       </fieldset>
 
@@ -285,11 +324,12 @@ export function Assumptions() {
           />
         </label>
         <small className="note">
-          <b>Аутсорс</b>: стирка комплектов по тарифу прачечной — списывается в OPEX
-          спеками услуг (NC-159 €4.99/гостевой набор, NC-210 €1.5/процедурный).
+          <b>Аутсорс</b>: каждая стирка комплекта списывается в OPEX спеками услуг по тарифу прачечной
+          (NC-159 «Стирка гостевого набора — цикл» €4.99, NC-210 «Стирка процедурного набора — цикл» €1.5).
           <b>Своя</b>: оборудование входит в CAPEX стройки (группа «Прачечная (своя)»,
-          ~€8k, амортизируется), а комплекты списываются по расходникам цикла
-          (ownPrice €0.9/€0.45 — порошок/гель; коммуналка не считается).
+          ~€8k, амортизируется), а цикл стирки списывается по себестоимости
+          (ownPrice €0.9/€0.45 — порошок, вода, электричество; коммуналка отдельно не считается).
+          Сам текстиль (халаты, полотенца — позиции CAPEX) закупается в любом режиме.
         </small>
       </fieldset>
       </div>
@@ -313,26 +353,37 @@ export function Assumptions() {
             allowDeselect={false}
           />
         </label>
-        <Row label="Стоимость участка, €" path="land.purchaseCost" value={P.land.purchaseCost} step={5000} />
-        <Row label="Аренда земли, €/мес" path="land.rentMonthly" value={P.land.rentMonthly} step={50} />
+        <Row label="Стоимость участка, €" path="land.purchaseCost" value={P.land.purchaseCost} step={5000}
+          hint="Действует в режиме «Покупка»: разовый CAPEX в стройке оч. 1, без амортизации и без входного НДС." />
+        <Row label="Аренда земли, €/мес" path="land.rentMonthly" value={P.land.rentMonthly} step={50}
+          hint="Действует в режиме «Аренда»: с 1-го месяца стройки — строка в Cash-Flow; в операционке — постоянная статья OPEX с инфляцией." />
         <small className="note">Своя — явное допущение, €0 в модели. Аренда платится с 1-го мес стройки (в CF) и в операционке (в OPEX, с инфляцией). Покупка — в CAPEX, без амортизации. Рынок: сельхоз €330–650/мес, «под глэмпинг» до €2,000/мес; покупка €40–200k.</small>
       </fieldset>
 
       <fieldset>
         <legend>Депозит и кошелёк услуг</legend>
-        <Row label="Депозит на гостя, €" path="deposit.base" value={P.deposit.base} />
-        <Row label="База парения, €" path="deposit.steamBase" value={P.deposit.steamBase} />
-        <Row label="База массажа, €" path="deposit.massageBase" value={P.deposit.massageBase} />
-        <Row label="Доля кошелька на доп.услуги" path="service.walletExtraShare" value={P.service.walletExtraShare} pct />
-        <Row label="Доля апгрейдов сверх депозита" path="service.upgradeShare" value={P.service.upgradeShare} pct />
+        <Row label="Депозит на гостя, €" path="deposit.base" value={P.deposit.base}
+          hint="Пакетный депозит за гостя слота — не отдельная выручка, а база кошелька услуг: доля ниже от него уходит на купели/чаны/ванны." />
+        <Row label="База парения, €" path="deposit.steamBase" value={P.deposit.steamBase}
+          hint="Стоимость парения, зашитая в депозит. Выручка парений = гости × uptake × загрузка × (1−доля допов) × база, распределённая по меню пропорционально вес×цена." />
+        <Row label="База массажа, €" path="deposit.massageBase" value={P.deposit.massageBase}
+          hint="Аналогично парению — базовая стоимость массажа внутри депозита." />
+        <Row label="Доля кошелька на доп.услуги" path="service.walletExtraShare" value={P.service.walletExtraShare} pct
+          hint="Часть депозита, уходящая на доп. услуги: доля × депозит распределяется по семи позициям прайса допов пропорционально вес×цена. Та же доля вычитается из баз парения/массажа." />
+        <Row label="Доля апгрейдов сверх депозита" path="service.upgradeShare" value={P.service.upgradeShare} pct
+          hint="Доля гостей, доплачивающих за услугу дороже базы (цена позиции − база). 0 = консервативно: выручка услуг не выходит за рамки депозита." />
       </fieldset>
 
       <fieldset>
         <legend>Мощности и объёмы</legend>
-        <Row label="Глэмпинг малых" path="units.glampSmall" value={P.units.glampSmall} step={1} />
-        <Row label="Глэмпинг больших" path="units.glampBig" value={P.units.glampBig} step={1} />
-        <Row label="Сертификатов/мес" path="units.certsPerMonth" value={P.units.certsPerMonth} step={1} />
-        <Row label="Пре-сейл, мес до открытия" path="units.presaleMonths" value={P.units.presaleMonths} step={1} />
+        <Row label="Глэмпинг малых" path="units.glampSmall" value={P.units.glampSmall} step={1}
+          hint="Число малых юнитов размещения — ёмкость ночей по тарифу «малый»." />
+        <Row label="Глэмпинг больших" path="units.glampBig" value={P.units.glampBig} step={1}
+          hint="Число больших юнитов — ёмкость ночей по тарифу «большой»." />
+        <Row label="Сертификатов/мес" path="units.certsPerMonth" value={P.units.certsPerMonth} step={1}
+          hint="Плановые продажи сертификатов в месяц (до сезонности, рампы и мультипликатора спроса). Также входит в месячную сумму пресейла." />
+        <Row label="Пре-сейл, мес до открытия" path="units.presaleMonths" value={P.units.presaleMonths} step={1}
+          hint="Длина окна предпродаж в конце стройки: каждый месяц приходит кэш = сертификаты + месячные члены года 1 + годовые/12 по плановым ценам." />
         <label className="field">
           <Hint hint={{ text: '«Предоплата» — те же членства: кэш приходит в стройке и прогорает без нового кэша в операционке. «Доп. канал» — пресейл как отдельная выручка сверх плана (агрессивно).' }}>
             <span>Режим пре-сейла</span>
@@ -358,7 +409,8 @@ export function Assumptions() {
           value={P.units.presaleRecognizeMonths} step={1}
           hint="Число месяцев, за которые равномерно признаётся выручка проданных в пресейле членств — разнесение предоплаты в P&L операционки."
         />
-        <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1} />
+        <Row label="Pre-opening, мес до открытия" path="preopen.months" value={P.preopen.months} step={1}
+          hint="Сколько последних месяцев стройки штат уже нанят, а коммуналка и подписки платятся: оклады старта × (1+взносы) + постоянные + IT OPEX — отдельная строка CF." />
         <small className="note">Pre-opening: штат нанят и фикс-расходы идут до открытия — «мёртвый» отток в CF конца стройки (оклады+взносы+постоянные/IT, без переменных).</small>
       </fieldset>
 
@@ -375,10 +427,14 @@ export function Assumptions() {
             onChange={(v) => setParam('capexMaint.enabled', v === 'on')}
           />
         </label>
-        <Row label="% амортизируемого CAPEX в год" path="capexMaint.pctPerYear" value={P.capexMaint.pctPerYear} pct step={0.005} />
-        <Row label="С операционного года" path="capexMaint.startYear" value={P.capexMaint.startYear} step={1} />
-        <Row label="Капремонт в году" path="capexMaint.lumpYear" value={P.capexMaint.lumpYear} step={1} />
-        <Row label="Капремонт, €" path="capexMaint.lumpEur" value={P.capexMaint.lumpEur} step={5000} />
+        <Row label="% амортизируемого CAPEX в год" path="capexMaint.pctPerYear" value={P.capexMaint.pctPerYear} pct step={0.005}
+          hint="Reserve for replacement: доля амортизируемой базы оч. 1 в год, списывается в CF помесячно (÷12). Отрасль 1.5–4%." />
+        <Row label="С операционного года" path="capexMaint.startYear" value={P.capexMaint.startYear} step={1}
+          hint="С какого операционного года начинаются отчисления — год 1 обычно замен не требует, техника новая." />
+        <Row label="Капремонт в году" path="capexMaint.lumpYear" value={P.capexMaint.lumpYear} step={1}
+          hint="Операционный год разового капитального ремонта — отток в его первом месяце." />
+        <Row label="Капремонт, €" path="capexMaint.lumpEur" value={P.capexMaint.lumpEur} step={5000}
+          hint="Сумма разового капремонта (печи, купели, кровля) — единоразовый отток CF." />
         <small className="note">
           Замена печей/купелей/текстиля/IT-железа — reserve for replacement (отрасль 1.5–4% CAPEX в год) + разовый капремонт.
           S-кривая освоения стройки (12 весов, нормируются): {P.capexSCurve.map((w) => (w * 100).toFixed(0)).join(' · ')}%.
@@ -438,10 +494,10 @@ export function Assumptions() {
                       <th><Hint hint={{ text: phase === 1 ? 'Активен — модуль продаёт слоты и считается в ёмкости; помодульные строки сметы CAPEX зависят от числа активных. «В резерве» — вне модели до активации.' : '«Активен» — объект включён в план стройки очереди 2: платит свой CAPEX в окне стройки и продаёт слоты с launchDate. «В резерве» — выключен (частичная реализация).' }}><span>Статус</span></Hint></th>
                       <th><Hint hint={{ text: 'Месяц ввода в эксплуатацию (ГГГГ-ММ). До этой даты модуль не генерирует выручку.' }}><span>Ввод с</span></Hint></th>
                       <th><Hint hint={{ text: 'Доля дней в работе: ~95% ≈ 1.5 дня/мес на профилактику печей и водоёмов.' }}><span>Uptime</span></Hint></th>
-                      <th><Hint hint={{ text: 'Слотов в день: утро, день 1, день 2, вечер.' }}><span>Слотов/д</span></Hint></th>
-                      <th><Hint hint={{ text: 'Гостей в одном слоте.' }}><span>Мест</span></Hint></th>
+                      <th><Hint hint={{ text: 'Слотов в день: утро, день, вечер (3). Ёмкость = 30 × слоты × uptime слотов/мес.' }}><span>Слотов/д</span></Hint></th>
+                      <th><Hint hint={{ text: 'Гостей в одном слоте — ёмкость в гостях, база услуг, F&B и норм «на гостя». Для аренды определяет тариф спецификации (до 4 / до 8 / до 12).' }}><span>Мест</span></Hint></th>
                       <th><Hint hint={{ text: 'Помодульный множитель заполняемости: 1.0 = общая загрузка сценария; ниже — если модуль продаётся хуже.' }}><span>Коэфф. загр.</span></Hint></th>
-                      <th colSpan={4}><Hint hint={{ text: 'Прайс слота по времени суток, € — влияет на разложение слотов, не на выручку бани (депозит фиксирован).' }}><span>Цены слотов €</span></Hint></th>
+                      <th colSpan={P.slotMix.length}><Hint hint={{ text: 'Цена слота, € — фиксирована баней и не зависит от времени суток (три поля на случай дифференциации). Выручка аренды = слоты × средневзвешенная цена × рост цен.' }}><span>Цены слотов € (утро / день / вечер)</span></Hint></th>
                       <th><Hint hint={{ text: 'Средневзвешенная цена слота по долям спроса (slotMix ниже).' }}><span>Ср.-взв. €</span></Hint></th>
                     </tr>
                   </thead>
@@ -499,8 +555,9 @@ export function Assumptions() {
           Uptime 95% ≈ ~1.5 дня/мес на профилактику печей, водоёмов и чистки (реалистичный диапазон 92–97%).
           «Коэфф. загр.» — помодульный множитель заполняемости (1.0 = общая загрузка; опустите крупный модуль до 0.8–0.9, если он продаётся хуже).
           Доля доп.услуг задаётся сценарно (uptake) + глобально долей кошелька — помодульного % не было и в Excel.
-          Цена слота фиксирована баней (250/500/750 €): доли спроса по времени суток влияют только на разложение
+          Цена слота фиксирована баней (оч. 1: 250/500/750 €; VIP-1…4: 500/500/350/750 €): доли спроса по времени суток влияют только на разложение
           слотов по колонкам, не на выручку. Доли между банями равные — следуют из одинаковых «слотов/день».
+          Все семь модулей активны по умолчанию — модель считает полную двухочередную конфигурацию.
         </p>
       </fieldset>
       </div>

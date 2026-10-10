@@ -9,7 +9,7 @@ import { computeBreakEven } from '../model/sensitivity'
 import { fmt, fmtEur, fmtPct, Hint } from '../components/ui'
 import type { CellHint } from '../components/ui'
 
-const COLORS = ['#5b8dd9', '#9c6ade', '#4cc38a', '#f5a623', '#e5534b', '#50c8d8', '#d8b356']
+const COLORS = ['#5b8dd9', '#9c6ade', '#4cc38a', '#f5a623', '#e5534b', '#50c8d8', '#d8b356', '#e07aa8', '#8fbf7f']
 const tooltipStyle = {
   contentStyle: { background: '#1b2432', border: '1px solid #32415c', borderRadius: 8, fontSize: 12.5 },
   labelStyle: { color: '#aab6c8', fontWeight: 600 },
@@ -33,6 +33,8 @@ export function Dashboard({ r }: { r: ModelResult }) {
         Глэмпинг: Math.round(m.glamping),
         Членства: Math.round(m.membershipTotal),
         'F&B': Math.round(m.fb),
+        'Общ. баня': Math.round(m.publicBath),
+        Ресторан: Math.round(m.restaurant),
       })),
     [r],
   )
@@ -50,10 +52,10 @@ export function Dashboard({ r }: { r: ModelResult }) {
   const last = r.cashflow[r.cashflow.length - 1]
   const kpis: { label: string; value: string; hint: CellHint }[] = [
     {
-      label: 'NPV (5 лет)', value: fmtEur(k.npv),
+      label: `NPV (${Math.round(params.meta.opsMonths / 12)} лет)`, value: fmtEur(k.npv),
       hint: {
         title: 'Чистая приведённая стоимость',
-        text: `Сумма дисконтированных FCFF за стройку + 5 лет операций. Ставка ${fmtPct(k.wacc)} годовых (${params.general.waccMode === 'capm' ? 'CAPM' : 'ручная'}), помесячно по эффективной ставке (1+WACC)^(1/12)−1.`,
+        text: `Сумма дисконтированных FCFF за стройку (${params.meta.capexMonths} мес) + ${params.meta.opsMonths} мес операций, включая стройку и работу очереди 2. Ставка ${fmtPct(k.wacc)} годовых (${params.general.waccMode === 'capm' ? 'CAPM' : 'ручная'}), помесячно по эффективной ставке (1+WACC)^(1/12)−1. Без терминальной стоимости.`,
         tex: String.raw`\mathrm{NPV}=\sum_{m}\frac{\mathrm{FCFF}_m}{(1+\mathrm{WACC})^{m/12}}`,
         calc: `Σ дисконт. FCFF = ${fmtEur(last.cumDcf)}`,
       },
@@ -70,7 +72,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
       label: 'Окупаемость', value: `${k.paybackMonths} мес`,
       hint: {
         title: 'Окупаемость',
-        text: 'Первый месяц (от начала стройки), когда накопленный FCFF стал положительным.',
+        text: 'Первый месяц (от начала стройки, месяц 1 = январь 2027), когда накопленный FCFF стал положительным. Стройка очереди 2 в 2029–2030 может отодвинуть эту точку — это честный эффект реинвестирования.',
       },
     },
     {
@@ -84,7 +86,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
       label: 'MOIC', value: `×${k.moic.toFixed(2)}`,
       hint: {
         title: 'Мультипликатор вложенного капитала',
-        text: 'Сколько евро вернул проект на каждый вложенный: Σ положительных FCFF ÷ Σ вложений (стройка + убытки разгона). Без дисконтирования.',
+        text: 'Сколько евро вернул проект на каждый вложенный: Σ положительных FCFF ÷ Σ отрицательных месяцев FCFF (стройка оч. 1, убытки разгона, месяцы стройки оч. 2 с отрицательным потоком). Без дисконтирования.',
         calc: `Σ притоков ${fmtEur(r.cashflow.reduce((s, m) => s + Math.max(0, m.fcff), 0))} ÷ Σ вложений ${fmtEur(k.investedTotal)} = ×${k.moic.toFixed(2)}`,
       },
     },
@@ -107,7 +109,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
       label: 'Equity-транши', value: fmtEur(k.equityTotal),
       hint: {
         title: 'Взносы акционеров',
-        text: 'Σ взносов, закрывающих кассовые разрывы по месяцам (касса ≥ 0), включая стройку и месяцы после начала дивидендов. Разложение по месяцам — в Отчётах → Cash-Flow / Источники и использование.',
+        text: `Σ взносов акционеров, закрывающих кассовые разрывы по месяцам (касса ≥ 0): стройка оч. 1, месяцы после начала дивидендов${params.phase2?.funding === 'equity' ? ', плюс выделенный транш под стройку оч. 2 (режим «Отдельный транш»)' : '; стройка оч. 2 в режиме «Из операционного CF» финансируется кэшем бизнеса'}. Разложение по месяцам — в Отчётах → Cash-Flow.`,
       },
     },
     {
@@ -126,20 +128,30 @@ export function Dashboard({ r }: { r: ModelResult }) {
           label: 'NPV с TV', value: fmtEur(k.npvWithTv),
           hint: {
             title: 'NPV + терминальная стоимость',
-            text: 'Gordon growth: TV = FCFF 5-го года (за вычетом maintenance CAPEX) × (1+g) / (WACC − g), дисконтированная на конец горизонта. Cross-check — exit-multiple по EBITDA. Показывается отдельно — база консервативна без TV.',
-            tex: String.raw`\mathrm{TV}=\frac{\mathrm{FCFF}_5\cdot(1+g)}{\mathrm{WACC}-g},\quad g=${(params.tv.growth * 100).toFixed(1)}\%`,
+            text: 'Gordon growth: TV = FCFF последнего операционного года (за вычетом maintenance CAPEX) × (1+g) / (WACC − g), дисконтированная на конец горизонта. Cross-check — exit-multiple по EBITDA. Показывается отдельно — база консервативна без TV.',
+            tex: String.raw`\mathrm{TV}=\frac{\mathrm{FCFF}_{посл}\cdot(1+g)}{\mathrm{WACC}-g},\quad g=${(params.tv.growth * 100).toFixed(1)}\%`,
             calc: `TV диск. = ${fmtEur(k.tvValue)} (EV/EBITDA ${Number.isFinite(k.tvEvEbitda) ? k.tvEvEbitda.toFixed(1) : '—'}×) · exit ${params.tv.exitMultiple}× EBITDA = ${fmtEur(k.tvExitValue)} → NPV + TV = ${fmtEur(k.npvWithTv)}`,
           },
         }]
       : []),
     {
-      label: 'CAPEX (с буфером)', value: fmtEur(r.capex.adjustedEur),
+      label: 'CAPEX оч. 1 (с буфером)', value: fmtEur(r.capex.adjustedEur),
       hint: {
-        title: 'Инвестиции',
-        text: 'Смета строительства + сценарный буфер на удорожание.',
+        title: 'Инвестиции очереди 1',
+        text: 'Смета стройки оч. 1 + наполнение + закуп + IT + земля, умноженные на сценарный буфер. Платится в 12 месяцев стройки по S-кривой.',
         calc: `${fmtEur(r.capex.totalEur)} × ${1 + r.scenario.capexAdj} = ${fmtEur(r.capex.adjustedEur)}`,
       },
     },
+    ...(r.capex.phase2Eur > 0
+      ? [{
+          label: 'CAPEX оч. 2 (с буфером)', value: fmtEur(r.capex.phase2AdjEur),
+          hint: {
+            title: 'Инвестиции очереди 2',
+            text: `Строки сметы включённых объектов оч. 2 (общественная баня, VIP) + общие работы + закуп оч. 2, умноженные на свой буфер ${fmtPct(params.phase2?.capexAdj ?? 0)}. Платится помесячно в окне стройки ${params.phase2?.constructionStart ?? ''} + ${params.phase2?.months ?? 0} мес из операционного потока${params.phase2?.funding === 'equity' ? ' отдельным траншем акционеров' : ''}.`,
+            calc: `${fmtEur(r.capex.phase2Eur)} × ${1 + (params.phase2?.capexAdj ?? 0)} = ${fmtEur(r.capex.phase2AdjEur)}`,
+          },
+        }]
+      : []),
   ]
   return (
     <div>
@@ -160,7 +172,7 @@ export function Dashboard({ r }: { r: ModelResult }) {
             <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
             <Tooltip formatter={(v: number) => fmt(v)} {...tooltipStyle} />
             <Legend />
-            {['Аренда', 'Парения', 'Массаж', 'Доп.услуги', 'Глэмпинг', 'Членства', 'F&B'].map(
+            {['Аренда', 'Парения', 'Массаж', 'Доп.услуги', 'Глэмпинг', 'Членства', 'F&B', 'Общ. баня', 'Ресторан'].map(
               (s, i) => (
                 <Area key={s} dataKey={s} stackId="1" fill={COLORS[i]} stroke={COLORS[i]} fillOpacity={0.7} />
               ),

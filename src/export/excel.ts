@@ -278,7 +278,7 @@ export async function exportWorkbook(
     ws.addRow([])
     ws.addRow(['РЕЗУЛЬТАТЫ (снимок ядра)', ...matrix.names])
     headerRow(ws, ws.rowCount)
-    put('NPV (5 лет), EUR', results.map((x) => Math.round(x.kpis.npv)), FMT_EUR, 'calc')
+    put('NPV (весь горизонт), EUR', results.map((x) => Math.round(x.kpis.npv)), FMT_EUR, 'calc')
     put('IRR годовой', results.map((x) => x.kpis.irrAnnual), FMT_PCT, 'calc')
     put('Окупаемость, мес', results.map((x) => x.kpis.paybackMonths), '0', 'calc')
     put('Диск. окупаемость, мес', results.map((x) => x.kpis.discountedPaybackMonths), '0', 'calc')
@@ -828,7 +828,7 @@ export async function exportWorkbook(
         results.forEach((x, i) => putCell(ws, row.number, i + 2, g(x), fmt, 'calc'))
       }
       put('WACC (эфф. годовая)', (x) => x.kpis.wacc, FMT_PCT)
-      put('NPV (5 лет), EUR', (x) => Math.round(x.kpis.npv))
+      put('NPV (весь горизонт), EUR', (x) => Math.round(x.kpis.npv))
       put('IRR годовой (эфф.)', (x) => x.kpis.irrAnnual, FMT_PCT)
       put('Окупаемость, мес', (x) => x.kpis.paybackMonths, '0')
       put('Диск. окупаемость, мес', (x) => x.kpis.discountedPaybackMonths, '0')
