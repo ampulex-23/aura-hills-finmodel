@@ -2,8 +2,8 @@
  "meta": {
   "currency": "EUR",
   "constructionStart": "2027-01-01",
-  "openingDate": "2028-01-01",
-  "capexMonths": 12,
+  "openingDate": "2027-10-01",
+  "capexMonths": 9,
   "opsMonths": 72,
   "mode": "Да",
   "scenario": "Base",
@@ -285,7 +285,7 @@
   {
    "id": 1,
    "status": "Активен",
-   "launchDate": "2028-01-01",
+   "launchDate": "2027-10-01",
    "uptime": 0.95,
    "loadK": 1,
    "slotsPerDay": 3,
@@ -301,7 +301,7 @@
   {
    "id": 2,
    "status": "Активен",
-   "launchDate": "2028-01-01",
+   "launchDate": "2027-10-01",
    "uptime": 0.95,
    "loadK": 1,
    "slotsPerDay": 3,
@@ -317,7 +317,7 @@
   {
    "id": 3,
    "status": "Активен",
-   "launchDate": "2028-01-01",
+   "launchDate": "2027-10-01",
    "uptime": 0.95,
    "loadK": 1,
    "slotsPerDay": 3,
@@ -2556,18 +2556,15 @@
   "lumpEur": 60000
  },
  "capexSCurve": [
-  0.04,
   0.05,
   0.07,
-  0.09,
-  0.11,
-  0.12,
-  0.12,
-  0.11,
   0.1,
-  0.08,
-  0.06,
-  0.05
+  0.13,
+  0.15,
+  0.15,
+  0.14,
+  0.12,
+  0.09
  ],
  "phase2": {
   "constructionStart": "2029-01",

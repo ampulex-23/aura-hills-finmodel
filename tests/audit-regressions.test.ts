@@ -29,6 +29,13 @@ const clone = () => {
   p.fb.enabled = true
   return p
 }
+// Месяцев стройки: сдвиг ops-месяца k в индекс CF-массива (k + CM).
+const CM = (paramsJson as Params).meta.capexMonths
+const shiftIso = (iso: string, months: number) => {
+  const d = new Date(iso)
+  d.setMonth(d.getMonth() + months)
+  return d.toISOString().slice(0, 10)
+}
 
 describe('аудит-регрессии', () => {
   it('«С возмещением»: P&L берёт НАЧИСЛЕННЫЙ НДС, а не уплаченный', () => {
@@ -37,9 +44,9 @@ describe('аудит-регрессии', () => {
       const vatOut = r.taxes[k].vatOut19 + r.taxes[k].vatOut9
       expect(r.pnl[k].revenueNet).toBeCloseTo(r.revenue[k].total - vatOut, 6)
       // CF-корректировка закрывает разницу начисленный vs уплаченный кэшем
-      expect(r.cashflow[k + 12].vatTiming).toBeCloseTo(vatOut - r.taxes[k].vatPaid, 6)
-      expect(r.cashflow[k + 12].operatingCf).toBeCloseTo(
-        r.pnl[k].netProfit + r.pnl[k].amortization + r.cashflow[k + 12].vatTiming, 6,
+      expect(r.cashflow[k + CM].vatTiming).toBeCloseTo(vatOut - r.taxes[k].vatPaid, 6)
+      expect(r.cashflow[k + CM].operatingCf).toBeCloseTo(
+        r.pnl[k].netProfit + r.pnl[k].amortization + r.cashflow[k + CM].vatTiming, 6,
       )
     }
     // Пока горит CAPEX-кредит, EBITDA не должна содержать выходной НДС
@@ -79,9 +86,10 @@ describe('аудит-регрессии', () => {
     p.taxes.gesyCap = 1000 // низкий потолок: GESY упирается в него
     const r = runModel(p, matrix, items, services, 'Aggressive')
     const residents = p.partners.statuses.filter((s) => s.startsWith('Резидент')).length
+    const om = Number(p.meta.openingDate.slice(5, 7)) // потолок — по календарным годам
     const byYear = new Map<number, number>()
     r.taxes.forEach((t, k) => {
-      const y = Math.floor(k / 12)
+      const y = Math.floor((om - 1 + k) / 12)
       byYear.set(y, (byYear.get(y) ?? 0) + t.gesy)
     })
     for (const [, g] of byYear) expect(g).toBeLessThanOrEqual(residents * 1000 * p.taxes.gesy + 1e-6)
@@ -93,7 +101,7 @@ describe('аудит-регрессии', () => {
     p.meta.vatMode = 'С возмещением'
     p.modules[3].status = 'Активен'
     p.modules[3].phase = 1 // иначе модуль — объект очереди 2 (vip1) с окном 2029–30
-    p.modules[3].launchDate = '2029-01-01' // запуск → ops месяц 12 (дефолт сдвинут на 2031-01)
+    p.modules[3].launchDate = shiftIso(p.meta.openingDate, 12) // запуск → ops месяц 12
     const r = runModel(p, matrix, items, services, 'Base')
     const vatRate = p.taxes.vatInput / (1 + p.taxes.vatInput)
     // месяц 0: (amortizable − deferred очереди 1) × extracted-ставка
@@ -134,7 +142,7 @@ describe('аудит-регрессии', () => {
   it('помодульный OPEX и ёмкость членов учитывают только запущенные модули', () => {
     const p = clone()
     p.modules[3].status = 'Активен'
-    p.modules[3].launchDate = '2029-01-01' // запуск → ops месяц 12 (дефолт сдвинут на 2031-01)
+    p.modules[3].launchDate = shiftIso(p.meta.openingDate, 12) // запуск → ops месяц 12
     const r = runModel(p, matrix, items, services, 'Base')
     // «Обслуживание модулей» €100/модуль: 3 модуля до запуска, 4 после.
     // fixed[m] = (Σ базовых + 100×модули) × инфляция года → m13 = m0×infl + 100×infl

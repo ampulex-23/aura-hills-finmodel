@@ -66,6 +66,11 @@ export function baselineParams(): Params {
   // Горизонт оракула — 60 операционных месяцев; 72 (под очередь 2) пришло после
   // эталонов — фиксируем старый, чтобы golden/sensitivity сверяли ядро.
   p.meta.opsMonths = 60
+  // Эпоха оракула: открытие 01.2028 после 12 мес стройки; в проде открытие
+  // 10.2027 после 9 мес — здесь фиксируем старый таймлайн.
+  p.meta.openingDate = '2028-01-01'
+  p.meta.capexMonths = 12
+  for (const m of p.modules) if ((m.phase ?? 1) === 1) m.launchDate = '2028-01-01'
   // Строки CAPEX, добавленные после эталонов (здание персонала, пожарка; прачечная выкл.)
   p.capexItems = p.capexItems.filter((it) => ![32, 33].includes(it.row ?? -1))
   return p

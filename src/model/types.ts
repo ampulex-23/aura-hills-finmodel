@@ -20,7 +20,7 @@ export interface ModelMeta {
 export interface ModuleSpec {
   id: number
   status: string
-  /** Очередь стройки: 1 — стартовый контур (2028), 2 — вторая очередь (ввод 2031) */
+  /** Очередь стройки: 1 — стартовый контур (2027), 2 — вторая очередь (ввод 2031) */
   phase?: 1 | 2
   launchDate: string
   uptime: number
