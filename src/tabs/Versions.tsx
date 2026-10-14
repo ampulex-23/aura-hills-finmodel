@@ -27,7 +27,7 @@ function DiffTable({ diff }: { diff: DiffEntry[] }) {
   const sections = [...new Set(diff.map((d) => d.section))]
   return (
     <Table striped highlightOnHover withTableBorder fz="xs">
-      <Table.Thead>
+      <Table.Thead style={{ background: 'var(--mantine-color-default-hover)' }}>
         <Table.Tr>
           <Table.Th>Параметр</Table.Th>
           <Table.Th w={180}>Было</Table.Th>
@@ -37,7 +37,7 @@ function DiffTable({ diff }: { diff: DiffEntry[] }) {
       {sections.map((sec) => (
         <Table.Tbody key={sec}>
           <Table.Tr>
-            <Table.Td colSpan={3} style={{ background: 'var(--mantine-color-gray-0)' }}>
+            <Table.Td colSpan={3} style={{ background: 'var(--mantine-color-default-hover)' }}>
               <Badge size="sm" variant="light" color="dark">{sec}</Badge>
             </Table.Td>
           </Table.Tr>
@@ -114,7 +114,7 @@ export function Versions() {
 
       <ScrollArea mah={280}>
         <Table highlightOnHover withTableBorder fz="xs">
-          <Table.Thead>
+          <Table.Thead style={{ background: 'var(--mantine-color-default-hover)' }}>
             <Table.Tr>
               <Table.Th>Версия</Table.Th><Table.Th>Комментарий</Table.Th>
               <Table.Th>Автор</Table.Th><Table.Th>Когда</Table.Th><Table.Th />
@@ -125,7 +125,7 @@ export function Versions() {
               <Table.Tr
                 key={v.sha}
                 onClick={() => setSel(v.sha)}
-                style={{ cursor: 'pointer', background: sel === v.sha ? 'var(--mantine-color-blue-0)' : undefined }}
+                style={{ cursor: 'pointer', background: sel === v.sha ? 'var(--mantine-color-blue-light)' : undefined }}
               >
                 <Table.Td>
                   <Group gap={6}>

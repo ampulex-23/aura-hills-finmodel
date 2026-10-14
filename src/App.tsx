@@ -63,7 +63,6 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { id: 'Допущения', label: 'Допущения', icon: IconAdjustmentsHorizontal },
       { id: 'Сценарии', label: 'Сценарии', icon: IconVersions },
-      { id: 'Версии', label: 'Версии', icon: IconHistory },
       { id: 'Штат', label: 'Штат', icon: IconUserCog },
       { id: 'Номенклатура', label: 'Номенклатура', icon: IconListDetails },
       { id: 'Смета стройки', label: 'Смета стройки', icon: IconCoins },
@@ -288,6 +287,14 @@ export default function App() {
                   Сохранить версию{dirty ? ` · ${dirtyCount}` : ''}
                 </Button>
               </Tooltip>
+            )}
+            {versioned && (
+              <Button
+                size="xs" variant="default" leftSection={<IconHistory size={14} />}
+                onClick={() => setTab('Версии')}
+              >
+                Версии
+              </Button>
             )}
             <Button size="xs" variant="default" onClick={download}>JSON</Button>
             <Button size="xs" onClick={exportExcel}>Excel</Button>
