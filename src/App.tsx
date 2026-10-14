@@ -26,6 +26,7 @@ import { Staff } from './tabs/Staff'
 import { Sensitivity } from './tabs/Sensitivity'
 import { DocView } from './components/DocView'
 import { DeckView } from './components/DeckView'
+import { GenplanView } from './components/GenplanView'
 import { AiChat, useChat } from './components/AiChat'
 import { DOCS, getDoc } from './docs'
 
@@ -383,6 +384,7 @@ export default function App() {
           {tab.startsWith('doc:') && (() => {
             const d = getDoc(tab.slice(4))
             if (!d) return null
+            if (d.kind === 'genplan') return <GenplanView key={d.id} />
             return d.kind === 'deck' ? <DeckView key={d.id} /> : <DocView key={d.id} doc={d} />
           })()}
         </main>

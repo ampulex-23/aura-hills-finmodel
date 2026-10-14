@@ -22,7 +22,7 @@ export interface DocEntry {
   title: string
   navTitle: string
   source: string
-  kind: 'md' | 'deck'
+  kind: 'md' | 'deck' | 'genplan'
 }
 
 const NAV_TITLES: Record<string, string> = {
@@ -36,6 +36,13 @@ export const DOCS: DocEntry[] = [
     navTitle: 'Презентация',
     source: '',
     kind: 'deck',
+  },
+  {
+    id: 'genplan',
+    title: 'Генплан участка',
+    navTitle: 'Генплан',
+    source: '',
+    kind: 'genplan',
   },
   ...Object.entries(raw)
     .map(([path, source]) => {

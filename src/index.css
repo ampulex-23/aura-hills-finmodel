@@ -470,3 +470,11 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 .month-table tr.wbs-line td { color: #93a3bc; font-size: 12.5px; }
 .month-table tr.wbs-line td.sticky { padding-left: 32px; }
 .wbs-tag { color: #5d7292; font-size: 11px; margin-left: 8px; }
+
+/* Data Room «Генплан»: превью-картинки и список файлов BIM-артефактов */
+.genplan-canvas {
+  background: #0e1522; border: 1px solid #24324a; border-radius: 8px;
+  padding: 12px; margin: 8px 0 16px; overflow: auto;
+}
+.genplan-canvas img { display: block; width: 100%; height: auto; }
+.genplan-files { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
