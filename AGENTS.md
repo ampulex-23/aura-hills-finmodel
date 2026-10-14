@@ -83,3 +83,12 @@ node scripts/build-static.mjs   # только статика: снимок, doc
 
 `deploy/deploy-vds.sh` — git pull → npm ci → VITE_BASE=/ build → pm2 restart aura.
 Прод: https://shared.metodoxia25.net (PM2 `aura`).
+
+## Генплан (bim-as-code)
+
+Раздел «Генплан» в Data Room читает `/genplan/` — артефакты репозитория
+`bim-as-code` (E:\projects\bim-as-code), собираемые post-receive хуком на VDS:
+push в `/srv/bim.git` → `deploy/build-publish.sh` → `/srv/genplan/`
+(plan.svg/iso.svg/site.ifc/site.glb/spec.json + manifest.json{commit,built_at}).
+nginx: `location ^~ /genplan/ → alias` (deploy/nginx-shared.conf). Контракт —
+только этот каталог; web не знает про Python, BIM не знает про web.
