@@ -75,12 +75,20 @@ for (const st of CFG.streams) {
   st.detail = specCost(st.spec, { perGuest: per })
 }
 
-// Нормативные расходники на гостя (normBase='гость', не входящие в спеки)
+// Нормативные расходники: normBase='гость' (на гостя), 'слот' (на аренда-сессию
+// до 4 чел), 'мес' (фиксированная помесячная норма) — всё из номенклатуры ядра.
 const specCodes = new Set(services.flatMap((s) => s.items.filter((i) => i.code).map((i) => i.code)))
-const guestNormItems = nomenclature.filter(
-  (i) => i.normBase === 'гость' && i.use !== 'CAPEX' && i.opexArticle != null && !specCodes.has(i.code),
-)
+const normItems = (base) =>
+  nomenclature.filter(
+    (i) => i.normBase === base && i.use !== 'CAPEX' && i.opexArticle != null && !specCodes.has(i.code),
+  )
+const guestNormItems = normItems('гость')
+const slotNormItems = normItems('слот')
+const monthNormItems = normItems('мес')
 const guestNormCost = guestNormItems.reduce((s, i) => s + i.norm * price(i.code), 0)
+const slotNormCost = slotNormItems.reduce((s, i) => s + i.norm * price(i.code), 0)
+const monthNormCost = monthNormItems.reduce((s, i) => s + i.norm * price(i.code), 0)
+const GUESTS_PER_SLOT = 4 // аренда-сессия до 4 человек → слотов = гостей/4
 
 // ---------- помесячный расчёт ----------
 const months = []
@@ -101,6 +109,8 @@ for (let m = 1; m <= CFG.months; m++) {
     streamRows.push({ name: st.name, cnt, rev, mat: cnt * st.detail.matCost })
   }
   const guestsCons = guests * guestNormCost // расходники на гостя
+  const slotsCons = (guests / GUESTS_PER_SLOT) * slotNormCost // на аренда-сессию
+  const monthCons = monthNormCost // помесячные нормативы
 
   // ФОТ
   const salaries =
@@ -114,16 +124,16 @@ for (let m = 1; m <= CFG.months; m++) {
   const acquiring = revGross * CFG.acquiringPct
   const maintenance = revGross * CFG.maintenancePct
   const marketing = CFG.marketing(m)
-  const opex = matCost + guestsCons + acquiring + maintenance + marketing + CFG.insurance + CFG.itMonthly
+  const opex = matCost + guestsCons + slotsCons + monthCons + acquiring + maintenance + marketing + CFG.insurance + CFG.itMonthly
 
   // НДС: output = выручка ×19/119; input = материалы и расходники ×19/119
   const vatOut = (revGross * CFG.vat) / (1 + CFG.vat)
-  const vatIn = ((matCost + guestsCons) * CFG.vat) / (1 + CFG.vat)
+  const vatIn = ((matCost + guestsCons + slotsCons + monthCons) * CFG.vat) / (1 + CFG.vat)
   const ebitda = revGross - vatOut - opex - fot
 
   months.push({
     m, year: year + 1, guests, infl, streamRows, revGross, vatOut, vatIn,
-    matCost, guestsCons, salaries, kpiBonus, social, fot,
+    matCost, guestsCons, slotsCons, monthCons, salaries, kpiBonus, social, fot,
     acquiring, maintenance, marketing, opex, ebitda,
   })
 }
@@ -150,6 +160,7 @@ const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0)
 console.log('=== Сводка ===')
 console.log(`Гость приносит: €${CFG.streams.reduce((s, x) => s + x.price * x.uptake, 0)} gross`)
 console.log(`Материалы/гость: парение €${CFG.streams[0].detail.matCost.toFixed(2)} + аренда €${CFG.streams[1].detail.matCost.toFixed(2)} + массаж €${(CFG.streams[2].detail.matCost * 0.5).toFixed(2)} + расходники €${guestNormCost.toFixed(2)}`)
+console.log(`Расходники/сессию: €${slotNormCost.toFixed(2)} · помесячные нормативы: €${monthNormCost.toFixed(2)}/мес`)
 for (const [lbl, arr] of [['Год 1', y1], ['Год 2', y2], ['Год 3', y3]])
   console.log(`${lbl}: выручка €${Math.round(sum(arr, (x) => x.revGross)).toLocaleString('ru')}, EBITDA €${Math.round(sum(arr, (x) => x.ebitda)).toLocaleString('ru')}, CF €${Math.round(sum(arr, (x) => x.cf)).toLocaleString('ru')}`)
 console.log(`Накопл. CF за 36 мес: €${Math.round(months[35].cumCf).toLocaleString('ru')}`)
@@ -262,7 +273,9 @@ const totalRow = (ws, r, cells, fmt = []) => {
   kv(ws, r++, 'Эквайринг', CFG.acquiringPct, '0%')
   kv(ws, r++, 'Ремонт/обслуживание', CFG.maintenancePct, '0%')
   kv(ws, r++, 'IT-содержание', CFG.itMonthly, eur)
-  kv(ws, r++, 'Расходники на гостя (нормативные, 15 позиций)', guestNormCost, eur2)
+  kv(ws, r++, 'Расходники на гостя (15 позиций, normBase=«гость»)', guestNormCost, eur2)
+  kv(ws, r++, `Расходники на аренда-сессию (2 поз., normBase=«слот», сессия=${GUESTS_PER_SLOT} чел)`, slotNormCost, eur2)
+  kv(ws, r++, 'Помесячные нормативы (18 поз., normBase=«мес»)', monthNormCost, eur2)
   r++
   sec(ws, r++, 'CAPEX и налоги')
   kv(ws, r++, 'Земля', CFG.land, eur)
@@ -294,11 +307,25 @@ const totalRow = (ws, r, cells, fmt = []) => {
     totalRow(ws, r++, ['', 'Итого материалы на гостя', '', '', '', st.detail.matCost], [null, null, null, null, null, eur2])
     r++
   }
-  sec(ws, r++, 'Нормативные расходники на гостя (помесячное потребление)')
+  sec(ws, r++, 'Расходники на гостя (normBase=«гость», помесячное потребление)')
   header(ws, r++, ['Код', 'Материал', 'Норма/гость', 'Ед.', 'Цена €', 'Стоимость €/гость'])
   for (const i of guestNormItems)
-    row(ws, r++, [i.code, i.name, i.norm, i.unit, price(i.code), i.norm * price(i.code)], [null, null, '0.000', null, eur2, eur2])
+    row(ws, r++, [i.code, `${i.name} — ${i.opexArticle}`, i.norm, i.unit, price(i.code), i.norm * price(i.code)], [null, null, '0.000', null, eur2, eur2])
   totalRow(ws, r++, ['', 'Итого на гостя', '', '', '', guestNormCost], [null, null, null, null, null, eur2])
+  r++
+
+  sec(ws, r++, 'Расходники на аренда-сессию (normBase=«слот», сессия до 4 чел)')
+  header(ws, r++, ['Код', 'Материал', 'Норма/сессия', 'Ед.', 'Цена €', 'Стоимость €/сессия'])
+  for (const i of slotNormItems)
+    row(ws, r++, [i.code, `${i.name} — ${i.opexArticle}`, i.norm, i.unit, price(i.code), i.norm * price(i.code)], [null, null, '0.000', null, eur2, eur2])
+  totalRow(ws, r++, ['', `Итого на сессию (слотов/мес = гости/${GUESTS_PER_SLOT})`, '', '', '', slotNormCost], [null, null, null, null, null, eur2])
+  r++
+
+  sec(ws, r++, 'Помесячные нормативы (normBase=«мес», не зависят от потока)')
+  header(ws, r++, ['Код', 'Материал', 'Норма/мес', 'Ед.', 'Цена €', 'Стоимость €/мес'])
+  for (const i of monthNormItems)
+    row(ws, r++, [i.code, `${i.name} — ${i.opexArticle}`, i.norm, i.unit, price(i.code), i.norm * price(i.code)], [null, null, '0.000', null, eur2, eur2])
+  totalRow(ws, r++, ['', 'Итого в месяц', '', '', '', monthNormCost], [null, null, null, null, null, eur2])
 }
 
 // ---- Листы с помесячными рядами ----
@@ -330,6 +357,8 @@ monthSheet('OPEX', 'Операционные расходы (€)', 'Перем�
   [
     ['Материалы процедур (спеки)', (x) => x.matCost],
     ['Расходники на гостя', (x) => x.guestsCons],
+    ['Расходники на аренда-сессию', (x) => x.slotsCons],
+    ['Помесячные нормативы (клининг/химия/гигиена)', (x) => x.monthCons],
     ['Эквайринг 2%', (x) => x.acquiring],
     ['Ремонт/обслуживание 1%', (x) => x.maintenance],
     ['Маркетинг', (x) => x.marketing],
