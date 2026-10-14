@@ -77,6 +77,11 @@ export interface ServiceSpec {
    *  сопоставляется модулю по capacity — модуль попадает в наименьший
    *  тариф, который его вмещает (резервные бани тоже покрываются). */
   capacity?: number
+  /** Доля продаж внутри направления (Парения/Массаж/Доп. услуги): вес в
+   *  меню потока — относительный, нормируется по Σ(weight×price) направления.
+   *  Выручка направления распределяется по спекам через weight; без веса
+   *  спека не продаётся. Для «Аренда бани» не используется (там capacity). */
+  weight?: number
   items: SpecItem[]
 }
 export interface ServiceCost {
@@ -219,9 +224,6 @@ export interface Params {
     serviceLoads: boolean
   }
   seasonality: { baths: number[]; glamping: number[]; certificates: number[] }
-  procedures: {
-    steam: ProcedureSet; massage: ProcedureSet; extra: ProcedureSet
-  }
   partners: {
     names: string[]; shares: number[]; statuses: string[]
     corporate: { mgmt: number; reserve: number }
@@ -300,12 +302,6 @@ export interface Params {
   capexItems: CapexItem[]
 }
 
-export interface ProcedureSet {
-  names: string[]
-  prices: number[]
-  weights: number[]
-}
-
 // Матрица сценариев (лист «Сценарии»): три колонки — Conservative/Base/Aggressive
 /** Пятилетний вектор по сценариям: y1..y5 → [Conservative, Base, Aggressive] */
 export type YearVectors = { y1: number[]; y2: number[]; y3: number[]; y4: number[]; y5: number[] }
@@ -371,13 +367,14 @@ export interface RevenueMonth {
   rental: number
   steam: number[]
   steamTotal: number
-  steamCounts: number[]    // проданных процедур по ценовым ступеням — для KPI спецификаций
   massage: number[]
   massageTotal: number
-  massageCounts: number[]
   extra: number[]
   extraTotal: number
-  extraCounts: number[]
+  /** Проданных услуг за месяц по коду спеки — база KPI и COGS спецификаций.
+   *  Ключ — ServiceSpec.code: удаление спеки убирает её объём полностью,
+   *  позиционной привязки к порядку списка нет. */
+  serviceCounts: Record<string, number>
   glamping: number
   membersMonthCount: number
   membersMonth: number

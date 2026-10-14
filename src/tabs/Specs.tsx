@@ -20,7 +20,7 @@ export function Specs() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [addOpen, setAddOpen] = useState(false)
   const [deleteAsk, setDeleteAsk] = useState<string | null>(null)
-  const [draft, setDraft] = useState({ code: '', direction: 'Доп. услуги', name: '', price: 0 })
+  const [draft, setDraft] = useState({ code: '', direction: 'Доп. услуги', name: '', price: 0, weight: 0, capacity: 0 })
   // Черновик новой строки состава: для каждой раскрытой услуги своё состояние
   const [entryKind, setEntryKind] = useState<Record<string, 'material' | 'labor'>>({})
   const [entryRef, setEntryRef] = useState<Record<string, string>>({})
@@ -47,12 +47,16 @@ export function Specs() {
 
   const openAdd = () => {
     const direction = 'Доп. услуги'
-    setDraft({ code: codeFor(direction), direction, name: '', price: 0 })
+    setDraft({ code: codeFor(direction), direction, name: '', price: 0, weight: 0, capacity: 0 })
     setAddOpen(true)
   }
   const saveService = () => {
     if (!draft.name.trim()) return
-    addService({ code: draft.code, direction: draft.direction.trim() || 'Доп. услуги', name: draft.name.trim(), price: draft.price, items: [] })
+    const dir = draft.direction.trim() || 'Доп. услуги'
+    addService({
+      code: draft.code, direction: dir, name: draft.name.trim(), price: draft.price, items: [],
+      ...(dir === 'Аренда бани' ? { capacity: draft.capacity } : { weight: draft.weight }),
+    })
     setAddOpen(false)
     setExpanded((prev) => new Set(prev).add(draft.code))
   }
@@ -84,6 +88,11 @@ export function Specs() {
                 <tr>
                   <th className="sticky"><Hint hint={{ text: 'Услуга и её состав — клик по строке раскрывает спецификацию (материалы и труд).' }}><span>Услуга</span></Hint></th>
                   <th className="lft"><Hint hint={{ text: 'Розничный прайс услуги. От него считаются KPI-бонусы ролей и маржа.' }}><span>Цена €</span></Hint></th>
+                  <th className="lft">
+                    {dir === 'Аренда бани'
+                      ? <Hint hint={{ text: 'Вместимость бани (гостей): модуль попадает в наименьший тариф, который его вмещает.' }}><span>Мест</span></Hint>
+                      : <Hint hint={{ text: 'Доля позиции в продажах направления. Относительный вес в меню: выручка направления делится пропорционально вес×цена. Пустой/нулевой вес — услуга не продаётся.' }}><span>Вес</span></Hint>}
+                  </th>
                   <th><Hint hint={{ text: 'Σ (норма материала в спеке × landed cost из Номенклатуры).' }}><span>Материалы €</span></Hint></th>
                   <th><Hint hint={{ text: 'Прайс × Σ(% ролей в спеке) — KPI-бонусы исполнителей за одну услугу.' }}><span>Труд €</span></Hint></th>
                   <th><Hint hint={{ text: 'Себестоимость услуги = материалы + труд.' }}><span>Себес €</span></Hint></th>
@@ -105,6 +114,11 @@ export function Specs() {
                       </td>
                       <td onClick={(e) => e.stopPropagation()}>
                         <NumField value={c.spec.price} onChange={(v) => setServicePrice(c.spec.code, v)} step={5} />
+                      </td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {dir === 'Аренда бани'
+                          ? <NumField value={c.spec.capacity ?? 0} onChange={(v) => updateService(c.spec.code, { capacity: v })} step={1} />
+                          : <NumField value={c.spec.weight ?? 0} onChange={(v) => updateService(c.spec.code, { weight: v })} step={0.05} />}
                       </td>
                       <td className="lft">{fmt(c.materialsCost, 2)}</td>
                       <td className="lft">{fmt(c.laborCost, 2)}</td>
@@ -141,7 +155,7 @@ export function Specs() {
                             pct={it.kind === 'labor'}
                           />
                         </td>
-                        <td colSpan={2} className="lft">
+                        <td colSpan={3} className="lft">
                           <small>
                             {it.kind === 'material' && byCode.get(it.code ?? '')
                               ? `× €${fmt(landedCost(byCode.get(it.code ?? '')!), 2)}/${byCode.get(it.code ?? '')!.unit}`
@@ -170,7 +184,7 @@ export function Specs() {
                     {expanded.has(c.spec.code) && (
                       <tr className="spec-add">
                         <td className="sticky lft spec-leaf last"><small>＋</small></td>
-                        <td colSpan={5} className="lft">
+                        <td colSpan={6} className="lft">
                           <Group gap={6} wrap="nowrap">
                             <Select
                               size="xs" w={110}
@@ -247,6 +261,17 @@ export function Specs() {
             label="Цена €" min={0} value={draft.price}
             onChange={(v) => setDraft((d) => ({ ...d, price: Number(v) || 0 }))}
           />
+          {draft.direction === 'Аренда бани' ? (
+            <NumberInput
+              label="Вместимость, гостей" min={0} value={draft.capacity}
+              onChange={(v) => setDraft((d) => ({ ...d, capacity: Number(v) || 0 }))}
+            />
+          ) : (
+            <NumberInput
+              label="Вес в меню направления (0 — не продаётся)" min={0} step={0.05} decimalScale={3} value={draft.weight}
+              onChange={(v) => setDraft((d) => ({ ...d, weight: Number(v) || 0 }))}
+            />
+          )}
           <Group justify="flex-end" mt="md">
             <Button variant="default" onClick={() => setAddOpen(false)}>Отмена</Button>
             <Button onClick={saveService} disabled={!draft.name.trim()}>Создать</Button>

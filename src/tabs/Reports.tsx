@@ -159,7 +159,7 @@ function revenueHints(params: Params, r: ModelResult) {
 }
 
 export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
-  const { params } = useModel()
+  const { params, services } = useModel()
   const R = r.revenue
   const sc = r.scenario
   const stream = (get: (m: (typeof R)[0], k: number) => number) => R.map(get)
@@ -192,13 +192,13 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
       calc: `${fmt(R[ci].bathCounts[i] ?? 0)} слот × ${e1(avgPrice(m))} × рост ${gAt(ci).toFixed(2)} = ${e0((R[ci].bathCounts[i] ?? 0) * avgPrice(m) * gAt(ci))}`,
     }),
   }))
-  const menuKids = (key: 'steam' | 'massage' | 'extra'): RowDef[] =>
-    params.procedures[key].names.map((n, j) => ({
-      label: `— ${n}`,
+  const menuKids = (key: 'steam' | 'massage' | 'extra', dir: string): RowDef[] =>
+    services.filter((s) => s.direction === dir).map((s, j) => ({
+      label: `— ${s.name}`,
       values: stream((mm) => mm[key][j] ?? 0),
       hint: (ci): CellHint => ({
-        title: n,
-        calc: `ступень меню: ${e0(params.procedures[key].prices[j] ?? 0)} × вес ${params.procedures[key].weights[j] ?? 0} = ${e0(R[ci][key][j] ?? 0)}`,
+        title: s.name,
+        calc: `позиция меню: ${e0(s.price)} × вес ${s.weight ?? 0} = ${e0(R[ci][key][j] ?? 0)}`,
       }),
     }))
 
@@ -219,9 +219,9 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
         }]
       : []),
     { label: 'Аренда бань', values: stream((m) => m.rental), hint: h.rental, children: rentalKids },
-    { label: 'Парения', values: stream((m) => m.steamTotal), hint: h.steam, children: menuKids('steam') },
-    { label: 'Массаж', values: stream((m) => m.massageTotal), hint: h.massage, children: menuKids('massage') },
-    { label: 'Доп.услуги', values: stream((m) => m.extraTotal), hint: h.extra, children: menuKids('extra') },
+    { label: 'Парения', values: stream((m) => m.steamTotal), hint: h.steam, children: menuKids('steam', 'Парения') },
+    { label: 'Массаж', values: stream((m) => m.massageTotal), hint: h.massage, children: menuKids('massage', 'Массаж') },
+    { label: 'Доп.услуги', values: stream((m) => m.extraTotal), hint: h.extra, children: menuKids('extra', 'Доп. услуги') },
     {
       label: 'Глэмпинг', values: stream((m) => m.glamping), hint: h.glamping,
       children: [

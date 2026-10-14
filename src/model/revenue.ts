@@ -1,10 +1,11 @@
 import type { Params, RevenueMonth, ResolvedScenario, ServiceSpec } from './types'
 
 // Направление спецификации → вектор проданных услуг месяца, выровненный
-// по порядку спек этого направления. Парения/массаж/доп. услуги — по ценовым
-// ступеням; аренда — по баням: слоты модуля идут в наименьший тариф спеки,
-// чей capacity вмещает вместимость бани (резервные бани попадают в ближайший
-// больший тариф, а не теряются).
+// по порядку спек этого направления. Парения/массаж/доп. услуги — по коду
+// спеки из rev.serviceCounts (вес и цена — поля спеки); аренда — по баням:
+// слоты модуля идут в наименьший тариф спеки, чей capacity вмещает
+// вместимость бани (резервные бани попадают в ближайший больший тариф, а не
+// теряются).
 export function dirCounts(
   rev: RevenueMonth,
   direction: string,
@@ -23,10 +24,9 @@ export function dirCounts(
     })
     return counts
   }
-  if (direction === 'Парения') return rev.steamCounts
-  if (direction === 'Массаж') return rev.massageCounts
-  if (direction === 'Доп. услуги') return rev.extraCounts
-  return []
+  // Процедурные направления: объёмы по коду спеки — удаление услуги
+  // полностью убирает её поток, позиционной привязки нет.
+  return dirSpecs.map((s) => rev.serviceCounts[s.code] ?? 0)
 }
 
 // Выручка за операционный месяц k (0-based; k=0 — первый месяц работы).
@@ -46,6 +46,7 @@ export function computeRevenueMonth(
   params: Params,
   sc: ResolvedScenario,
   k: number,
+  services: ServiceSpec[],
 ): RevenueMonth {
   const at = addMonths(params.meta.openingDate, k)
   const yearIdx = Math.min(4, Math.floor(k / 12))
@@ -162,65 +163,71 @@ export function computeRevenueMonth(
   // Услуги привязаны к слотам ТЕКУЩЕГО месяца (slots), а не первого:
   // исходный Excel баг — ссылка на C13 как константа — исправлен и здесь, и в книге.
   const svc = slots
-  const swp = (set: { prices: number[]; weights: number[] }) =>
-    set.prices.reduce((acc, p, j) => acc + p * set.weights[j], 0)
+  // Меню услуг = спецификации направления: цена и вес продаж живут в спеке,
+  // удаление услуги убирает её поток целиком. Пустое направление → поток 0.
+  const steamSpecs = services.filter((s) => s.direction === 'Парения')
+  const massageSpecs = services.filter((s) => s.direction === 'Массаж')
+  const extraSpecs = services.filter((s) => s.direction === 'Доп. услуги')
+  const swp = (specs: ServiceSpec[]) =>
+    specs.reduce((acc, s) => acc + s.price * (s.weight ?? 0), 0)
 
   // Парения: в кошельке (1−walletShare) по базе + апгрейды сверх депозита (upgradeShare)
-  const steam = params.procedures.steam.prices.map((p, j) => {
-    const w = params.procedures.steam.weights[j]
-    return (
+  const steamTot = swp(steamSpecs)
+  const steam = steamSpecs.map((s) => {
+    const w = s.weight ?? 0
+    return steamTot > 0 ? (
       svc * cap * upSteam *
-      ((1 - params.service.walletExtraShare) * params.deposit.steamBase * w * p / swp(params.procedures.steam) +
-        params.service.upgradeShare * w * (p - params.deposit.steamBase)) * growth
-    )
+      ((1 - params.service.walletExtraShare) * params.deposit.steamBase * w * s.price / steamTot +
+        params.service.upgradeShare * w * (s.price - params.deposit.steamBase)) * growth
+    ) : 0
   })
-  const massage = params.procedures.massage.prices.map((p, j) => {
-    const w = params.procedures.massage.weights[j]
-    return (
+  const massageTot = swp(massageSpecs)
+  const massage = massageSpecs.map((s) => {
+    const w = s.weight ?? 0
+    return massageTot > 0 ? (
       svc * cap * upMassage *
-      ((1 - params.service.walletExtraShare) * params.deposit.massageBase * w * p / swp(params.procedures.massage) +
-        params.service.upgradeShare * w * (p - params.deposit.massageBase)) * growth
-    )
+      ((1 - params.service.walletExtraShare) * params.deposit.massageBase * w * s.price / massageTot +
+        params.service.upgradeShare * w * (s.price - params.deposit.massageBase)) * growth
+    ) : 0
   })
   // Доп.услуги: доля кошелька walletExtraShare × депозит × доля услуги (w·p/Σw·p)
-  const extra = params.procedures.extra.prices.map((p, j) => {
-    const w = params.procedures.extra.weights[j]
-    return (
+  const extraTot = swp(extraSpecs)
+  const extra = extraSpecs.map((s) =>
+    extraTot > 0 ? (
       svc * cap * upExtra * params.service.walletExtraShare * params.deposit.base *
-      (w * p) / swp(params.procedures.extra) * growth
-    )
-  })
+      ((s.weight ?? 0) * s.price) / extraTot * growth
+    ) : 0,
+  )
   // Сервисный чек гостей-членов: распределяется по потокам в пропорции пакета
   // (парения : массаж : допы = steamBase : massageBase : кошелёк допов) и внутри
-  // потока — по весам ступеней. Так members-гости несут COGS спек и KPI-бонусы.
+  // потока — по весам спек. Так members-гости несут COGS спек и KPI-бонусы.
   const memberSpend = memberGuests * (params.members.serviceSpendPerVisit ?? 0) * growth
   // Сервисный чек посетителей общественной бани сверх билета (парения/массаж/допы)
   // — разносится по потокам той же пропорцией, что членский чек, и попадает
-  // в counts спецификаций (KPI-труд/COGS) через выручку ступеней.
+  // в counts спецификаций (KPI-труд/COGS) через выручку позиций.
   const publicSpend = publicGuests * (params.publicBath?.serviceSpendPerVisit ?? 0) * growth
   const streamSpend = memberSpend + publicSpend
   const wE = params.service.walletExtraShare
   const baseW = (1 - wE) * (params.deposit.steamBase + params.deposit.massageBase) + wE * params.deposit.base
-  const addStream = (arr: number[], set: { prices: number[]; weights: number[] }, share: number) => {
-    const tot = swp(set)
+  const addStream = (arr: number[], specs: ServiceSpec[], tot: number, share: number) => {
     if (tot <= 0) return
-    set.prices.forEach((p, j) => { arr[j] += streamSpend * share * (set.weights[j] * p) / tot })
+    specs.forEach((s, j) => { arr[j] += streamSpend * share * ((s.weight ?? 0) * s.price) / tot })
   }
   if (streamSpend > 0 && baseW > 0) {
-    addStream(steam, params.procedures.steam, (1 - wE) * params.deposit.steamBase / baseW)
-    addStream(massage, params.procedures.massage, (1 - wE) * params.deposit.massageBase / baseW)
-    addStream(extra, params.procedures.extra, wE * params.deposit.base / baseW)
+    addStream(steam, steamSpecs, steamTot, (1 - wE) * params.deposit.steamBase / baseW)
+    addStream(massage, massageSpecs, massageTot, (1 - wE) * params.deposit.massageBase / baseW)
+    addStream(extra, extraSpecs, extraTot, wE * params.deposit.base / baseW)
   }
   const steamTotal = steam.reduce((a, b) => a + b, 0)
   const massageTotal = massage.reduce((a, b) => a + b, 0)
   const extraTotal = extra.reduce((a, b) => a + b, 0)
-  // Эквивалент проданных процедур по каждой ценовой ступени — база KPI
-  // спецификаций: count = выручка ступени / (её цена × годовой индекс цен).
-  const cnt = (stream: number[], set: { prices: number[] }) =>
-    stream.map((r, j) => (set.prices[j] * growth > 0 ? r / (set.prices[j] * growth) : 0))
-  const steamCounts = cnt(steam, params.procedures.steam)
-  const massageCounts = cnt(massage, params.procedures.massage)
-  const extraCounts = cnt(extra, params.procedures.extra)
+  // Эквивалент проданных услуг по коду спеки — база KPI спецификаций:
+  // count = выручка позиции / (её прайс × годовой индекс цен).
+  const serviceCounts: Record<string, number> = {}
+  for (const [specs, stream] of [[steamSpecs, steam], [massageSpecs, massage], [extraSpecs, extra]] as const)
+    specs.forEach((s, j) => {
+      serviceCounts[s.code] = s.price * growth > 0 ? stream[j] / (s.price * growth) : 0
+    })
 
   const glamping = glampOn
     ? 30 *
@@ -268,13 +275,11 @@ export function computeRevenueMonth(
     rental,
     steam,
     steamTotal,
-    steamCounts,
     massage,
     massageTotal,
-    massageCounts,
     extra,
     extraTotal,
-    extraCounts,
+    serviceCounts,
     glamping,
     membersMonthCount,
     membersMonth,
@@ -299,9 +304,10 @@ export function computeRevenueMonth(
 export function computeRevenue(
   params: Params,
   sc: ResolvedScenario,
+  services: ServiceSpec[],
 ): RevenueMonth[] {
   const out: RevenueMonth[] = []
   for (let k = 0; k < params.meta.opsMonths; k++)
-    out.push(computeRevenueMonth(params, sc, k))
+    out.push(computeRevenueMonth(params, sc, k, services))
   return out
 }

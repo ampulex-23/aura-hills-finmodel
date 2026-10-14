@@ -42,10 +42,10 @@ describe('инварианты данных', () => {
     expect(sum(params.partners.shares) + params.partners.corporate.mgmt + params.partners.corporate.reserve).toBeCloseTo(1, 3)
     expect(sum(params.slotMix)).toBeCloseTo(1, 6)
   })
-  it('номенклатура: цены > 0, веса процедур > 0', () => {
+  it('номенклатура: цены > 0, веса спек > 0', () => {
     expect(items.every((i) => i.price > 0)).toBe(true)
-    for (const set of [params.procedures.steam, params.procedures.massage, params.procedures.extra])
-      expect(set.weights.every((w) => w > 0)).toBe(true)
+    for (const s of services.filter((x) => x.direction !== 'Аренда бани'))
+      expect(s.weight ?? 0).toBeGreaterThan(0)
   })
   it('матрица сценариев: все потоки заданы на 5 лет, значения в [0, 1] для долей', () => {
     for (const key of ['baths', 'steam', 'massage', 'extra', 'glamping'] as const)

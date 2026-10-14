@@ -171,7 +171,16 @@ export const useModel = create<ModelState>()(
             ),
           }),
         addItem: (item) => edit({ items: [...get().items, item] }),
-        removeItem: (code) => edit({ items: get().items.filter((i) => i.code !== code) }),
+        // Удаление позиции заодно вычищает её из составов спек — иначе код
+        // остаётся мёртвой строкой и позиция визуально «продолжает участвовать».
+        removeItem: (code) =>
+          edit({
+            items: get().items.filter((i) => i.code !== code),
+            services: get().services.map((s) => ({
+              ...s,
+              items: s.items.filter((e) => !(e.kind === 'material' && e.code === code)),
+            })),
+          }),
         duplicateItem: (code) => {
           const src = get().items.find((i) => i.code === code)
           if (!src) return
@@ -294,7 +303,8 @@ export const useModel = create<ModelState>()(
       // v5: аудит 14 — новая форма матрицы сценариев (полные 5-летние векторы),
       // CAPM/WACC, members.peakShare, capexMaint и т.д. → сброс к дефолтам.
       // v6: смета CAPEX переведена с ₽ на € (priceRub → priceEur, курса нет) → сброс.
-      version: 6,
+      // v7: меню услуг переехало из params.procedures в веса спек (spec.weight) → сброс.
+      version: 7,
       storage: createJSONStorage(() => debouncedLocalStorage),
       // Устаревшая форма состояния → сброс к дефолтам вместо падения
       migrate: () =>

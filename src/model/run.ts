@@ -51,8 +51,11 @@ export function runModel(
   }> = {},
 ): ModelResult {
   const p: Params = JSON.parse(JSON.stringify(params))
+  // services клонируются: priceMult меняет прайсы спек, а sensitivity
+  // не должна трогать живой стор.
+  const svcs: ServiceSpec[] = JSON.parse(JSON.stringify(services))
   if (overrides.demandMult !== undefined) p.service.demandMult = overrides.demandMult
-  if (overrides.priceMult !== undefined) applyPriceMult(p, overrides.priceMult)
+  if (overrides.priceMult !== undefined) applyPriceMult(p, svcs, overrides.priceMult)
   if (overrides.mode !== undefined) p.meta.mode = overrides.mode
   if (overrides.vatMode !== undefined) p.meta.vatMode = overrides.vatMode
   if (overrides.mutate) overrides.mutate(p)
@@ -85,9 +88,9 @@ export function runModel(
   }
 
   const capex = computeCapex(p, items, sc.capexAdj)
-  const revenue = computeRevenue(p, sc)
-  const opex = computeOpex(p, items, revenue, services)
-  const fot = computeFot(p, revenue, services)
+  const revenue = computeRevenue(p, sc, svcs)
+  const opex = computeOpex(p, items, revenue, svcs)
+  const fot = computeFot(p, revenue, svcs)
   const vat = computeVat(p, revenue, opex, capex)
 
   const ebit = revenue.map(
@@ -119,10 +122,9 @@ export function runModel(
 
 // Мультипликатор всех цен (таблица 3 sensitivity): прайсы модулей, услуг,
 // членств, глэмпинга, F&B, сертификатов, депозиты.
-function applyPriceMult(p: Params, mult: number): void {
+function applyPriceMult(p: Params, services: ServiceSpec[], mult: number): void {
   for (const m of p.modules) m.prices = m.prices.map((x) => x * mult)
-  for (const set of [p.procedures.steam, p.procedures.massage, p.procedures.extra])
-    set.prices = set.prices.map((x) => x * mult)
+  for (const s of services) s.price *= mult
   p.prices.membershipMonth *= mult
   p.prices.membershipYear *= mult
   p.prices.certificate *= mult
