@@ -4,9 +4,14 @@ import paramsJson from './data/params.json'
 import scenariosJson from './data/scenarios.json'
 import nomenclatureJson from './data/nomenclature.json'
 import servicesJson from './data/services.json'
+import { api, sameBundle, type ModelBundle } from './api'
 import type {
   NomenclatureItem, Params, ScenarioMatrix, ServiceSpec, SpecItem,
 } from './model/types'
+
+// Отложенный черновик: при входе в режим просмотра версии текущие правки
+// прячутся сюда, чтобы просмотр не затирал несохранённую работу.
+const STASH_KEY = 'aura-hills-draft-stash'
 
 // Запись в localStorage с debounce: NumField дёргает set() на каждый ввод,
 // а сериализация всего стейта на keystroke даёт микролаги — пишем раз в 400мс.
@@ -56,6 +61,24 @@ interface ModelState {
   resetAll: () => void
   exportJson: () => string
   importJson: (json: string) => void
+  // ---- версионирование (git на сервере) ----
+  versioned: boolean | null          // null — сервер ещё не отвечал
+  baseSha: string | null             // sha версии, на которой основан черновик
+  dirty: boolean                     // есть несохранённые изменения
+  previewSha: string | null          // режим просмотра версии (мутации заблокированы)
+  savedState: ModelBundle | null     // последнее серверное состояние (для счётчика diff)
+  serverPending: { sha: string; state: ModelBundle } | null // сервер ≠ локальный черновик
+  stashInfo: { savedAt: string } | null                     // есть отложенный черновик
+  author: string
+  setAuthor: (a: string) => void
+  syncVersions: () => Promise<void>
+  keepDraft: () => void              // оставить локальные изменения
+  applyServer: () => void            // взять серверную версию вместо черновика
+  restoreStash: () => void           // вернуть отложенный черновик
+  saveVersion: (message: string, force?: boolean) => Promise<'ok' | 'conflict' | 'error'>
+  loadVersion: (sha: string) => Promise<void>   // read-only просмотр
+  exitPreview: () => void
+  restoreVersion: (sha: string) => Promise<void>
 }
 
 const defaults = () => ({
@@ -108,80 +131,162 @@ function deepSet<T>(obj: T, path: string, value: unknown): T {
 
 export const useModel = create<ModelState>()(
   persist(
-    (set, get) => ({
-      ...defaults(),
-      scenario: (paramsJson as Params).meta.scenario,
-      setScenario: (s) => set({ scenario: s }),
-      setParam: (path, value) => set({ params: deepSet(get().params, path, value) }),
-      setItem: (idx, patch) =>
-        set({ items: get().items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) }),
-      setMatrixCell: (path, col, value) => {
-        const m = get().matrix as any
-        const copy = JSON.parse(JSON.stringify(m))
-        const keys = path.split('.')
-        let cur = copy
-        for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]]
-        cur[keys[keys.length - 1]][col] = value
-        set({ matrix: copy })
-      },
-      setServicePrice: (code, price) =>
-        set({
-          services: get().services.map((s) => (s.code === code ? { ...s, price } : s)),
-        }),
-      setSpecQty: (serviceCode, itemIdx, qty) =>
-        set({
-          services: get().services.map((s) =>
-            s.code === serviceCode
-              ? { ...s, items: s.items.map((it, i) => (i === itemIdx ? { ...it, ...(it.kind === 'labor' ? { pct: qty } : { qty }) } : it)) }
-              : s,
-          ),
-        }),
-      addItem: (item) => set({ items: [...get().items, item] }),
-      removeItem: (code) => set({ items: get().items.filter((i) => i.code !== code) }),
-      duplicateItem: (code) => {
-        const src = get().items.find((i) => i.code === code)
-        if (!src) return
-        const prefix = src.code.replace(/\d+$/, '') || 'NC-'
-        set({ items: [...get().items, { ...src, code: nextCode(prefix, get().items.map((i) => i.code)), name: `${src.name} (копия)` }] })
-      },
-      addService: (service) => set({ services: [...get().services, service] }),
-      removeService: (code) => set({ services: get().services.filter((s) => s.code !== code) }),
-      updateService: (code, patch) =>
-        set({ services: get().services.map((s) => (s.code === code ? { ...s, ...patch } : s)) }),
-      addSpecEntry: (serviceCode, entry) =>
-        set({
-          services: get().services.map((s) =>
-            s.code === serviceCode ? { ...s, items: [...s.items, entry] } : s,
-          ),
-        }),
-      removeSpecEntry: (serviceCode, itemIdx) =>
-        set({
-          services: get().services.map((s) =>
-            s.code === serviceCode
-              ? { ...s, items: s.items.filter((_, i) => i !== itemIdx) }
-              : s,
-          ),
-        }),
-      resetAll: () => set({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }),
-      exportJson: () =>
-        JSON.stringify(
-          {
-            params: get().params, matrix: get().matrix, items: get().items,
-            services: get().services, scenario: get().scenario,
-          },
-          null, 2,
-        ),
-      importJson: (json) => {
-        const d = JSON.parse(json)
-        set({
-          params: d.params ?? get().params,
-          matrix: d.matrix ?? get().matrix,
-          items: d.items ?? get().items,
-          services: d.services ?? get().services,
-          scenario: d.scenario ?? get().scenario,
-        })
-      },
-    }),
+    (set, get) => {
+      const bundle = (): ModelBundle => ({
+        params: get().params, matrix: get().matrix, items: get().items,
+        services: get().services, scenario: get().scenario,
+      })
+      const applyBundle = (b: ModelBundle) =>
+        set({ params: b.params, matrix: b.matrix, items: b.items, services: b.services, scenario: b.scenario })
+      // Все мутации через edit: в режиме просмотра версии правки заблокированы,
+      // любая правка помечает черновик как dirty (не засинхронено с git).
+      const edit = (patch: Partial<ModelState>) => {
+        if (!get().previewSha) set({ ...patch, dirty: true })
+      }
+      return {
+        ...defaults(),
+        scenario: (paramsJson as Params).meta.scenario,
+        setScenario: (s) => edit({ scenario: s }),
+        setParam: (path, value) => edit({ params: deepSet(get().params, path, value) }),
+        setItem: (idx, patch) =>
+          edit({ items: get().items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) }),
+        setMatrixCell: (path, col, value) => {
+          const copy = JSON.parse(JSON.stringify(get().matrix))
+          const keys = path.split('.')
+          let cur = copy
+          for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]]
+          cur[keys[keys.length - 1]][col] = value
+          edit({ matrix: copy })
+        },
+        setServicePrice: (code, price) =>
+          edit({
+            services: get().services.map((s) => (s.code === code ? { ...s, price } : s)),
+          }),
+        setSpecQty: (serviceCode, itemIdx, qty) =>
+          edit({
+            services: get().services.map((s) =>
+              s.code === serviceCode
+                ? { ...s, items: s.items.map((it, i) => (i === itemIdx ? { ...it, ...(it.kind === 'labor' ? { pct: qty } : { qty }) } : it)) }
+                : s,
+            ),
+          }),
+        addItem: (item) => edit({ items: [...get().items, item] }),
+        removeItem: (code) => edit({ items: get().items.filter((i) => i.code !== code) }),
+        duplicateItem: (code) => {
+          const src = get().items.find((i) => i.code === code)
+          if (!src) return
+          const prefix = src.code.replace(/\d+$/, '') || 'NC-'
+          edit({ items: [...get().items, { ...src, code: nextCode(prefix, get().items.map((i) => i.code)), name: `${src.name} (копия)` }] })
+        },
+        addService: (service) => edit({ services: [...get().services, service] }),
+        removeService: (code) => edit({ services: get().services.filter((s) => s.code !== code) }),
+        updateService: (code, patch) =>
+          edit({ services: get().services.map((s) => (s.code === code ? { ...s, ...patch } : s)) }),
+        addSpecEntry: (serviceCode, entry) =>
+          edit({
+            services: get().services.map((s) =>
+              s.code === serviceCode ? { ...s, items: [...s.items, entry] } : s,
+            ),
+          }),
+        removeSpecEntry: (serviceCode, itemIdx) =>
+          edit({
+            services: get().services.map((s) =>
+              s.code === serviceCode
+                ? { ...s, items: s.items.filter((_, i) => i !== itemIdx) }
+                : s,
+            ),
+          }),
+        resetAll: () => edit({ ...defaults(), scenario: (paramsJson as Params).meta.scenario }),
+        exportJson: () => JSON.stringify(bundle(), null, 2),
+        importJson: (json) => {
+          const d = JSON.parse(json)
+          edit({
+            params: d.params ?? get().params,
+            matrix: d.matrix ?? get().matrix,
+            items: d.items ?? get().items,
+            services: d.services ?? get().services,
+            scenario: d.scenario ?? get().scenario,
+          })
+        },
+        // ---- версионирование ----
+        versioned: null,
+        baseSha: null,
+        dirty: false,
+        previewSha: null,
+        savedState: null,
+        serverPending: null,
+        stashInfo: null,
+        author: '',
+        setAuthor: (a) => set({ author: a }),
+        syncVersions: async () => {
+          try {
+            const h = await api.health()
+            if (!h.versioning) return set({ versioned: false })
+            const { head, state } = await api.getState()
+            const stash = localStorage.getItem(STASH_KEY)
+            const patch: Partial<ModelState> = {
+              versioned: true, baseSha: head, savedState: state,
+              stashInfo: stash ? JSON.parse(stash).meta : null,
+            }
+            if (sameBundle(bundle(), state)) set({ ...patch, dirty: false })
+            else set({ ...patch, serverPending: { sha: head, state } })
+          } catch {
+            set({ versioned: false })
+          }
+        },
+        keepDraft: () => set({ serverPending: null, dirty: true }),
+        applyServer: () => {
+          const p = get().serverPending
+          if (!p) return
+          applyBundle(p.state)
+          set({ serverPending: null, dirty: false, savedState: p.state })
+        },
+        restoreStash: () => {
+          const raw = localStorage.getItem(STASH_KEY)
+          if (!raw) return
+          applyBundle(JSON.parse(raw).state)
+          localStorage.removeItem(STASH_KEY)
+          set({ stashInfo: null, serverPending: null, dirty: true })
+        },
+        saveVersion: async (message, force = false) => {
+          try {
+            const r = await api.saveState(bundle(), message, get().author || 'web', force ? null : get().baseSha)
+            set({ baseSha: r.sha, savedState: bundle(), dirty: false, serverPending: null })
+            return 'ok'
+          } catch (e) {
+            return (e as { status?: number }).status === 409 ? 'conflict' : 'error'
+          }
+        },
+        loadVersion: async (sha) => {
+          const { state } = await api.getVersion(sha)
+          const savedAt = new Date().toISOString()
+          localStorage.setItem(STASH_KEY, JSON.stringify({ meta: { savedAt }, state: bundle() }))
+          applyBundle(state)
+          set({ previewSha: sha, dirty: false, stashInfo: { savedAt } })
+        },
+        exitPreview: () => {
+          const raw = localStorage.getItem(STASH_KEY)
+          if (raw) {
+            applyBundle(JSON.parse(raw).state)
+            localStorage.removeItem(STASH_KEY)
+            set({ previewSha: null, dirty: true, stashInfo: null })
+          } else {
+            const s = get().savedState
+            if (s) applyBundle(s)
+            set({ previewSha: null, dirty: false, stashInfo: null })
+          }
+        },
+        restoreVersion: async (sha) => {
+          const r = await api.restoreVersion(sha, get().author || 'web')
+          localStorage.removeItem(STASH_KEY)
+          applyBundle(r.state)
+          set({
+            baseSha: r.sha, savedState: r.state, dirty: false,
+            previewSha: null, stashInfo: null, serverPending: null,
+          })
+        },
+      }
+    },
     {
       name: 'aura-hills-model',
       // v2: номенклатурный реворк — старые снапшоты (115 позиций, старые коды
@@ -208,9 +313,11 @@ export const useModel = create<ModelState>()(
         } as ModelState
         return merged
       },
+      // Персистим только данные модели + имя автора: поля версионирования
+      // (baseSha/dirty/previewSha/…) — сессионные, на старте их восстановит syncVersions.
       partialize: (s) => ({
         params: s.params, matrix: s.matrix, items: s.items,
-        services: s.services, scenario: s.scenario,
+        services: s.services, scenario: s.scenario, author: s.author,
       }),
     },
   ),

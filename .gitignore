@@ -6,3 +6,4 @@ vite.log
 public/
 scripts/.snap.mjs
 out/
+data/

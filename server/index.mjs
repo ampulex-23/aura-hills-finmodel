@@ -6,6 +6,7 @@
 // Zero-dependency: node >= 20. Запуск: POLZA_API_KEY=... node server/index.mjs
 import http from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
+import { stateApi } from './state.mjs'
 import { createReadStream } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -427,16 +428,56 @@ async function serveStatic(req, res) {
   createReadStream(file).pipe(res)
 }
 
+// ---------- версионирование состояния модели (git) ----------
+async function readJsonBody(req, res) {
+  let body = ''
+  for await (const c of req) {
+    body += c
+    if (body.length > 2_000_000) { json(res, 413, { error: 'Запрос слишком большой' }); return null }
+  }
+  try { return JSON.parse(body) } catch { json(res, 400, { error: 'невалидный JSON' }); return null }
+}
+
+const apiError = (res, e) =>
+  json(res, e.status || 500, { error: e.message, ...(e.head ? { head: e.head } : {}) })
+
+async function handleState(req, res) {
+  const url = new URL(req.url, 'http://x')
+  const path = url.pathname
+  if (path === '/api/state' && req.method === 'GET')
+    return json(res, 200, await stateApi.getState())
+  if (path === '/api/state' && req.method === 'POST') {
+    const body = await readJsonBody(req, res)
+    if (body == null) return
+    return json(res, 200, await stateApi.saveState(body))
+  }
+  if (path === '/api/versions' && req.method === 'GET')
+    return json(res, 200, { versions: await stateApi.listVersions() })
+  const mShow = path.match(/^\/api\/versions\/([0-9a-f]{7,40})$/i)
+  if (mShow && req.method === 'GET')
+    return json(res, 200, await stateApi.getVersion(mShow[1]))
+  const mRestore = path.match(/^\/api\/versions\/([0-9a-f]{7,40})\/restore$/i)
+  if (mRestore && req.method === 'POST') {
+    const body = (await readJsonBody(req, res)) || {}
+    if (body == null) return
+    return json(res, 200, await stateApi.restoreVersion(mRestore[1], body.author))
+  }
+  return json(res, 404, { error: 'unknown endpoint' })
+}
+
 const server = http.createServer((req, res) => {
   const url = req.url || '/'
   if (url === '/api/health') {
-    return json(res, 200, { ok: true, configured: Boolean(API_KEY), model: MODEL, agent: true })
+    return void stateApi.isReady().then((versioning) =>
+      json(res, 200, { ok: true, configured: Boolean(API_KEY), model: MODEL, agent: true, versioning }))
   }
   if (url.startsWith('/api/chat')) {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
     return void handleChat(req, res).catch((e) =>
       json(res, 502, { error: 'Ошибка прокси', detail: String(e).slice(0, 200) }))
   }
+  if (url.startsWith('/api/state') || url.startsWith('/api/versions'))
+    return void handleState(req, res).catch((e) => apiError(res, e))
   if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
   void serveStatic(req, res).catch(() => { res.writeHead(500); res.end() })
 })

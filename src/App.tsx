@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Group, Select, Text, Tooltip } from '@mantine/core'
+import { Alert, Button, Group, Modal, Select, Stack, Text, TextInput, Tooltip } from '@mantine/core'
 import { useHotkeys, useMediaQuery } from '@mantine/hooks'
 import {
   IconAdjustmentsHorizontal, IconArrowsExchange, IconBook2, IconChartLine,
   IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCpu,
-  IconFlask2, IconLayoutDashboard, IconListDetails, IconMenu2,
+  IconDeviceFloppy, IconFlask2, IconHistory, IconLayoutDashboard, IconListDetails, IconMenu2,
   IconPercentage, IconReceipt2, IconReportMoney, IconShoppingCart, IconSparkles, IconUserCog, IconUsers, IconVersions,
 } from '@tabler/icons-react'
 import { useModel } from './store'
 import { runModel } from './model/run'
+import { diffBundles } from './diff'
+import { Versions } from './tabs/Versions'
 import { exportWorkbook } from './export/excel'
 import { monthLabels } from './components/ui'
 import { Dashboard } from './tabs/Dashboard'
@@ -28,12 +30,13 @@ import { AiChat, useChat } from './components/AiChat'
 import { DOCS, getDoc } from './docs'
 
 type Tab =
-  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Штат' | 'Номенклатура' | 'Смета стройки' | 'Смета закупа' | 'Спецификации' | 'IT'
+  | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Версии' | 'Штат' | 'Номенклатура' | 'Смета стройки' | 'Смета закупа' | 'Спецификации' | 'IT'
   | 'Выручка' | 'OPEX' | 'ФОТ' | 'CAPEX' | 'Налоги' | 'P&L' | 'Cash-Flow' | 'Sensitivity'
 
 // Hash-роутинг: #/dashboard … #/sensitivity — вкладка переживает F5, ссылки шарятся.
 const TAB_SLUGS: Record<Tab, string> = {
   'Дашборд': 'dashboard', 'Допущения': 'assumptions', 'Сценарии': 'scenarios',
+  'Версии': 'versions',
   'Штат': 'staff',
   'Номенклатура': 'nomenclature', 'Смета стройки': 'smeta', 'Смета закупа': 'zakup', 'Спецификации': 'specs', 'IT': 'it',
   'Выручка': 'revenue', 'OPEX': 'opex', 'ФОТ': 'fot', 'CAPEX': 'capex',
@@ -60,6 +63,7 @@ const NAV: { group: string; items: NavItem[] }[] = [
     items: [
       { id: 'Допущения', label: 'Допущения', icon: IconAdjustmentsHorizontal },
       { id: 'Сценарии', label: 'Сценарии', icon: IconVersions },
+      { id: 'Версии', label: 'Версии', icon: IconHistory },
       { id: 'Штат', label: 'Штат', icon: IconUserCog },
       { id: 'Номенклатура', label: 'Номенклатура', icon: IconListDetails },
       { id: 'Смета стройки', label: 'Смета стройки', icon: IconCoins },
@@ -85,8 +89,17 @@ const NAV: { group: string; items: NavItem[] }[] = [
 ]
 
 export default function App() {
-  const { params, matrix, items, services, scenario, setScenario, resetAll, exportJson, importJson } = useModel()
+  const {
+    params, matrix, items, services, scenario, setScenario, resetAll, exportJson, importJson,
+    versioned, baseSha, dirty, previewSha, savedState, serverPending, stashInfo, author,
+    setAuthor, syncVersions, keepDraft, applyServer, restoreStash, saveVersion, exitPreview, restoreVersion,
+  } = useModel()
   const { open: aiOpen, pins: aiPins, toggle: aiToggle } = useChat()
+  const [saveOpen, setSaveOpen] = useState(false)
+  const [saveMsg, setSaveMsg] = useState('')
+  const [saveBusy, setSaveBusy] = useState(false)
+  const [conflict, setConflict] = useState(false)
+  const [saveErr, setSaveErr] = useState(false)
   const [tab, setTabState] = useState<Route>(() => routeFromHash() ?? 'Дашборд')
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('ah-side') === '1')
   const [closedGroups, setClosedGroups] = useState<Set<string>>(
@@ -107,6 +120,29 @@ export default function App() {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
+
+  // Старт: подхватываем сохранённое состояние и версии с сервера (если он есть).
+  // Если сервер недоступен/без git — приложение работает по-старому на localStorage.
+  useEffect(() => { void syncVersions() }, [syncVersions])
+
+  const currentBundle = useMemo(
+    () => ({ params, matrix, items, services, scenario }),
+    [params, matrix, items, services, scenario],
+  )
+  const dirtyCount = useMemo(
+    () => (dirty && savedState ? diffBundles(savedState, currentBundle).length : dirty ? 1 : 0),
+    [dirty, savedState, currentBundle],
+  )
+
+  const doSave = async (force = false) => {
+    if (!saveMsg.trim()) return
+    setSaveBusy(true)
+    const r = await saveVersion(saveMsg.trim(), force)
+    setSaveBusy(false)
+    if (r === 'ok') { setSaveOpen(false); setConflict(false); setSaveMsg(''); setSaveErr(false) }
+    else if (r === 'conflict') setConflict(true)
+    else setSaveErr(true)
+  }
 
   const toggleCollapsed = () => {
     setCollapsed((c) => {
@@ -241,6 +277,18 @@ export default function App() {
               onChange={(v) => v && setScenario(v)}
               allowDeselect={false}
             />
+            {versioned && (
+              <Tooltip label={dirty ? `${dirtyCount} изменений не сохранено` : 'Все изменения сохранены в версии'}>
+                <Button
+                  size="xs" variant={dirty ? 'filled' : 'default'} color={dirty ? 'green' : 'gray'}
+                  leftSection={<IconDeviceFloppy size={14} />}
+                  disabled={!dirty}
+                  onClick={() => setSaveOpen(true)}
+                >
+                  Сохранить версию{dirty ? ` · ${dirtyCount}` : ''}
+                </Button>
+              </Tooltip>
+            )}
             <Button size="xs" variant="default" onClick={download}>JSON</Button>
             <Button size="xs" onClick={exportExcel}>Excel</Button>
             <Button size="xs" variant="default" onClick={() => fileRef.current?.click()}>Загрузить</Button>
@@ -266,6 +314,47 @@ export default function App() {
         </header>
 
         <main className="content">
+          {serverPending && (
+            <Alert color="yellow" mb="sm" title="На сервере другая версия">
+              <Text size="sm" mb="xs">
+                Сохранённая версия {serverPending.sha.slice(0, 7)} отличается от ваших локальных изменений.
+              </Text>
+              <Group gap="xs">
+                <Button size="compact-xs" variant="filled" onClick={keepDraft}>Оставить мои изменения</Button>
+                <Button size="compact-xs" variant="default" onClick={applyServer}>Взять серверную версию</Button>
+              </Group>
+            </Alert>
+          )}
+          {stashInfo && !serverPending && !previewSha && (
+            <Alert color="blue" mb="sm" title="Есть отложенный черновик">
+              <Text size="sm" mb="xs">
+                При просмотре версии был сохранён черновик от {new Date(stashInfo.savedAt).toLocaleString('ru-RU')}.
+              </Text>
+              <Group gap="xs">
+                <Button size="compact-xs" variant="filled" onClick={restoreStash}>Восстановить черновик</Button>
+                <Button
+                  size="compact-xs" variant="default"
+                  onClick={() => { localStorage.removeItem('aura-hills-draft-stash'); useModel.setState({ stashInfo: null }) }}
+                >
+                  Удалить
+                </Button>
+              </Group>
+            </Alert>
+          )}
+          {previewSha && (
+            <Alert color="violet" mb="sm" title={`Просмотр версии ${previewSha.slice(0, 7)}`}>
+              <Text size="sm" mb="xs">Редактирование отключено. Ваш черновик сохранён и будет возвращён при выходе.</Text>
+              <Group gap="xs">
+                <Button size="compact-xs" variant="filled" onClick={exitPreview}>Вернуться к черновику</Button>
+                <Button
+                  size="compact-xs" variant="light" color="violet"
+                  onClick={() => void restoreVersion(previewSha)}
+                >
+                  Сделать этой версией основной
+                </Button>
+              </Group>
+            </Alert>
+          )}
           {tab === 'Дашборд' && <Dashboard r={result} />}
           {tab === 'Допущения' && <Assumptions />}
           {tab === 'Сценарии' && <Scenarios />}
@@ -283,6 +372,7 @@ export default function App() {
           {tab === 'Спецификации' && <Specs />}
           {tab === 'IT' && <It />}
           {tab === 'Sensitivity' && <Sensitivity r={result} />}
+          {tab === 'Версии' && <Versions />}
           {tab.startsWith('doc:') && (() => {
             const d = getDoc(tab.slice(4))
             if (!d) return null
@@ -290,6 +380,45 @@ export default function App() {
           })()}
         </main>
       </div>
+
+      <Modal
+        opened={saveOpen} onClose={() => { setSaveOpen(false); setConflict(false) }}
+        title="Сохранить версию модели" centered
+      >
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">
+            Текущие параметры ({dirtyCount} изм.) будут зафиксированы как новая версия в истории.
+            {baseSha && <> База: <Text span ff="monospace" size="xs">{baseSha.slice(0, 7)}</Text></>}
+          </Text>
+          <TextInput
+            label="Что изменилось?" placeholder="например: поднял цену сауны до 50€"
+            value={saveMsg} onChange={(e) => setSaveMsg(e.currentTarget.value)}
+            required data-autofocus
+          />
+          <TextInput
+            label="Автор" placeholder="Ваше имя"
+            value={author} onChange={(e) => setAuthor(e.currentTarget.value)}
+          />
+          {conflict && (
+            <Alert color="orange" title="Конфликт версий">
+              Пока вы редактировали, на сервере появилась новая версия.
+              Сравнить можно на вкладке «Версии».
+            </Alert>
+          )}
+          {saveErr && <Alert color="red">Не удалось сохранить — проверьте сервер.</Alert>}
+          <Group justify="flex-end">
+            {conflict && (
+              <Button size="sm" color="orange" variant="light" loading={saveBusy} onClick={() => void doSave(true)}>
+                Сохранить поверх
+              </Button>
+            )}
+            <Button size="sm" variant="default" onClick={() => { setSaveOpen(false); setConflict(false) }}>Отмена</Button>
+            <Button size="sm" color="green" loading={saveBusy} disabled={!saveMsg.trim()} onClick={() => void doSave()}>
+              Сохранить
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
 
       <AiChat />
     </div>
