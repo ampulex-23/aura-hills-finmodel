@@ -102,12 +102,26 @@ export function nextCode(prefix: string, existing: string[]): string {
 // Рекурсивно добирает недостающие ключи из дефолтов. Массивы: элементы сверх
 // дефолтной длины мёржатся с последним элементом-шаблоном (новые поля внутри
 // пользовательских объектов тоже заполняются — modules[i].status и т.п.).
-function fillDefaults<T>(cur: unknown, def: T): T {
+// Экспортирована для тестов.
+export function fillDefaults<T>(cur: unknown, def: T): T {
   if (cur === undefined || cur === null) return def
   if (Array.isArray(def)) {
     if (!Array.isArray(cur)) return def
     const tpl = def[def.length - 1]
-    return cur.map((v, i) => fillDefaults(v, i < def.length ? def[i] : tpl)) as T
+    // Элементы с полем `code` мёржатся с дефолтом ТОГО ЖЕ кода, а не той же
+    // позиции — иначе после удаления/перестановки строк дефолтные поля
+    // (weight и т.п.) попадают в чужие записи.
+    const byCode = new Map(
+      def.filter((d) => d && typeof d === 'object' && 'code' in d)
+        .map((d) => [(d as { code: string }).code, d]),
+    )
+    return cur.map((v, i) => {
+      const d =
+        v && typeof v === 'object' && 'code' in v && byCode.has((v as { code: string }).code)
+          ? byCode.get((v as { code: string }).code)
+          : i < def.length ? def[i] : tpl
+      return fillDefaults(v, d)
+    }) as T
   }
   if (def !== null && typeof def === 'object') {
     if (typeof cur !== 'object') return def

@@ -73,3 +73,19 @@ describe('спеки как источник распределения выру
     expect(c['SVC-P1']).toBeGreaterThan(c['SVC-P4']) // 50€×0.5 vs 250€×0.25 — по объёму P1 больше
   })
 })
+
+describe('merge сохранённого состояния с дефолтами', () => {
+  it('удалённая спека не пропускает дефолтный weight в чужую позицию', async () => {
+    const { fillDefaults } = await import('../src/store')
+    // серверное состояние старой эпохи: SVC-M2 удалена заказчиком,
+    // у остальных спек нет weight → merge по code, не по позиции
+    const persisted = S().filter((x) => x.code !== 'SVC-M2')
+      .map((x) => { const c: ServiceSpec = { ...x }; delete c.weight; return c })
+    const merged = fillDefaults(persisted, services)
+    expect(merged).toHaveLength(persisted.length)
+    expect(merged.find((x) => x.code === 'SVC-M2')).toBeUndefined()
+    const m3 = merged.find((x) => x.code === 'SVC-M3')!
+    expect(m3.weight).toBe(0.125) // свой вес, а не weight удалённого соседа
+    expect(m3.name).toBe('Массаж 3 (SPA-ритуал)')
+  })
+})
