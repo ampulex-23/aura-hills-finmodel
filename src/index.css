@@ -478,3 +478,6 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 }
 .genplan-canvas img { display: block; width: 100%; height: auto; }
 .genplan-files { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+
+/* Вторая строка в клетке месячной таблицы: количество списанного и т.п. */
+.cell-sub { font-size: 10px; color: #6b86ad; margin-top: 1px; }

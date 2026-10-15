@@ -388,6 +388,10 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
         return {
           label: `${code} · ${any.name}`,
           values: O.map((m) => m.variableDetail.find((d) => d.article === v.article && d.code === code)?.amount ?? 0),
+          sub: (ci: number) => {
+            const d = O[ci].variableDetail.find((x) => x.article === v.article && x.code === code)
+            return d && d.qty > 0 ? `${fmt(d.qty, d.qty % 1 ? 1 : 0)} ${d.unit}` : null
+          },
           hint: (ci: number): CellHint | null => {
             const d = O[ci].variableDetail.find((x) => x.article === v.article && x.code === code)
             if (!d || d.qty <= 0) return null

@@ -153,6 +153,7 @@ export interface RowDef {
   tip?: string // человекочитаемое пояснение строки (иконка ⓘ)
   hint?: (ci: number, v: number | string) => CellHint | null // пояснение клетки
   children?: RowDef[] // раскрываемые позиции внутри статьи (свернуты по умолчанию)
+  sub?: (ci: number) => string | null // мелкая вторая строка в клетке (кол-во и т.п.)
 }
 
 // Помесячная таблица (аналог строки листа) — горизонтальный скролл, итог справа.
@@ -184,9 +185,13 @@ export function MonthTable({ rows, labels, withSum, searchable }: { rows: RowDef
       {r.values.map((v, ci) => {
         let h: CellHint | null = null
         try { h = r.hint?.(ci, v) ?? null } catch { /* хинт не должен ронять таблицу */ }
+        let sub: string | null = null
+        try { sub = r.sub?.(ci) ?? null } catch { sub = null }
+        const main = h ? <Hint hint={h}><span className="cellval">{f(v, r.fmt)}</span></Hint> : f(v, r.fmt)
         return (
           <td key={ci}>
-            {h ? <Hint hint={h}><span className="cellval">{f(v, r.fmt)}</span></Hint> : f(v, r.fmt)}
+            {main}
+            {sub && <div className="cell-sub">{sub}</div>}
           </td>
         )
       })}
