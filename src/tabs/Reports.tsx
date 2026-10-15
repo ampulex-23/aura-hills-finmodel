@@ -205,6 +205,10 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
     services.filter((s) => s.direction === dir).map((s, j) => ({
       label: `— ${s.name}`,
       values: stream((mm) => mm[key][j] ?? 0),
+      sub: (ci: number) => {
+        const n = R[ci].serviceCounts?.[s.code] ?? 0
+        return n > 0 ? `${fmt(n)} шт.` : null
+      },
       hint: (ci): CellHint => ({
         title: s.name,
         calc: `позиция меню: ${e0(s.price)} × вес ${s.weight ?? 0} = ${e0(R[ci][key][j] ?? 0)}`,
