@@ -173,6 +173,11 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
   const moduleKids: RowDef[] = params.modules.map((m, i) => ({
     label: `— Модуль №${m.id} · ${m.capacity} гостей`,
     values: stream((mm) => mm.bathCounts[i] ?? 0),
+    // Гости модуля = слоты × вместимость — под каждым слотом, а не строкой ниже
+    sub: (ci: number) => {
+      const g = (R[ci].bathCounts[i] ?? 0) * m.capacity
+      return g > 0 ? `${fmt(g)} гост.` : null
+    },
     hint: (ci): CellHint => ({
       title: `Модуль №${m.id}`,
       text: 'Проданные слоты модуля — после вытеснения членами/сертификатами в пик (общий масштабирующий коэффициент).',
@@ -187,6 +192,10 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
   const rentalKids: RowDef[] = params.modules.map((m, i) => ({
     label: `— №${m.id} · ${e0(avgPrice(m))}/слот`,
     values: stream((mm, k) => (mm.bathCounts[i] ?? 0) * avgPrice(m) * gAt(k)),
+    sub: (ci: number) => {
+      const g = (R[ci].bathCounts[i] ?? 0) * m.capacity
+      return g > 0 ? `${fmt(g)} гост.` : null
+    },
     hint: (ci): CellHint => ({
       title: `Аренда — модуль №${m.id}`,
       calc: `${fmt(R[ci].bathCounts[i] ?? 0)} слот × ${e1(avgPrice(m))} × рост ${gAt(ci).toFixed(2)} = ${e0((R[ci].bathCounts[i] ?? 0) * avgPrice(m) * gAt(ci))}`,
