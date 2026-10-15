@@ -44,6 +44,7 @@ export function computeFotMonth(
   const salaries = baseSalariesMonthly(params, k) * infl
 
   let bonuses = 0
+  let procCount = 0
   const byDir = new Map<string, number>()
   const dirOrder = [...new Set(services.map((s) => s.direction))]
   for (const dir of dirOrder) {
@@ -53,6 +54,7 @@ export function computeFotMonth(
       const amt = (counts[idx] ?? 0) * s.price * serviceLaborShare(s, params)
       if (amt > 0) {
         bonuses += amt
+        procCount += counts[idx]
         byDir.set(dir, (byDir.get(dir) ?? 0) + amt)
       }
     })
@@ -63,7 +65,7 @@ export function computeFotMonth(
 
   const gross = salaries + bonuses
   const employerContrib = gross * params.taxes.employerRate
-  return { salaries, bonuses, bonusDetail, gross, employerContrib, total: gross + employerContrib }
+  return { salaries, bonuses, bonusDetail, procCount, gross, employerContrib, total: gross + employerContrib }
 }
 
 export function computeFot(

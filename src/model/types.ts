@@ -433,6 +433,7 @@ export interface FotMonth {
   salaries: number
   bonuses: number
   bonusDetail: string // разложение KPI по направлениям для подсказок отчётов
+  procCount: number // процедур, за которые начислен KPI (спеки с трудовой долей)
   gross: number
   employerContrib: number
   total: number
