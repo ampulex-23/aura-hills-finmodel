@@ -257,13 +257,35 @@ export function Assumptions() {
           hint="Комиссия платёжного шлюза — % от всей брутто-выручки месяца (все десять потоков)." />
         <Row label="Ремонт/обслуживание, %" path="opexPct.maintenance" value={P.opexPct.maintenance} pct
           hint="FF&E-норма на текущий ремонт — % от выручки (отрасль premium leisure 3–4%). Не путать с maintenance CAPEX — тот идёт отдельным оттоком в CF." />
-        <Row label="Маркетинг, min €/мес" path="opexFixed.0.base" value={P.opexFixed[0]?.base ?? 0} step={250}
-          hint="Фиксированная база маркетинга (индексируется инфляцией). Статья = max(база, % выручки месяца)." />
-        <Row label="Маркетинг, % выручки" path="opexFixed.0.pctOfRevenue" value={P.opexFixed[0]?.pctOfRevenue ?? 0} pct step={0.005}
-          hint="Переменная часть маркетинга — растёт вместе с продажами, когда превышает базу. Отрасль 3–6%." />
-        <Row label="Страхование, €/мес" path="opexFixed.6.base" value={P.opexFixed[6]?.base ?? 0} step={50}
-          hint="Полисы комплекса — постоянная статья с индексацией инфляцией. Рынок €800–2 000/мес." />
-        <small className="note">Маркетинг = max(min €/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес.</small>
+        <div className="table-wrap" style={{ marginTop: 8 }}>
+          <table className="month-table spec">
+            <thead>
+              <tr>
+                <th><Hint hint={{ text: 'Постоянная операционная статья. Название попадает в OPEX-таблицы и отчёты.' }}><span>Статья</span></Hint></th>
+                <th><Hint hint={{ text: 'База в €/мес; каждый месяц умножается на индексацию инфляцией — ступенью раз в год.' }}><span>€/мес</span></Hint></th>
+                <th><Hint hint={{ text: 'Особая механика строки: маркетинг растёт с выручкой, энергия — с мультипликатором сценария, обслуживание — с числом модулей.' }}><span>Механика</span></Hint></th>
+              </tr>
+            </thead>
+            <tbody>
+              {P.opexFixed.map((f, i) => (
+                <tr key={i}>
+                  <td className="lft"><TextCell w={170} value={f.name} onChange={(v) => setParam(`opexFixed.${i}.name`, v)} /></td>
+                  <td><NumField value={f.base} onChange={(v) => setParam(`opexFixed.${i}.base`, v)} step={50} /></td>
+                  <td>
+                    {f.pctOfRevenue != null ? (
+                      <NumField value={f.pctOfRevenue} onChange={(v) => setParam(`opexFixed.${i}.pctOfRevenue`, v)} pct step={0.005} />
+                    ) : (
+                      <small className="note">
+                        {f.energy ? '× мульт. энергии сценария' : f.perModule ? '× активных модулей' : 'инфляция'}
+                      </small>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <small className="note">Маркетинг = max(€/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес.</small>
       </fieldset>
 
       <fieldset>
