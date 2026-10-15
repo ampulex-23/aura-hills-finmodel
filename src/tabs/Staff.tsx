@@ -7,6 +7,8 @@ const COL = {
   role: 'Должность — свободное название. На роль заводятся KPI-бонусы в «Спецификациях».',
   countStart: 'Ставок на дату открытия (месяц 1 операционки).',
   phase: 'Штат с этого месяца — фаза расширения. Число заменяет стартовое значение: 0 = роль ещё не нанята.',
+  schedule: 'Рабочий график роли: «2/2», «5/2», «по записи». Справочное поле — на фонд не влияет; паттерн N/M даёт расчёт «на смене».',
+  onShift: 'Сколько человек одновременно на смене при стартовом штате: ставки × раб.дни/(раб.+вых.) из графика. «2/2» = половина ставок одновременно.',
   salary: 'Оклад gross, €/мес — до взносов работодателя. Индексируется инфляцией ежегодно.',
   fund: 'Фонд месяца старта: ставки на открытие × оклад. Роль, нанятая в более поздней фазе (0 ставок на старте), здесь показывает 0 — она попадает в ФОТ со своего месяца найма.',
   fundFinal: 'Фонд при штате последней фазы: ставки финальной колонки × оклад. Здесь видны роли, нанятые после открытия (Бронист, Инженер и т.д.).',
@@ -33,15 +35,24 @@ export function Staff() {
   const totalBase = baseSalariesMonthly(P)
   const totalBaseFinal = staffMonthlyFinal + cookMonthly + curatorMonthly
 
+  const sched = (i: number) => P.fot.schedule?.[i] ?? ''
+  // «2/2» → доля времени на смене 1/2; «5/2» → 5/7. Прочий текст — справочно.
+  const shiftShare = (s: string) => {
+    const m = s.trim().match(/^(\d+)\s*[/\\]\s*(\d+)$/)
+    return m ? Number(m[1]) / (Number(m[1]) + Number(m[2])) : null
+  }
+
   const removeRole = (i: number) => {
     setParam('fot.roles', P.fot.roles.filter((_, j) => j !== i))
     setParam('fot.count', P.fot.count.filter((_, j) => j !== i))
     setParam('fot.salary', P.fot.salary.filter((_, j) => j !== i))
+    setParam('fot.schedule', (P.fot.schedule ?? []).filter((_, j) => j !== i))
   }
   const addRole = () => {
     setParam('fot.roles', [...P.fot.roles, `Роль ${P.fot.roles.length + 1}`])
     setParam('fot.count', [...P.fot.count, 1])
     setParam('fot.salary', [...P.fot.salary, 1200])
+    setParam('fot.schedule', [...(P.fot.schedule ?? P.fot.roles.map(() => '5/2')), '5/2'])
   }
 
   const CondRow = ({ name, count, salary, src, on }: { name: string; count: number; salary: number; src: string; on: boolean }) => (
@@ -49,6 +60,8 @@ export function Staff() {
       <td className="lft">{name} <small className="note">· {src}</small></td>
       <td className="lft">{on ? fmt(count) : 'выкл.'}</td>
       {phases.map((_, pi) => <td key={pi} className="lft">{on ? fmt(count) : '—'}</td>)}
+      <td className="lft">—</td>
+      <td className="lft">—</td>
       <td className="lft">{on ? fmt(salary) : '—'}</td>
       <td className="lft">{on ? fmt(count * salary) : '—'}</td>
       <td className="lft">{on ? fmt(count * salary) : '—'}</td>
@@ -60,8 +73,11 @@ export function Staff() {
   return (
     <div>
       <p className="note" style={{ maxWidth: 720 }}>
-        Штатное расписание и связанные ставки. Оклады индексируются инфляцией ежегодно
-        и облагаются взносами работодателя ({(P.taxes.employerRate * 100).toFixed(2)}%).
+        Штатное расписание и связанные ставки. Ставка = штатная единица с месячным
+        окладом gross; «График» — как роль работает («2/2», «5/2», «по записи»),
+        «На смене» — сколько человек одновременно: ставки × раб.дни/(раб.+вых.).
+        Оклады индексируются инфляцией ежегодно и облагаются взносами работодателя
+        ({(P.taxes.employerRate * 100).toFixed(2)}%).
         KPI ролей за услуги — во вкладке «Спецификации» (процент от прайса каждой услуги).
       </p>
 
@@ -77,6 +93,8 @@ export function Staff() {
                 {phases.map((ph, pi) => (
                   <th key={pi}><Hint hint={{ title: ph.label, text: COL.phase }}><span>{ph.from}</span></Hint></th>
                 ))}
+                <th><Hint hint={{ text: COL.schedule }}><span>График</span></Hint></th>
+                <th><Hint hint={{ text: COL.onShift }}><span>На смене (старт)</span></Hint></th>
                 <th><Hint hint={{ text: COL.salary }}><span>Оклад, €/мес gross</span></Hint></th>
                 <th><Hint hint={{ text: COL.fund }}><span>Фонд (старт), €/мес</span></Hint></th>
                 <th><Hint hint={{ text: COL.fundFinal }}><span>Фонд (финал), €/мес</span></Hint></th>
@@ -96,6 +114,8 @@ export function Staff() {
                         <NumField value={ph.count[i] ?? 0} onChange={(v) => setParam(`fot.phases.${pi}.count.${i}`, v)} step={0.5} />
                       </td>
                     ))}
+                    <td><TextCell w={64} value={sched(i)} onChange={(v) => setParam(`fot.schedule.${i}`, v)} placeholder="5/2" /></td>
+                    <td className="lft">{shiftShare(sched(i)) != null && P.fot.count[i] ? fmt(P.fot.count[i] * shiftShare(sched(i))!, 1) : '—'}</td>
                     <td><NumField value={P.fot.salary[i]} onChange={(v) => setParam(`fot.salary.${i}`, v)} step={50} /></td>
                     <td className="lft">{fmt(monthly)}</td>
                     <td className="lft">{fmt(monthlyFinal)}</td>
@@ -114,6 +134,10 @@ export function Staff() {
                 {phases.map((ph, pi) => (
                   <td key={pi} className="lft"><b>{fmt(ph.count.reduce((a, b) => a + b, 0))}</b></td>
                 ))}
+                <td />
+                <td className="lft"><b>
+                  {fmt(P.fot.roles.reduce((s, _, i) => s + (P.fot.count[i] ?? 0) * (shiftShare(sched(i)) ?? 0), 0), 1)}
+                </b></td>
                 <td />
                 <td className="lft"><b>{fmt(totalBase)}</b></td>
                 <td className="lft"><b>{fmt(totalBaseFinal)}</b></td>

@@ -295,6 +295,9 @@ export interface Params {
     roles: string[]
     count: number[]
     salary: number[]
+    /** График роли справочно: '2/2', '5/2', 'по записи'. Паттерн N/M даёт
+     *  «на смене» = ставки × N/(N+M); непарсимые значения — просто текст. */
+    schedule?: string[]
     /** Ступени штата по очередям: с месяца `from` ('YYYY-MM') count заменяется
      *  полным вектором фазы (не дельта). Фазы применяются в порядке дат. */
     phases?: { from: string; label?: string; count: number[] }[]
