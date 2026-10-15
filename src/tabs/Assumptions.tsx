@@ -1,4 +1,4 @@
-import { Select, SegmentedControl, Tabs } from '@mantine/core'
+import { ActionIcon, Button, Select, SegmentedControl, Tabs } from '@mantine/core'
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt, fmtPct } from '../components/ui'
 import { capmWacc } from '../model/run'
@@ -264,6 +264,7 @@ export function Assumptions() {
                 <th><Hint hint={{ text: 'Постоянная операционная статья. Название попадает в OPEX-таблицы и отчёты.' }}><span>Статья</span></Hint></th>
                 <th><Hint hint={{ text: 'База в €/мес; каждый месяц умножается на индексацию инфляцией — ступенью раз в год.' }}><span>€/мес</span></Hint></th>
                 <th><Hint hint={{ text: 'Особая механика строки: маркетинг растёт с выручкой, энергия — с мультипликатором сценария, обслуживание — с числом модулей.' }}><span>Механика</span></Hint></th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -280,11 +281,21 @@ export function Assumptions() {
                       </small>
                     )}
                   </td>
+                  <td>
+                    <Hint hint={{ text: 'Удалить статью из постоянных расходов' }}>
+                      <span><ActionIcon size="sm" variant="subtle" color="red"
+                        onClick={() => setParam('opexFixed', P.opexFixed.filter((_, j) => j !== i))}>✕</ActionIcon></span>
+                    </Hint>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <Button size="xs" variant="default" mt={6}
+          onClick={() => setParam('opexFixed', [...P.opexFixed, { name: 'Новая статья', base: 0 }])}>
+          + Статья
+        </Button>
         <small className="note">Маркетинг = max(€/мес × инфляция, % выручки месяца) — отрасль premium leisure 3–6%. FF&E-норма 3–4% выручки на ремонт; страхование €800–2,000/мес.</small>
       </fieldset>
 

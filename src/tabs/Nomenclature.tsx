@@ -34,7 +34,7 @@ const emptyItem = (code: string): NomenclatureItem => ({
 // Справочник номенклатуры — редактируемый грид, сгруппированный по категориям.
 export function Nomenclature() {
   const {
-    items, services, setItem, addItem, removeItem,
+    items, services, params, setItem, addItem, removeItem,
   } = useModel()
   const [q, setQ] = useState('')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -47,6 +47,9 @@ export function Nomenclature() {
   const specItems = items.filter((i) => i.use === 'Спецификация').length
   const capexItems = items.filter((i) => i.use === 'CAPEX').length
   const capexEur = nomenclatureCapexEur(items)
+  // ownPrice — себестоимость единицы при своей прачечной (порошок/вода/электр.).
+  // Колонка видна только при включённом слое прачечной, иначе поле не используется.
+  const laundryOn = !!params.laundry?.enabled
 
   const categories = [...new Set(items.map((i) => i.category))]
   const articles = [...new Set(items.map((i) => i.opexArticle).filter(Boolean))] as string[]
@@ -146,6 +149,9 @@ export function Nomenclature() {
               <th><Hint hint={{ text: COL.dfix }}><span>Дост. €/ед</span></Hint></th>
               <th><Hint hint={{ text: COL.dpct }}><span>Дост. %</span></Hint></th>
               <th><Hint hint={{ text: COL.landed }}><span>Landed €</span></Hint></th>
+              {laundryOn && (
+                <th><Hint hint={{ text: 'Себестоимость единицы при своей прачечной (порошок, вода, электричество). При включённой прачечной списание идёт по этой цене вместо landed. Пусто/0 — считается по landed.' }}><span>Прач. €</span></Hint></th>
+              )}
               {tab === 'CAPEX' ? (
                 <th><Hint hint={{ text: COL.qty }}><span>Кол-во</span></Hint></th>
               ) : (
@@ -167,7 +173,7 @@ export function Nomenclature() {
                   className="section spec-head"
                   onClick={() => toggle(cat)}
                 >
-                  <td colSpan={tab === 'CAPEX' ? 11 : 13} className="sticky">
+                  <td colSpan={(tab === 'CAPEX' ? 11 : 13) + (laundryOn ? 1 : 0)} className="sticky">
                     <span className="spec-caret">{open ? '▾' : '▸'}</span>
                     {cat} <small>· {arr.length} поз.</small>
                   </td>
@@ -197,6 +203,9 @@ export function Nomenclature() {
                         <td><NumField value={it.deliveryFix} onChange={(v) => setItem(i, { deliveryFix: v })} /></td>
                         <td><NumField value={it.deliveryPct} onChange={(v) => setItem(i, { deliveryPct: v })} pct /></td>
                         <td><b>{fmt(landedCost(it), 2)}</b></td>
+                        {laundryOn && (
+                          <td><NumField value={it.ownPrice ?? 0} onChange={(v) => setItem(i, { ownPrice: v || undefined })} step={0.05} /></td>
+                        )}
                         {tab === 'CAPEX' ? (
                           <td><NumField value={it.qty} onChange={(v) => setItem(i, { qty: v })} step={1} /></td>
                         ) : (
@@ -275,6 +284,9 @@ export function Nomenclature() {
               <Autocomplete label="Статья OPEX" data={articles} filter={({ options }) => options} disabled={draft.use === 'CAPEX'} value={draft.opexArticle ?? ''} onChange={(v) => setD({ opexArticle: v || null })} />
               <NumberInput label="Норма расхода" value={draft.norm} min={0} decimalScale={3} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ norm: Number(v) || 0 })} />
               <Select label="База нормы" data={draft.use === 'Спецификация' ? ['слот', 'гость'] : ['слот', 'гость', 'мес']} value={draft.normBase} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ normBase: (v as NomenclatureItem['normBase']) ?? null })} />
+              {laundryOn && (
+                <NumberInput label="Себест. своей прачечной €" value={draft.ownPrice ?? 0} min={0} decimalScale={2} disabled={draft.use === 'CAPEX'} onChange={(v) => setD({ ownPrice: Number(v) || undefined })} />
+              )}
             </Group>
             <Group grow>
               <NumberInput label="Кол-во (CAPEX)" value={draft.qty} min={0} disabled={draft.use !== 'CAPEX'} onChange={(v) => setD({ qty: Number(v) || 0 })} />

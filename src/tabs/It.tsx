@@ -1,6 +1,6 @@
-import { SegmentedControl } from '@mantine/core'
+import { ActionIcon, Button, SegmentedControl } from '@mantine/core'
 import { useModel } from '../store'
-import { Hint, NumField } from '../components/ui'
+import { Hint, NumField, TextCell } from '../components/ui'
 
 // Вкладка «IT»: кастомный цифровой слой — подписки/инфраструктура помесячно,
 // внедрение разово в CAPEX, IT-куратор в ФОТ.
@@ -39,29 +39,41 @@ export function It() {
         <fieldset>
           <legend>Содержание, €/мес</legend>
           {it.opex.map((x, i) => (
-            <label className="field" key={x.name}>
-              <span>{x.name}</span>
+            <label className="field" key={i}>
+              <TextCell w={170} value={x.name} onChange={(v) => setParam(`it.opex.${i}.name`, v)} />
               <NumField value={x.base} onChange={(v) => setParam(`it.opex.${i}.base`, v)} step={10} disabled={!it.enabled} />
+              <ActionIcon size="sm" variant="subtle" color="red" disabled={!it.enabled}
+                onClick={() => setParam('it.opex', it.opex.filter((_, j) => j !== i))}>✕</ActionIcon>
             </label>
           ))}
           <label className="field">
             <span><b>Итого</b></span>
             <span><b>€{it.opex.reduce((s, x) => s + x.base, 0).toLocaleString('ru-RU')}</b></span>
           </label>
+          <Button size="xs" variant="default" disabled={!it.enabled}
+            onClick={() => setParam('it.opex', [...it.opex, { name: 'Новая подписка', base: 0 }])}>
+            + Строка
+          </Button>
         </fieldset>
 
         <fieldset>
           <legend>Внедрение (CAPEX, €)</legend>
           {it.capex.map((x, i) => (
-            <label className="field" key={x.name}>
-              <span>{x.name}</span>
+            <label className="field" key={i}>
+              <TextCell w={170} value={x.name} onChange={(v) => setParam(`it.capex.${i}.name`, v)} />
               <NumField value={x.eur} onChange={(v) => setParam(`it.capex.${i}.eur`, v)} step={500} disabled={!it.enabled} />
+              <ActionIcon size="sm" variant="subtle" color="red" disabled={!it.enabled}
+                onClick={() => setParam('it.capex', it.capex.filter((_, j) => j !== i))}>✕</ActionIcon>
             </label>
           ))}
           <label className="field">
             <span><b>Итого</b></span>
             <span><b>€{it.capex.reduce((s, x) => s + x.eur, 0).toLocaleString('ru-RU')}</b></span>
           </label>
+          <Button size="xs" variant="default" disabled={!it.enabled}
+            onClick={() => setParam('it.capex', [...it.capex, { name: 'Новая строка', eur: 0 }])}>
+            + Строка
+          </Button>
         </fieldset>
       </div>
     </div>
