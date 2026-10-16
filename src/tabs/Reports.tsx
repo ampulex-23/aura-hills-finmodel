@@ -3,6 +3,8 @@ import { Button, TextInput } from '@mantine/core'
 import type { ModelResult, ModuleSpec, NomenclatureItem, Params } from '../model/types'
 import { landedCost, activeModuleCount } from '../model/opex'
 import { baseSalariesMonthly, headcountAt } from '../model/fot'
+import { dirCounts } from '../model/revenue'
+import { laborPct } from '../model/spec'
 import { capexWeights } from '../model/cashflow'
 import { useModel } from '../store'
 import { MonthTable, monthLabels, fmt, fmtEur, fmtPct, Hint } from '../components/ui'
@@ -460,22 +462,81 @@ export function Opex({ r, labels }: { r: ModelResult; labels: string[] }) {
 }
 
 export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
-  const { params } = useModel()
+  const { params, services } = useModel()
   const F = r.fot
   const R = r.revenue
+  const delay = r.scenario.constructionDelayMonths
   const inflAt = (k: number) => Math.pow(1 + params.general.inflation, Math.floor(k / 12))
+  const hc = R.map((_, k) => headcountAt(params, k, delay))
+  // KPI-бонусы по ролям: та же раскладка, что в computeFotMonth, но с именами ролей
+  const roleBonus = new Map<string, { amt: number[]; cnt: number[] }>()
+  const dirOrder = [...new Set(services.map((s) => s.direction))]
+  R.forEach((rev, k) => {
+    for (const dir of dirOrder) {
+      const dirSpecs = services.filter((s) => s.direction === dir)
+      const counts = dirCounts(rev, dir, dirSpecs, params)
+      dirSpecs.forEach((s, idx) => {
+        const cnt = counts[idx] ?? 0
+        if (cnt <= 0) return
+        for (const it of s.items) {
+          if (it.kind !== 'labor' || !it.role) continue
+          const pct = laborPct(it, s.price, params)
+          if (pct <= 0) continue
+          let rb = roleBonus.get(it.role)
+          if (!rb) { rb = { amt: R.map(() => 0), cnt: R.map(() => 0) }; roleBonus.set(it.role, rb) }
+          rb.amt[k] += cnt * s.price * pct
+          rb.cnt[k] += cnt
+        }
+      })
+    }
+  })
+  const fotStart =
+    params.fot.count.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
+    (params.it.enabled ? params.it.curator : 0) +
+    (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
+  const lastPhase = params.fot.phases?.length ? params.fot.phases[params.fot.phases.length - 1].count : params.fot.count
+  const fotFull =
+    lastPhase.reduce((s, c, i) => s + c * params.fot.salary[i], 0) +
+    (params.it.enabled ? params.it.curator : 0) +
+    (params.fb.enabled ? params.fb.cookCount * params.fb.cookSalary : 0)
   const rows: RowDef[] = [
     {
-      label: 'Оклады (фикс.)', values: F.map((m) => m.salaries),
-      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}${params.fb.enabled ? ` и повара (${params.fb.cookCount} × ${e0(params.fb.cookSalary)}/мес)` : ''}, индексируется на инфляцию ежегодно.${params.fot.phases?.length ? ' Численность растёт ступенями по фазам (Штат → колонки по датам).' : ''}`,
+      label: 'Оклады (фикс.)', values: F.map((m) => m.salaries), bold: true,
+      tip: `Фонд окладов штата${params.it.enabled ? ` (включая IT-куратора ${e0(params.it.curator)}/мес)` : ''}${params.fb.enabled ? ` и повара (${params.fb.cookCount} × ${e0(params.fb.cookSalary)}/мес)` : ''}, индексируется на инфляцию ежегодно.${params.fot.phases?.length ? ' Численность растёт ступенями по фазам (Штат → колонки по датам).' : ''} ФОТ на старте ≈ ${e0(fotStart)}/мес, при полном составе ≈ ${e0(fotFull)}/мес (до бонусов и инфляции).`,
       hint: (ci) => ({
         title: 'Оклады',
-        text: `Штат месяца: ${fmt(headcountAt(params, ci, r.scenario.constructionDelayMonths).reduce((a, b) => a + b, 0))} ставок (без условных ролей).`,
-        calc: `${e0(baseSalariesMonthly(params, ci, r.scenario.constructionDelayMonths))}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
+        text: `Штат месяца: ${fmt(hc[ci].reduce((a, b) => a + b, 0))} ставок (без условных ролей).`,
+        calc: `${e0(baseSalariesMonthly(params, ci, delay))}/мес × инфл ${inflAt(ci).toFixed(2)} = ${e0(F[ci].salaries)}`,
       }),
+      // Оклады по должностям (раскрытие): численность фазы × ставка × инфляция
+      children: [
+        ...params.fot.roles.map((role, i) => ({
+          label: role,
+          values: R.map((_, k) => hc[k][i] * params.fot.salary[i] * inflAt(k)),
+          sub: (ci: number) => (hc[ci][i] > 0 ? `${fmt(hc[ci][i], hc[ci][i] % 1 ? 1 : 0)} чел.` : null),
+          hint: (ci: number) => ({
+            title: role,
+            calc: `${fmt(hc[ci][i])} чел. × ${e0(params.fot.salary[i])} × инфл ${inflAt(ci).toFixed(2)} = ${e0(hc[ci][i] * params.fot.salary[i] * inflAt(ci))}`,
+          }),
+        })),
+        ...(params.it.enabled
+          ? [{
+              label: 'IT-куратор',
+              values: R.map((_, k) => params.it.curator * inflAt(k)),
+              hint: (ci: number) => ({ title: 'IT-куратор', calc: `${e0(params.it.curator)} × инфл ${inflAt(ci).toFixed(2)}` }),
+            }]
+          : []),
+        ...(params.fb.enabled
+          ? [{
+              label: 'Повар (F&B)',
+              values: R.map((_, k) => params.fb.cookCount * params.fb.cookSalary * inflAt(k)),
+              hint: (ci: number) => ({ title: 'Повар', calc: `${params.fb.cookCount} × ${e0(params.fb.cookSalary)} × инфл ${inflAt(ci).toFixed(2)}` }),
+            }]
+          : []),
+      ],
     },
     {
-      label: 'KPI бонусы', values: F.map((m) => m.bonuses),
+      label: 'KPI бонусы', values: F.map((m) => m.bonuses), bold: true,
       sub: (ci) => {
         const n = F[ci].procCount
         return n > 0 ? `${fmt(n, n % 1 ? 1 : 0)} проц.` : null
@@ -487,6 +548,18 @@ export function Fot({ r, labels }: { r: ModelResult; labels: string[] }) {
           ? `${F[ci].bonusDetail} = ${e0(F[ci].bonuses)}`
           : `услуг не проведено → ${e0(F[ci].bonuses)}`,
       }),
+      // KPI-бонусы по ролям (раскрытие)
+      children: [
+        ...[...roleBonus.entries()].map(([role, rb]) => ({
+          label: role,
+          values: rb.amt,
+          sub: (ci: number) => (rb.cnt[ci] > 0 ? `${fmt(rb.cnt[ci], rb.cnt[ci] % 1 ? 1 : 0)} проц.` : null),
+          hint: (ci: number) => ({
+            title: `${role} — KPI`,
+            calc: `${e0(rb.amt[ci])} по ${fmt(rb.cnt[ci])} процедурам`,
+          }),
+        })),
+      ],
     },
     {
       label: 'Итого ФОТ (gross)', values: F.map((m) => m.gross), bold: true,
