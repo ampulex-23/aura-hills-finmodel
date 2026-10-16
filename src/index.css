@@ -82,6 +82,12 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
   border-bottom: 1px solid #1d2636;
 }
 .page-title { letter-spacing: .02em; }
+.copy-report {
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 6px; border: 1px solid #2a3548;
+  background: transparent; color: #7d8ca3; cursor: pointer; padding: 0;
+}
+.copy-report:hover { background: #1b2330; color: #c6d2e2; }
 .content { padding: 16px 24px 32px; width: 100%; }
 .burger {
   display: flex; align-items: center; justify-content: center;

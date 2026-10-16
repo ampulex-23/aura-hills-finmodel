@@ -3,7 +3,7 @@ import { Alert, Button, Group, Modal, Select, Stack, Text, TextInput, Tooltip } 
 import { useHotkeys, useMediaQuery } from '@mantine/hooks'
 import {
   IconAdjustmentsHorizontal, IconArrowsExchange, IconBook2, IconChartLine,
-  IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCpu,
+  IconCheck, IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCopy, IconCpu,
   IconDeviceFloppy, IconFlask2, IconHistory, IconLayoutDashboard, IconListDetails, IconMenu2,
   IconPercentage, IconReceipt2, IconReportMoney, IconShoppingCart, IconSparkles, IconUserCog, IconUsers, IconVersions,
 } from '@tabler/icons-react'
@@ -52,6 +52,10 @@ const routeFromHash = (): Route | null => {
   return SLUG_TABS.get(h) ?? null
 }
 const slugOf = (r: Route) => (r.startsWith('doc:') ? `doc/${r.slice(4)}` : TAB_SLUGS[r as Tab])
+
+// Отчётные вкладки, у которых есть кнопка «скопировать таблицу» —
+// копирует DOM как rich HTML → в Google Sheets вставляется с цветами/шрифтами.
+const REPORT_TABS = new Set<Tab>(['Выручка', 'OPEX', 'ФОТ', 'CAPEX', 'Налоги', 'P&L', 'Cash-Flow'])
 
 type NavItem = { id: Route; label: string; icon: typeof IconCpu }
 const NAV: { group: string; items: NavItem[] }[] = [
@@ -108,6 +112,8 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const isMobile = useMediaQuery('(max-width: 900px)')
   const fileRef = useRef<HTMLInputElement>(null)
+  const reportRef = useRef<HTMLDivElement>(null)
+  const [copied, setCopied] = useState(false)
 
   const setTab = (t: Route) => {
     setTabState(t)
@@ -185,6 +191,39 @@ export default function App() {
     a.href = URL.createObjectURL(blob)
     a.download = 'aura-hills-model.xlsx'
     a.click()
+  }
+
+  // Копия отчёта в буфер как rich HTML: выделяем DOM-узел и отдаём браузеру —
+  // в клипборд пишется тот же text/html, что при ручном Ctrl+A/Ctrl+C,
+  // поэтому Google Sheets вставляет таблицу с цветами, шрифтами и колонками.
+  const copyReport = async () => {
+    const el = reportRef.current
+    if (!el) return
+    const sel = window.getSelection()
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+    let ok = false
+    try {
+      ok = document.execCommand('copy')
+    } catch { /* fallback ниже */ }
+    sel?.removeAllRanges()
+    if (!ok) {
+      try {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([el.outerHTML], { type: 'text/html' }),
+            'text/plain': new Blob([el.innerText], { type: 'text/plain' }),
+          }),
+        ])
+        ok = true
+      } catch { /* нет доступа к буферу */ }
+    }
+    if (ok) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    }
   }
 
   const rail = collapsed && !isMobile
@@ -267,6 +306,13 @@ export default function App() {
             <Text fw={600} size="sm" className="page-title">
               {tab.startsWith('doc:') ? (getDoc(tab.slice(4))?.navTitle ?? tab) : tab}
             </Text>
+            {REPORT_TABS.has(tab as Tab) && (
+              <Tooltip label={copied ? 'Скопировано — вставляйте в Google Sheets' : 'Скопировать таблицу с форматированием'}>
+                <button className="copy-report" onClick={() => void copyReport()} title="Скопировать таблицу">
+                  {copied ? <IconCheck size={15} /> : <IconCopy size={15} />}
+                </button>
+              </Tooltip>
+            )}
           </Group>
           <Group gap="xs" wrap="wrap" align="center" justify="flex-end">
             <Text size="xs" c="dimmed">Сценарий</Text>
@@ -367,13 +413,17 @@ export default function App() {
           {tab === 'Допущения' && <Assumptions />}
           {tab === 'Сценарии' && <Scenarios />}
           {tab === 'Штат' && <Staff />}
-          {tab === 'Выручка' && <Revenue r={result} labels={opsLabels} />}
-          {tab === 'OPEX' && <Opex r={result} labels={opsLabels} />}
-          {tab === 'ФОТ' && <Fot r={result} labels={opsLabels} />}
-          {tab === 'CAPEX' && <Capex r={result} />}
-          {tab === 'Налоги' && <Taxes r={result} labels={opsLabels} />}
-          {tab === 'P&L' && <Pnl r={result} labels={opsLabels} />}
-          {tab === 'Cash-Flow' && <CashFlow r={result} />}
+          {REPORT_TABS.has(tab as Tab) && (
+            <div ref={reportRef}>
+              {tab === 'Выручка' && <Revenue r={result} labels={opsLabels} />}
+              {tab === 'OPEX' && <Opex r={result} labels={opsLabels} />}
+              {tab === 'ФОТ' && <Fot r={result} labels={opsLabels} />}
+              {tab === 'CAPEX' && <Capex r={result} />}
+              {tab === 'Налоги' && <Taxes r={result} labels={opsLabels} />}
+              {tab === 'P&L' && <Pnl r={result} labels={opsLabels} />}
+              {tab === 'Cash-Flow' && <CashFlow r={result} />}
+            </div>
+          )}
           {tab === 'Номенклатура' && <Nomenclature />}
           {tab === 'Смета стройки' && <Smeta />}
           {tab === 'Смета закупа' && <Zakup />}
