@@ -193,15 +193,41 @@ export default function App() {
     a.click()
   }
 
-  // Копия отчёта в буфер как rich HTML: выделяем DOM-узел и отдаём браузеру —
+  // Копия отчёта в буфер как rich HTML: клонируем таблицы в чистый контейнер
+  // (без полей поиска, кнопок и иконок), выделяем его и отдаём браузеру —
   // в клипборд пишется тот же text/html, что при ручном Ctrl+A/Ctrl+C,
   // поэтому Google Sheets вставляет таблицу с цветами, шрифтами и колонками.
   const copyReport = async () => {
     const el = reportRef.current
     if (!el) return
+    const wrapper = document.createElement('div')
+    el.querySelectorAll('table').forEach((t) => {
+      const t2 = t.cloneNode(true) as HTMLElement
+      // каретки раскрытия и иконки формул не копируем
+      t2.querySelectorAll('.spec-caret, .formula, button, svg').forEach((n) => n.remove())
+      // редактируемые поля → их текущее значение текстом
+      t2.querySelectorAll('input, select, textarea').forEach((n) =>
+        n.replaceWith(document.createTextNode((n as HTMLInputElement).value ?? '')))
+      // блочные элементы внутри клетки → новая строка той же клетки;
+      // иначе Sheets склеивает «3 000» + «2 чел.» в «3 0002 чел.»
+      t2.querySelectorAll('td div, th div').forEach((d) => {
+        const sp = document.createElement('span')
+        sp.className = (d as HTMLElement).className
+        sp.innerHTML = d.innerHTML
+        d.replaceWith(sp)
+        const prev = sp.previousSibling
+        if (prev && (prev.nodeType !== Node.TEXT_NODE || prev.textContent?.trim()))
+          sp.before(document.createElement('br'))
+      })
+      wrapper.appendChild(t2)
+    })
+    if (!wrapper.childElementCount) return
+    // вне экрана, но отрендерен — иначе браузер не подставит computed-стили
+    wrapper.style.cssText = 'position:fixed;left:-100000px;top:0;'
+    document.body.appendChild(wrapper)
     const sel = window.getSelection()
     const range = document.createRange()
-    range.selectNodeContents(el)
+    range.selectNodeContents(wrapper)
     sel?.removeAllRanges()
     sel?.addRange(range)
     let ok = false
@@ -213,13 +239,14 @@ export default function App() {
       try {
         await navigator.clipboard.write([
           new ClipboardItem({
-            'text/html': new Blob([el.outerHTML], { type: 'text/html' }),
-            'text/plain': new Blob([el.innerText], { type: 'text/plain' }),
+            'text/html': new Blob([wrapper.innerHTML], { type: 'text/html' }),
+            'text/plain': new Blob([wrapper.innerText], { type: 'text/plain' }),
           }),
         ])
         ok = true
       } catch { /* нет доступа к буферу */ }
     }
+    wrapper.remove()
     if (ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
