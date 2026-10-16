@@ -7,18 +7,33 @@
 Запуск:  python scripts/_gen-tz-simple.py  ->  out/aura-hills-tz-simple.xlsx
 """
 import json
+import sys
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
-P = json.load(open('src/data/params.json', encoding='utf-8'))
-ITEMS = json.load(open('src/data/nomenclature.json', encoding='utf-8'))
-SERVICES = json.load(open('src/data/services.json', encoding='utf-8'))['services']
+# Источник данных: по умолчанию дефолты репо; можно передать каталог
+# с сохранённой версией (params.json/nomenclature.json/services.json),
+# напр. выгрузку из git-версионирования DATA_DIR сервера.
+DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else 'src/data'
+OUT = sys.argv[2] if len(sys.argv) > 2 else 'out/aura-hills-tz-simple.xlsx'
+
+P = json.load(open(f'{DATA_DIR}/params.json', encoding='utf-8'))
+ITEMS = json.load(open(f'{DATA_DIR}/nomenclature.json', encoding='utf-8'))
+SERVICES = json.load(open(f'{DATA_DIR}/services.json', encoding='utf-8'))['services']
+ITEMS = ITEMS['items'] if isinstance(ITEMS, dict) else ITEMS
 BYC = {i['code']: i for i in ITEMS}
 
-NMON = 60                      # 5 опер. лет: Nov-2027 .. Oct-2032
-OPEN_Y, OPEN_M = 2027, 11      # открытие Nov-27 (9 мес стройки + задержка 1, как в ядре)
-P2_LAUNCH_M = 39               # Jan-2031 = операционный месяц 39
+NMON = 60                      # 5 опер. лет горизонта книги (ТЗ)
+OPEN_Y, OPEN_M = map(int, P['meta']['openingDate'].split('-')[:2])  # дата открытия из данных
+
+def ops_month(from_ym: str) -> int:
+    """Операционный месяц календарной даты (1 = первый месяц работы)."""
+    y, m = map(int, from_ym.split('-'))
+    return (y - OPEN_Y) * 12 + (m - OPEN_M) + 1
+
+_ph = P['fot'].get('phases') or []
+P2_LAUNCH_M = ops_month(_ph[1]['from']) if len(_ph) > 1 else 10**6  # старт оч.2 = фаза персонала оч.2
 MONTHS_RU = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек']
 
 F_IN   = Font(name='Arial', size=10, color='0000CC')
@@ -125,25 +140,28 @@ for x in P['opexFixed']:
     put(D, r, 3, 'да' if x.get('energy') else '', font=F_LBL)
     opex_addr.append((x['name'], ADDR['ox_' + x['name']], bool(x.get('energy'))))
     r += 1
-put(D, r, 1, 'Бухгалтерия');   A('ox_acc', 'Допущения', r, 2); inp(D, r, 2, 200, E); r += 1
-put(D, r, 1, 'Юридические услуги');  A('ox_legal', 'Допущения', r, 2); inp(D, r, 2, 200, E)
+accjur = next((x['base'] for x in P['opexFixed'] if x['name'] == 'Бухгалтерия / юрист'), 400)
+put(D, r, 1, 'Бухгалтерия');   A('ox_acc', 'Допущения', r, 2); inp(D, r, 2, accjur / 2, E); r += 1
+put(D, r, 1, 'Юридические услуги');  A('ox_legal', 'Допущения', r, 2); inp(D, r, 2, accjur / 2, E)
 put(D, r, 3, 'ТЗ §2.4 — отдельное редактируемое поле', font=F_NOTE); r += 1
-put(D, r, 1, '(в действующей модели «Бухгалтерия / юрист» = 400 €/мес единой статьёй)', font=F_NOTE, border=False); r += 1
-put(D, r, 1, 'Обслуживание модулей, €/мес за модуль');      A('ox_mod', 'Допущения', r, 2); inp(D, r, 2, 100, E); r += 1
+put(D, r, 1, f'(в действующей модели «Бухгалтерия / юрист» = {accjur:g} €/мес единой статьёй)', font=F_NOTE, border=False); r += 1
+ox_mod_base = next((x['base'] for x in P['opexFixed'] if x['name'] == 'Обслуживание модулей'), 100)
+put(D, r, 1, 'Обслуживание модулей, €/мес за модуль');      A('ox_mod', 'Допущения', r, 2); inp(D, r, 2, ox_mod_base, E); r += 1
 put(D, r, 1, 'IT-расходы, €/мес (сумма 7 статей модели)');  A('ox_it', 'Допущения', r, 2); inp(D, r, 2, sum(x['base'] for x in P['it']['opex']), E); r += 1
 put(D, r, 1, 'Состав IT: ' + ', '.join(f"{x['name']} {x['base']}€" for x in P['it']['opex']), font=F_NOTE, border=False); r += 2
 
 r = sec(D, r, 'Маркетинг и страхование')
-put(D, r, 1, 'Маркетинг — % от выручки');                   A('mkt_pct', 'Допущения', r, 2); inp(D, r, 2, 0.035, PC); r += 1
+mkt_item = next((x for x in P['opexFixed'] if x['name'] == 'Маркетинг и реклама'), {})
+put(D, r, 1, 'Маркетинг — % от выручки');                   A('mkt_pct', 'Допущения', r, 2); inp(D, r, 2, mkt_item.get('pctOfRevenue', 0), PC); r += 1
 put(D, r, 1, 'Страхование — % от выручки (доп.)');         A('ins_pct', 'Допущения', r, 2); inp(D, r, 2, 0, PC); r += 1
 put(D, r, 1, 'Фиксированный маркетинг по периодам (ТЗ §2.4):', font=F_SEC, border=False); r += 1
 hdr(D, r, 1, 'Период'); hdr(D, r, 2, '€/мес'); hdr(D, r, 3, 'Мес. начала'); hdr(D, r, 4, 'Мес. окончания'); r += 1
 mkt_rows = []
-for i, (amt, s1, s2) in enumerate([(2500, 1, 12), (0, 0, 0), (0, 0, 0)]):
+for i, (amt, s1, s2) in enumerate([(mkt_item.get('base', 0), 1, NMON), (0, 0, 0), (0, 0, 0)]):
     put(D, r, 1, f'Период {i+1}')
     inp(D, r, 2, amt, E); inp(D, r, 3, s1, '0'); inp(D, r, 4, s2, '0')
     mkt_rows.append(r); r += 1
-put(D, r, 1, 'Месяц — операционный (1 = первый месяц работы). В действующей модели фикс-маркетинг 5 000 €/мес; по ТЗ задаётся периодами.', font=F_NOTE, border=False); r += 2
+put(D, r, 1, f"Месяц — операционный (1 = первый месяц работы). В действующей модели фикс-маркетинг {mkt_item.get('base', 0):g} €/мес постоянно; по ТЗ задаётся периодами.", font=F_NOTE, border=False); r += 2
 
 r = sec(D, r, 'Прачечная (справочно — входит в спецификации NC-159/NC-210, дублирования нет)')
 put(D, r, 1, 'Стирка гостевого набора, €/цикл');            inp(D, r, 2, 4.99, '#,##0.00'); r += 1
@@ -162,23 +180,28 @@ put(D, r, 1, 'Среднее'); fx(D, r, 2, f'=AVERAGE(B{seas_row}:B{seas_row+11
 
 r = sec(D, r, 'Модули бань. Очереди')
 hdr(D, r, 1, 'Модуль'); hdr(D, r, 2, 'Очер.'); hdr(D, r, 3, 'Вмест-ть'); hdr(D, r, 4, 'Слот./день')
-hdr(D, r, 5, 'Uptime'); hdr(D, r, 6, 'Цена сессии, €'); hdr(D, r, 7, 'Запуск'); r += 1
+hdr(D, r, 5, 'Uptime'); hdr(D, r, 6, 'Цена сессии, €'); hdr(D, r, 7, 'Запуск'); hdr(D, r, 8, 'Статус'); r += 1
 mod_r0 = r
 for m in P['modules']:
-    price = m['capacity'] * 100 if (m.get('phase') or 1) == 1 else round(sum(m['prices']) / 3)
+    price = round(sum(m['prices']) / len(m['prices'])) if m.get('prices') else m['capacity'] * 100
     put(D, r, 1, f"Модуль {m['id']}")
     inp(D, r, 2, m.get('phase') or 1, '0'); inp(D, r, 3, m['capacity'], '0')
     inp(D, r, 4, m['slotsPerDay'], '0'); inp(D, r, 5, m['uptime'], '0%')
     inp(D, r, 6, price, E); inp(D, r, 7, m['launchDate'][:7], 'General')
+    inp(D, r, 8, m.get('status', 'Активен'), 'General')
     r += 1
 mod_r1 = r - 1
-put(D, r, 1, 'Оч.1: цена сессии = вместимость × 100 €/гость (ТЗ §6). Оч.2 — цены действующей модели.', font=F_NOTE, border=False); r += 1
+put(D, r, 1, 'Цена сессии — средняя из prices действующей модели (оч.1: 1200 € за юнит = 100 €/гость × 12). В расчёт входят только «Активен» (как в движке).', font=F_NOTE, border=False); r += 1
 put(D, r, 1, 'Ёмкость оч.1, гостей/день (Σ слоты×uptime×мест)'); A('capday1', 'Допущения', r, 2)
-fx(D, r, 2, f"=SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=1)*$C{mod_r0}:$C{mod_r1}*$D{mod_r0}:$D{mod_r1}*$E{mod_r0}:$E{mod_r1})", '0.0'); r += 1
+fx(D, r, 2, f"=SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=1)*($H{mod_r0}:$H{mod_r1}=\"Активен\")*$C{mod_r0}:$C{mod_r1}*$D{mod_r0}:$D{mod_r1}*$E{mod_r0}:$E{mod_r1})", '0.0'); r += 1
 put(D, r, 1, 'Ёмкость оч.2, гостей/день');                  A('capday2', 'Допущения', r, 2)
-fx(D, r, 2, f"=SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=2)*$C{mod_r0}:$C{mod_r1}*$D{mod_r0}:$D{mod_r1}*$E{mod_r0}:$E{mod_r1})", '0.0'); r += 1
+fx(D, r, 2, f"=SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=2)*($H{mod_r0}:$H{mod_r1}=\"Активен\")*$C{mod_r0}:$C{mod_r1}*$D{mod_r0}:$D{mod_r1}*$E{mod_r0}:$E{mod_r1})", '0.0'); r += 1
 put(D, r, 1, 'Средняя цена гостя оч.2, €');                 A('avgp2', 'Допущения', r, 2)
-fx(D, r, 2, f"=SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=2)*$C{mod_r0}:$C{mod_r1}*$F{mod_r0}:$F{mod_r1})/SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=2)*$C{mod_r0}:$C{mod_r1})", '0.0'); r += 2
+fx(D, r, 2, f"=IFERROR(SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=2)*($H{mod_r0}:$H{mod_r1}=\"Активен\")*$C{mod_r0}:$C{mod_r1}*$F{mod_r0}:$F{mod_r1})/SUMPRODUCT(($B{mod_r0}:$B{mod_r1}=2)*($H{mod_r0}:$H{mod_r1}=\"Активен\")*$C{mod_r0}:$C{mod_r1}),0)", '0.0'); r += 2
+
+# эталон для Checks: ёмкость оч.1 по активным модулям (семантика движка)
+cap1_expected = sum(m['capacity'] * m['slotsPerDay'] * m['uptime']
+                    for m in P['modules'] if (m.get('phase') or 1) == 1 and m.get('status') == 'Активен')
 
 r = sec(D, r, 'Очередь 2: стройка и финансирование')
 q2 = P['phase2']
@@ -190,6 +213,7 @@ put(D, r, 1, 'Финансирование (ops = из операц. поток�
 
 r = sec(D, r, 'Общественный банный комплекс — очередь 2')
 pb = P['publicBath']
+put(D, r, 1, 'Включена в модель (0/1)');                    A('pb_on', 'Допущения', r, 2); inp(D, r, 2, 1 if pb.get('enabled') else 0, '0'); r += 1
 put(D, r, 1, 'Билет, €');                                   A('pb_tick', 'Допущения', r, 2); inp(D, r, 2, pb['ticketEur'], E); r += 1
 put(D, r, 1, 'Вместимость, чел/день');                      A('pb_cap', 'Допущения', r, 2); inp(D, r, 2, pb['capacity'], '0'); r += 1
 put(D, r, 1, 'Запуск (год-месяц)');                         inp(D, r, 2, pb['launchDate'], 'General'); r += 1
@@ -201,8 +225,10 @@ for i, v in enumerate([0.35, 0.45, 0.55, 0.60, 0.65]):
 r += 1
 
 r = sec(D, r, 'Депозит / кошелёк услуг')
-put(D, r, 1, 'Парение, база кошелька €');                   inp(D, r, 2, 100, E); put(D, r, 3, 'ТЗ §6: 100 €', font=F_NOTE); r += 1
-put(D, r, 1, 'Массаж, база кошелька €');                    inp(D, r, 2, 120, E); put(D, r, 3, 'ТЗ §6: 120 €', font=F_NOTE); r += 1
+put(D, r, 1, 'База кошелька (депозит на юнит), €');         inp(D, r, 2, P['deposit']['base'], E); r += 1
+put(D, r, 1, 'Парение, база кошелька €');                   inp(D, r, 2, P['deposit']['steamBase'], E); r += 1
+put(D, r, 1, 'Массаж, база кошелька €');                    inp(D, r, 2, P['deposit'].get('massageBase', 60), E)
+put(D, r, 3, 'база кошелька ≠ розничный прайс (120 € — см. «Цены услуг»)', font=F_NOTE); r += 1
 put(D, r, 1, 'Политика депозита');                          inp(D, r, 2, P['deposit']['policy'], 'General'); r += 2
 
 r = sec(D, r, 'Амортизация')
@@ -223,10 +249,20 @@ for i, w_ in enumerate(P['capexSCurve']):
     put(D, r, 1, f'  мес {i+1}'); inp(D, r, 2, w_, '0.00'); r += 1
 r += 1
 
-r = sec(D, r, 'Цены услуг первого года (ТЗ §6)')
-put(D, r, 1, 'Аренда банного комплекса, €/гость');          A('p_rent', 'Допущения', r, 2); inp(D, r, 2, 100, E); r += 1
-put(D, r, 1, 'Парение, €/гость');                           A('p_steam', 'Допущения', r, 2); inp(D, r, 2, 100, E); r += 1
-put(D, r, 1, 'Массаж, €/процедуру');                        A('p_mass', 'Допущения', r, 2); inp(D, r, 2, 120, E); r += 1
+r = sec(D, r, 'Цены услуг первого года (ТЗ §6 — из спецификаций действующей модели)')
+_svc = {s.get('direction', ''): s for s in SERVICES}
+_rent = next((s for s in SERVICES if 'Аренда' in s.get('direction', '')), None)
+_steam = next((s for s in SERVICES if 'Парен' in s.get('direction', '')), None)
+_mass = next((s for s in SERVICES if 'Массаж' in s.get('direction', '')), None)
+put(D, r, 1, 'Аренда банного комплекса, €/гость');          A('p_rent', 'Допущения', r, 2)
+inp(D, r, 2, round((_rent['price'] if _rent else 1200) / (_rent.get('capacity', 12) if _rent else 12), 2), E)
+put(D, r, 3, f"цена спеки {_rent['code'] if _rent else '—'} ÷ гостей в единице", font=F_NOTE); r += 1
+put(D, r, 1, 'Парение, €/гость');                           A('p_steam', 'Допущения', r, 2)
+inp(D, r, 2, _steam['price'] if _steam else 100, E)
+put(D, r, 3, f"цена спеки {_steam['code'] if _steam else '—'} (расчётная единица — 1 гость)", font=F_NOTE); r += 1
+put(D, r, 1, 'Массаж, €/процедуру');                        A('p_mass', 'Допущения', r, 2)
+inp(D, r, 2, _mass['price'] if _mass else 120, E)
+put(D, r, 3, f"цена спеки {_mass['code'] if _mass else '—'}", font=F_NOTE); r += 1
 
 D.freeze_panes = 'A3'
 
@@ -290,9 +326,8 @@ r = 1
 put(SP, r, 1, 'НОМЕНКЛАТУРА И СПЕЦИФИКАЦИИ (ТЗ §5)', font=Font(name='Arial', size=13, bold=True), border=False); r += 1
 put(SP, r, 1, 'Разделение OPEX/CAPEX/спецификации — по флагу use номенклатуры действующей модели. Трудовые доли — в ФОТ, не в OPEX.', font=F_NOTE, border=False); r += 2
 
-spec_use = [('SVC-A1', 'Аренда до 4 чел (модуль 1)'), ('SVC-A2', 'Аренда до 8 чел (модуль 2)'),
-            ('SVC-A3', 'Аренда до 12 чел (модуль 3) — «Аренда — 12 человек»'),
-            ('SVC-P2', 'Парение Дубль (ТЗ)'), ('SVC-M2', 'Массаж 2, глубокий (ТЗ)')]
+spec_use = [(s['code'], s.get('name') or s['code']) for s in SERVICES]
+spec_dir = {s['code']: s.get('direction', '') for s in SERVICES}
 spec_tot = {}
 labor_map = {}
 for code, title in spec_use:
@@ -302,26 +337,38 @@ for code, title in spec_use:
     m0 = r
     for it in sp['items']:
         if it['kind'] == 'labor':
-            labor_map[code] = (it['role'], it['pct']); continue
+            labor_map.setdefault(code, []).append((it['role'], it.get('pct', 0))); continue
         nc = BYC[it['code']]
         put(SP, r, 1, it['code']); put(SP, r, 2, nc['name']); put(SP, r, 3, nc.get('unit', 'шт'))
         inp(SP, r, 4, it['qty'], '0.000'); inp(SP, r, 5, nc.get('priceEur', nc.get('price', 0)), '#,##0.00')
         fx(SP, r, 6, f'=D{r}*E{r}', '#,##0.00'); r += 1
     put(SP, r, 2, f'Итого материалы {code}'); fx(SP, r, 6, f'=SUM(F{m0}:F{r-1})', '#,##0.00', fill=FILL_T)
     spec_tot[code] = f'$F${r}'; r += 1
-    role, pct = labor_map.get(code, ('', 0))
-    put(SP, r, 2, f'Трудовая доля: {role} {pct:.0%} цены услуги — в ФОТ (бонусы)', font=F_NOTE, border=False); r += 2
+    lab = ', '.join(f"{l[0]} {l[1]:.0%}" for l in labor_map.get(code, [])) or '—'
+    put(SP, r, 2, f'Трудовая доля: {lab} цены услуги — в ФОТ (бонусы)', font=F_NOTE, border=False); r += 2
 
 r = sec(SP, r, 'Производные себестоимости')
-put(SP, r, 1, 'Аренда — на ГОСТЯ (Σ3 спек ÷ 24 гостя в слоте)'); A('cogs_guest', 'Спеки', r, 2)
-fx(SP, r, 2, f"=({spec_tot['SVC-A1']}+{spec_tot['SVC-A2']}+{spec_tot['SVC-A3']})/24", '#,##0.00'); r += 1
+rent_codes = [c for c in spec_tot if 'Аренда' in spec_dir.get(c, '')]
+steam_codes = [c for c in spec_tot if 'Парен' in spec_dir.get(c, '')]
+mass_codes = [c for c in spec_tot if 'Массаж' in spec_dir.get(c, '')]
+rent_sum = '+'.join(spec_tot[c] for c in rent_codes) or '0'
+put(SP, r, 1, 'Гостей в расчётной единице спеки аренды');   A('rent_n', 'Спеки', r, 2)
+inp(SP, r, 2, 12, '0'); put(SP, r, 3, 'спека аренды рассчитана на 12 гостей/день — без двойного начисления (ТЗ §5)', font=F_NOTE); r += 1
+put(SP, r, 1, 'Аренда — на ГОСТЯ (Σ спек аренды ÷ гостей в единице)'); A('cogs_guest', 'Спеки', r, 2)
+fx(SP, r, 2, f"=({rent_sum})/{ADDR['rent_n']}", '#,##0.00'); r += 1
 put(SP, r, 1, 'Гостей на «Парение Дубль» (расчётная единица)'); A('duble_n', 'Спеки', r, 2)
 inp(SP, r, 2, 2, '0'); put(SP, r, 3, 'дубль обслуживает двоих — без двойного начисления (ТЗ §5)', font=F_NOTE); r += 1
 put(SP, r, 1, 'Парение — на проданное парение');            A('cogs_steam', 'Спеки', r, 2)
-fx(SP, r, 2, f"={spec_tot['SVC-P2']}/{ADDR['duble_n']}", '#,##0.00'); r += 1
+fx(SP, r, 2, '=' + ('+'.join(spec_tot[c] for c in steam_codes) or '0') + f"/{ADDR['duble_n']}", '#,##0.00'); r += 1
 put(SP, r, 1, 'Массаж — на процедуру');                     A('cogs_mass', 'Спеки', r, 2)
-fx(SP, r, 2, f"={spec_tot['SVC-M2']}", '#,##0.00'); r += 1
+fx(SP, r, 2, '=' + ('+'.join(spec_tot[c] for c in mass_codes) or '0'), '#,##0.00'); r += 1
 put(SP, r, 1, 'Статья в OPEX: «Переменные / номенклатура» (ТЗ §5)', font=F_NOTE, border=False)
+
+# KPI-доли ролей по направлениям — источник для листов Штат и ФОТ
+role_bonus_src = {}
+for code, labs in labor_map.items():
+    for role, pct in labs:
+        role_bonus_src.setdefault(role, []).append((spec_dir.get(code, ''), code, pct))
 
 # ======================================================================
 # ШТАТ
@@ -331,32 +378,42 @@ ST.column_dimensions['A'].width = 26
 for col in 'BCDEFGHIJ': ST.column_dimensions[col].width = 13
 r = 1
 put(ST, r, 1, 'ШТАТ (ТЗ §4)', font=Font(name='Arial', size=13, bold=True), border=False); r += 2
+fot = P['fot']
+phases = fot.get('phases') or []
 hdr(ST, r, 1, 'Должность'); hdr(ST, r, 2, 'График'); hdr(ST, r, 3, 'На смене')
 hdr(ST, r, 4, 'Ставка €/мес'); hdr(ST, r, 5, 'На старте')
-hdr(ST, r, 6, 'с 2029-01'); hdr(ST, r, 7, 'с 2031-01 (оч.2)'); hdr(ST, r, 8, 'с 2032-01 (оч.2)')
-hdr(ST, r, 9, 'ФОТ старт'); hdr(ST, r, 10, 'ФОТ полный'); r += 1
-fot = P['fot']
+for j, ph in enumerate(phases):
+    hdr(ST, r, 6 + j, f"с {ph['from']}{' (оч.2)' if j >= 1 else ''}")
+fot_c0 = 5 + len(phases)                       # первая колонка итогов ФОТ
+hdr(ST, r, fot_c0 + 1, 'ФОТ старт'); hdr(ST, r, fot_c0 + 2, 'ФОТ полный'); r += 1
 role_row0 = r
+sched = fot.get('schedule') or ['—'] * len(fot['roles'])
 for i, role in enumerate(fot['roles']):
     put(ST, r, 1, role)
-    inp(ST, r, 2, fot['schedule'][i], 'General')
+    inp(ST, r, 2, sched[i] if i < len(sched) else '—', 'General')
     fx(ST, r, 3, f'=IF(B{r}="2/2",0.5,IF(B{r}="5/2",5/7,1))', '0.00')
     inp(ST, r, 4, fot['salary'][i], E)
     inp(ST, r, 5, fot['count'][i], '0')
-    for j, ph in enumerate(fot['phases']):
+    for j, ph in enumerate(phases):
         inp(ST, r, 6 + j, ph['count'][i], '0')
-    fx(ST, r, 9, f'=E{r}*D{r}', E, fill=FILL_T)
-    fx(ST, r, 10, f'=H{r}*D{r}', E, fill=FILL_T)
+    fx(ST, r, fot_c0 + 1, f'=E{r}*D{r}', E, fill=FILL_T)
+    fx(ST, r, fot_c0 + 2, f'={get_column_letter(4 + len(phases) + 1)}{r}*D{r}', E, fill=FILL_T)
     r += 1
 put(ST, r, 1, 'IT-куратор'); put(ST, r, 2, '—'); put(ST, r, 3, 1, fmt='0.00')
-inp(ST, r, 4, P['it']['curator'], E); inp(ST, r, 5, 1, '0'); inp(ST, r, 6, 1, '0'); inp(ST, r, 7, 1, '0'); inp(ST, r, 8, 1, '0')
-fx(ST, r, 9, f'=E{r}*D{r}', E, fill=FILL_T); fx(ST, r, 10, f'=H{r}*D{r}', E, fill=FILL_T)
+inp(ST, r, 4, P['it']['curator'], E); inp(ST, r, 5, 1, '0')
+for j in range(len(phases)):
+    inp(ST, r, 6 + j, 1, '0')
+fx(ST, r, fot_c0 + 1, f'=E{r}*D{r}', E, fill=FILL_T)
+fx(ST, r, fot_c0 + 2, f'={get_column_letter(5 + len(phases))}{r}*D{r}', E, fill=FILL_T)
 it_row = r; r += 1
-put(ST, r, 1, 'ИТОГО оклады/мес', font=F_BOLD); fx(ST, r, 9, f'=SUM(I{role_row0}:I{r-1})', E, fill=FILL_T)
-fx(ST, r, 10, f'=SUM(J{role_row0}:J{r-1})', E, fill=FILL_T); r += 1
+L1 = get_column_letter(fot_c0 + 1); L2 = get_column_letter(fot_c0 + 2)
+put(ST, r, 1, 'ИТОГО оклады/мес', font=F_BOLD); fx(ST, r, fot_c0 + 1, f'=SUM({L1}{role_row0}:{L1}{r-1})', E, fill=FILL_T)
+fx(ST, r, fot_c0 + 2, f'=SUM({L2}{role_row0}:{L2}{r-1})', E, fill=FILL_T); r += 1
 put(ST, r, 1, '«Баронес» из ТЗ = должность «Бронист» в действующей модели (ТЗ §4.1 — уточнить)', font=F_NOTE, border=False); r += 1
 put(ST, r, 1, 'Фазы с 2031/2032 — штат второй очереди: включаются при флаге «Очередь 2 в расчёте» = Да', font=F_NOTE, border=False); r += 1
-put(ST, r, 1, 'Бонусы: Пармастер 3% аренды + 30% парений, Массажист 30% массажей — помесячно на листе ФОТ', font=F_NOTE, border=False); r += 1
+bon_txt = '; '.join(f"{role}: " + ' + '.join(f'{pct:.0%} {d.lower()}' for d, _, pct in ts)
+                    for role, ts in role_bonus_src.items())
+put(ST, r, 1, f'Бонусы (KPI): {bon_txt} — помесячно на листе ФОТ', font=F_NOTE, border=False); r += 1
 put(ST, r, 1, 'Взносы работодателя'); A('emp_rate', 'Штат', r, 2); inp(ST, r, 2, tx['employerRate'], PC)
 
 # ======================================================================
@@ -417,7 +474,7 @@ mrow(REV, r, 'ИТОГО ВЫРУЧКА ОЧ.1', lambda L, i, c: f'={L}{rev_r_r}
 put(REV, r, 1, 'ОЧЕРЕДЬ 2 — справочно (запуск Jan-2031; в периметр первой очереди не входит, двойного учёта нет)', font=F_SEC, border=False); r += 1
 mrow(REV, r, 'Оч.2 запущена (0/1)', lambda L, i, c: f'=IF({L}2>={P2_LAUNCH_M},1,0)', '0'); p2on_r = r; r += 1
 mrow(REV, r, 'Обществ. баня: гостей/день', lambda L, i, c:
-    f"={L}{p2on_r}*{ADDR['pb_cap']}*INDEX(Допущения!$B${pb_load_row}:$B${pb_load_row+4},MAX(1,MIN(5,INT(({L}2-{P2_LAUNCH_M})/12)+1)))*{L}{seas_r}", '0.0'); pb_g_r = r; r += 1
+    f"={ADDR['pb_on']}*{L}{p2on_r}*{ADDR['pb_cap']}*INDEX(Допущения!$B${pb_load_row}:$B${pb_load_row+4},MAX(1,MIN(5,INT(({L}2-{P2_LAUNCH_M})/12)+1)))*{L}{seas_r}", '0.0'); pb_g_r = r; r += 1
 mrow(REV, r, 'Обществ. баня: выручка (билет+услуги)', lambda L, i, c: f"={L}{pb_g_r}*30*({ADDR['pb_tick']}+{ADDR['pb_svc']})", E); pb_rev_r = r; r += 1
 mrow(REV, r, 'Модули оч.2: ramp (9 мес)', lambda L, i, c: f'=MIN(1,MAX(0,{L}2-{P2_LAUNCH_M}+1)/9)', '0.00'); p2ramp_r = r; r += 1
 mrow(REV, r, 'Модули оч.2: гостей/день', lambda L, i, c:
@@ -444,7 +501,8 @@ fix0 = r
 for name, addr, energy in opex_addr:
     coef = f"*{ADDR['energ']}" if energy else ''
     mrow(OPX, r, name + (' (энерго)' if energy else ''), lambda L, i, c, a=addr, cf=coef: f"={a}*{L}{infl_r}{cf}", E); r += 1
-mrow(OPX, r, 'Обслуживание модулей (€/модуль × 3 оч.1)', lambda L, i, c: f"={ADDR['ox_mod']}*3*{L}{infl_r}", E); r += 1
+n_mod1 = sum(1 for m in P['modules'] if (m.get('phase') or 1) == 1 and m.get('status') == 'Активен')
+mrow(OPX, r, f'Обслуживание модулей (€/модуль × {n_mod1} активных оч.1)', lambda L, i, c: f"={ADDR['ox_mod']}*{n_mod1}*{L}{infl_r}", E); r += 1
 mrow(OPX, r, 'Бухгалтерия', lambda L, i, c: f"={ADDR['ox_acc']}*{L}{infl_r}", E); r += 1
 mrow(OPX, r, 'Юридические услуги (ТЗ §2.4 — редактируется)', lambda L, i, c: f"={ADDR['ox_legal']}*{L}{infl_r}", E); r += 1
 mrow(OPX, r, 'Аренда земли (если режим lease)', lambda L, i, c: f"=IF({ADDR['landmode']}=\"lease\",{ADDR['landrent']}*{L}{infl_r},0)", E); r += 1
@@ -458,6 +516,17 @@ mrow(OPX, r, 'Страхование — % от выручки', lambda L, i, c:
 mrow(OPX, r, 'ИТОГО OPEX (без ФОТ)', lambda L, i, c: f'={L}{var_r}+SUM({L}{fix0}:{L}{fix1})+{L}{mkf_r}+{L}{mkp_r}+{L}{ins_r}', E, font=F_BOLD, total=True); opex_r = r; r += 1
 
 # ---------- ФОТ ----------
+def hc_formula(rr: int, L: str) -> str:
+    """Численность роли: базовая → фаза; фазы оч.2 (индекс ≥1) — при флаге «Да»."""
+    expr = f'Штат!$E${rr}'
+    for j, ph in enumerate(phases):
+        col = get_column_letter(6 + j)
+        cond = f'{L}2>={ops_month(ph["from"])}'
+        if j >= 1:
+            cond = f'AND({ADDR["p2scope"]}="Да",{cond})'
+        expr = f'IF({cond},Штат!${col}${rr},{expr})'
+    return '=' + expr
+
 r = 7
 put(FO, r, 1, 'ОКЛАДЫ: численность × ставка × инфляция (фазы включения — см. Штат)', font=F_SEC, border=False); r += 1
 fot_first = r
@@ -466,10 +535,7 @@ for i, role in enumerate(fot['roles']):
     put(FO, r, 1, f'{role} — человек')
     for i2 in range(NMON):
         c = 2 + i2; L = get_column_letter(c)
-        fx(FO, r, c,
-           f"=IF(AND({ADDR['p2scope']}=\"Да\",{L}2>=51),Штат!$H${rr},"
-           f"IF(AND({ADDR['p2scope']}=\"Да\",{L}2>=39),Штат!$G${rr},"
-           f"IF({L}2>=15,Штат!$F${rr},Штат!$E${rr})))", '0')
+        fx(FO, r, c, hc_formula(rr, L), '0')
     hc = r; r += 1
     put(FO, r, 1, f'{role} — оклады €')
     for i2 in range(NMON):
@@ -485,17 +551,23 @@ sal_rows = [fot_first + 2 * j + 1 for j in range(len(fot['roles']))] + [it_sal_r
 sal_join = '+'.join(f'{{L}}{x}' for x in sal_rows)
 mrow(FO, r, 'ИТОГО оклады', lambda L, i, c, j=sal_join: '=' + j.format(L=L), E, total=True); sal_r = r; r += 2
 
-put(FO, r, 1, 'БОНУСЫ И ВЗНОСЫ (ТЗ §4.3)', font=F_SEC, border=False); r += 1
-mrow(FO, r, 'Пармастер: 3% аренды + 30% парений', lambda L, i, c: f"='Выручка'!{L}{rev_r_r}*0.03+'Выручка'!{L}{rev_s_r}*0.3", E); bon1_r = r; r += 1
-mrow(FO, r, 'Массажист: 30% массажей', lambda L, i, c: f"='Выручка'!{L}{rev_m_r}*0.3", E); bon2_r = r; r += 1
-mrow(FO, r, 'ИТОГО бонусы', lambda L, i, c: f'={L}{bon1_r}+{L}{bon2_r}', E, total=True); bon_r = r; r += 1
+put(FO, r, 1, 'БОНУСЫ И ВЗНОСЫ (ТЗ §4.3 — доли ролей из спецификаций)', font=F_SEC, border=False); r += 1
+# KPI-бонус роли = Σ по направлениям: выручка направления × доля роли в спеке (labor pct)
+bon_rows = []
+for role, terms in role_bonus_src.items():
+    dir_col = {'Аренда': rev_r_r, 'Парен': rev_s_r, 'Массаж': rev_m_r}
+    ts = [(d, next(c for k, c in dir_col.items() if k in d), pct) for d, _, pct in terms]
+    lbl = role + ': ' + ' + '.join(f'{pct:.0%} {d.lower()}' for d, _, pct in ts)
+    mrow(FO, r, lbl, lambda L, i, c, t=ts: '=' + '+'.join(f"'Выручка'!{L}{col}*{pct}" for _, col, pct in t), E)
+    bon_rows.append(r); r += 1
+mrow(FO, r, 'ИТОГО бонусы', lambda L, i, c: '=' + '+'.join(f'{L}{x}' for x in bon_rows), E, total=True); bon_r = r; r += 1
 mrow(FO, r, 'ФОТ начисленный (оклады+бонусы)', lambda L, i, c: f'={L}{sal_r}+{L}{bon_r}', E); gross_r = r; r += 1
-mrow(FO, r, 'Взносы работодателя 15,4%', lambda L, i, c: f"={L}{gross_r}*{ADDR['emp_rate']}", E); contrib_r = r; r += 1
+mrow(FO, r, f"Взносы работодателя {tx['employerRate']*100:g}%", lambda L, i, c: f"={L}{gross_r}*{ADDR['emp_rate']}", E); contrib_r = r; r += 1
 mrow(FO, r, 'ИТОГО ФОТ с начислениями', lambda L, i, c: f'={L}{gross_r}+{L}{contrib_r}', E, font=F_BOLD, total=True); fot_r = r; r += 1
 
 # ---------- НАЛОГИ ----------
 r = 7
-put(TAX, r, 1, 'НДС — цены включают НДС, режим «С возмещением» (семантика движка)', font=F_SEC, border=False); r += 1
+put(TAX, r, 1, f'НДС — цены включают НДС, режим «{P["meta"].get("vatMode", "Гросс")}» (семантика движка)', font=F_SEC, border=False); r += 1
 mrow(TAX, r, 'НДС начисленный (выручка × 19/119)', lambda L, i, c: f"='Выручка'!{L}{rev_pl_r}*{ADDR['vatStd']}/(1+{ADDR['vatStd']})", E); vo_r = r; r += 1
 mrow(TAX, r, 'Входной НДС (OPEX × 19/119)', lambda L, i, c: f"='OPEX'!{L}{opex_r}*{ADDR['vatInput']}/(1+{ADDR['vatInput']})", E); vi_r = r; r += 1
 vcred_r = r
@@ -537,7 +609,7 @@ mrow(PNL, r, '⇒ Дивиденды нетто партнёрам', lambda L, i
 CX = sheet('CAPEX', '808080')
 CX.column_dimensions['A'].width = 46
 put(CX, 1, 1, 'CAPEX — строительство (календарные месяцы)', font=Font(name='Arial', size=13, bold=True), border=False)
-put(CX, 2, 1, 'Оч.1: Jan-2027 + 9 мес по S-кривой (задержка сдвигает окно). Оч.2: Jan-2029 + 24 мес — справочно, финансирование ops.', font=F_NOTE, border=False)
+put(CX, 2, 1, f"Оч.1: {P['meta']['constructionStart'][:7]} + {P['meta']['capexMonths']} мес по S-кривой (задержка сдвигает окно). Оч.2: {q2['constructionStart']} + {q2['months']} мес — справочно, финансирование {q2['funding']}.", font=F_NOTE, border=False)
 NCM = 48
 put(CX, 3, 1, 'Месяц')
 for i in range(NCM):
@@ -557,11 +629,13 @@ for i in range(NCM):
        f"=IF(AND(COLUMN()-2>={ADDR['delay']},COLUMN()-2<{ADDR['delay']}+{ADDR['capM']}),"
        f"{ADDR['capex1']}*(1+{ADDR['cadj']})*INDEX(Допущения!$B${scurve_row}:$B${scurve_row+8},COLUMN()-1-{ADDR['delay']}),0)", E)
 capex1_r = cxr; cxr += 1
-put(CX, cxr, 1, 'Оч.2 стройка (с Jan-2029, 24 мес, линейно) — СПРАВОЧНО')
+q2_c0 = (int(q2['constructionStart'][:4]) - int(P['meta']['constructionStart'][:4])) * 12 \
+        + int(q2['constructionStart'][5:7]) - int(P['meta']['constructionStart'][5:7])
+put(CX, cxr, 1, f"Оч.2 стройка (с {q2['constructionStart']}, {q2['months']} мес, линейно) — СПРАВОЧНО")
 for i in range(NCM):
     c = 2 + i
     fx(CX, cxr, c,
-       f"=IF(AND(COLUMN()-2>=24,COLUMN()-2<24+{ADDR['q2months']}),{ADDR['q2eur']}*(1+{ADDR['q2adj']})/{ADDR['q2months']},0)", E)
+       f"=IF(AND(COLUMN()-2>={q2_c0},COLUMN()-2<{q2_c0}+{ADDR['q2months']}),{ADDR['q2eur']}*(1+{ADDR['q2adj']})/{ADDR['q2months']},0)", E)
 capex2_r = cxr; cxr += 1
 put(CX, cxr, 1, 'ИТОГО (оч.1 + земля; оч.2 справочно ниже)')
 for i in range(NCM):
@@ -643,7 +717,7 @@ checks = [
     ('Год 3: гостей/день ≈ 20, выручка ≈ 5200 €/день', f"AND(ABS(Годы!$D${gmodel_r}-20)<0.5,ABS(Годы!$D${rmod_r}-5200)<50)"),
     ('Доли партнёров + mgmt + reserve ≈ 100%', f"ABS({ADDR['pshare0']}+{ADDR['pshare1']}+{ADDR['pshare2']}+{ADDR['pmgmt']}+{ADDR['pres']}-1)<0.01"),
     ('S-кривая весов Σ = 1', f"ABS(SUM(Допущения!$B${scurve_row}:$B${scurve_row+8})-1)<0.001"),
-    ('Ёмкость оч.1 = 68,4 гостя/день (3×0.95×24)', f"ABS({ADDR['capday1']}-68.4)<0.01"),
+    (f'Ёмкость оч.1 = {cap1_expected:g} гостя/день (Σ активных модулей)', f"ABS({ADDR['capday1']}-{cap1_expected})<0.01"),
 ]
 for lbl, f in checks:
     put(CK, r, 1, lbl)
@@ -664,9 +738,10 @@ meta = [
     ('Модель', 'Новая модель AURA HILLS (ТЗ) — первая очередь', 'General'),
     ('Сценарий', '=CHOOSE(Сценарии!$B$2,"Conservative","Base","Aggressive")', 'General'),
     ('Дата выгрузки', '=TODAY()', 'YYYY-MM-DD'),
-    ('Версия', 'tz-simple-1.0 (ядро: TypeScript src/model; генератор: _gen-tz-simple.py)', 'General'),
+    ('Версия', 'tz-simple-1.1 (ядро: TypeScript src/model; генератор: _gen-tz-simple.py)', 'General'),
+    ('Источник данных', f'{DATA_DIR} (последняя версия git-версионирования сервера)', 'General'),
     ('Валюта', 'EUR', 'General'),
-    ('Горизонт', 'Ноя-2027 … Окт-2032 (60 мес); оч.2 — справочно с Jan-2031', 'General'),
+    ('Горизонт', f'{MONTHS_RU[OPEN_M-1]}-{OPEN_Y} … {NMON} мес; оч.2 — справочно (старт — опер.мес. {P2_LAUNCH_M if P2_LAUNCH_M < 10**6 else "—"})', 'General'),
 ]
 rr = 5
 for k, v, f_ in meta:
