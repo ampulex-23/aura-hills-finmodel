@@ -144,12 +144,14 @@ export async function exportWorkbook(
   matrix: ScenarioMatrix,
   items: NomenclatureItem[],
   services: ServiceSpec[],
+  scenario?: string,
 ): Promise<Blob> {
+  const scen0 = scenario ?? params.meta.scenario
   const wb = new ExcelJS.Workbook()
   wb.creator = 'AURA HILLS Model'
   wb.calcProperties.fullCalcOnLoad = true // при открытии пересчитать живые формулы
   const results = matrix.names.map((n) => runModel(params, matrix, items, services, n))
-  const r = results[matrix.names.indexOf(params.meta.scenario)] ?? results[1]
+  const r = results[matrix.names.indexOf(scen0)] ?? results[1]
   const scen = r.scenario
   const ops = params.meta.opsMonths
   const capM = r.cashflow.filter((m) => !m.isOps).length
@@ -270,8 +272,8 @@ export async function exportWorkbook(
     // ─── Мета и таймлайн ───
     ws.addRow(['МОДЕЛЬ И ТАЙМЛАЙН']).eachCell((c) => { c.font = { ...ARIAL, bold: true }; c.fill = fill(SEC_BG) })
     inp('modelName', 'Модель', 'AURA HILLS', 'название попадает на Обложку')
-    inp('scenario', 'Активный сценарий', params.meta.scenario, `варианты: ${matrix.names.join(' / ')}`)
-    calc('scenIdx', '№ сценария в матрице', `MATCH(${C.scenario},'Сценарии'!$B$1:$D$1,0)`, matrix.names.indexOf(params.meta.scenario) + 1)
+    inp('scenario', 'Активный сценарий', scen0, `варианты: ${matrix.names.join(' / ')}`)
+    calc('scenIdx', '№ сценария в матрице', `MATCH(${C.scenario},'Сценарии'!$B$1:$D$1,0)`, matrix.names.indexOf(scen0) + 1)
     inp('mode', 'Пакетный режим', params.meta.mode, 'Да/Нет: пакетный форсит uptake = 100%')
     calc('pkg', 'Пакетный флаг (0/1)', `IF(${C.mode}="Да",1,0)`, params.meta.mode === 'Да' ? 1 : 0)
     inp('vatMode', 'Режим НДС', params.meta.vatMode, 'Гросс / С возмещением')
@@ -2648,7 +2650,7 @@ export async function exportWorkbook(
     ws.getRow(1).height = 26
     const meta: [string, string | { f: string; v: string | number }, string][] = [
       ['Модель', { f: `${C.modelName}`, v: 'AURA HILLS' }, 'из Допущения!B-модель'],
-      ['Сценарий', { f: `${C.scenario}`, v: params.meta.scenario }, 'меняется на листе Допущения'],
+      ['Сценарий', { f: `${C.scenario}`, v: scen0 }, 'меняется на листе Допущения'],
       ['Дата выгрузки', `=TODAY()`, 'пересчитывается при открытии'],
       ['Версия', (globalThis as { __BUILD_ID__?: string }).__BUILD_ID__ ?? 'dev', 'git commit сборки приложения'],
       ['Режим', { f: `${C.mode} & " / " & ${C.vatMode}`, v: `${params.meta.mode} / ${params.meta.vatMode}` }, 'пакетный / НДС'],

@@ -180,7 +180,7 @@ export default function App() {
   const upload = (f: File) => f.text().then(importJson)
 
   const exportExcel = async () => {
-    const blob = await exportWorkbook(params, matrix, items, services)
+    const blob = await exportWorkbook(params, matrix, items, services, scenario)
     const a = document.createElement('a')
     a.href = URL.createObjectURL(blob)
     a.download = 'aura-hills-model.xlsx'
