@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Anchor, Button, Text } from '@mantine/core'
 import { fmt } from './ui'
+import { Genplan3D } from './Genplan3D'
 
 // Data Room «Генплан»: артефакты репозитория bim-as-code, собранные на сервере
 // (post-receive → compiler build → /srv/genplan/ → nginx alias /genplan/).
@@ -192,6 +193,17 @@ export function GenplanView() {
   const buildings = spec?.modules.filter((m) => !LANDSCAPE.test(m.type)) ?? []
   const landscape = spec?.modules.filter((m) => LANDSCAPE.test(m.type)) ?? []
   const selected = sel ? buildings.find((m) => m.slug === sel) : null
+  // slug-модули: GLB-узлы называются site/<slug>/<kind>
+  const moduleNames = useMemo(
+    () => new Map((spec?.modules ?? []).filter((m) => m.slug)
+      .map((m) => [m.slug!, m.name])),
+    [spec],
+  )
+  const plannedSlugs = useMemo(
+    () => new Set(buildings.filter((m) => m.has_plan && m.slug)
+      .map((m) => m.slug!)),
+    [buildings],
+  )
 
   // делегирование клика по инлайн-SVG: ближайшая группа с data-slug;
   // открываем только здания с чертежами (data-plan="1")
@@ -231,10 +243,18 @@ export function GenplanView() {
             </div>
           )}
 
-          <h2>Изометрия</h2>
-          <div className="genplan-canvas">
-            <img src={`${BASE}/iso.svg`} alt="Изометрия модели" />
-          </div>
+          <h2>3D-вид</h2>
+          <Genplan3D
+            url={`${BASE}/site.glb`}
+            names={moduleNames}
+            planned={plannedSlugs}
+            onSelect={setSel}
+            fallback={
+              <div className="genplan-canvas">
+                <img src={`${BASE}/iso.svg`} alt="Изометрия модели" />
+              </div>
+            }
+          />
 
           {spec && (
             <>

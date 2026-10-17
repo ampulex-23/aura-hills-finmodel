@@ -494,5 +494,22 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 .month-table tr.clickable:hover td { background: #1d2940; }
 .month-table tr.clickable:hover td.sticky { background: #1d2940; }
 
+/* 3D-вид генплана (Three.js, site.glb) */
+.genplan-3d {
+  position: relative; height: 560px; margin: 8px 0 16px;
+  background: #0e1522; border: 1px solid #24324a; border-radius: 8px;
+  overflow: hidden;
+}
+.genplan-3d canvas { display: block; }
+.genplan-3d-tip {
+  position: fixed; z-index: 10; pointer-events: none;
+  background: #1d2940; border: 1px solid #35507c; border-radius: 4px;
+  color: #dce6f5; font-size: 12px; padding: 3px 8px; white-space: nowrap;
+}
+.genplan-3d-hint {
+  position: absolute; left: 10px; bottom: 8px; pointer-events: none;
+  color: #5b6b85; font-size: 11px;
+}
+
 /* Вторая строка в клетке месячной таблицы: количество списанного и т.п. */
 .cell-sub { font-size: 10px; color: #6b86ad; margin-top: 1px; }
