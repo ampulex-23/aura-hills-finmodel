@@ -176,6 +176,19 @@ export function GenplanView() {
     }
   }, [])
 
+  const buildings = spec?.modules.filter((m) => !LANDSCAPE.test(m.type)) ?? []
+  // slug-модули: GLB-узлы называются site/<slug>/<kind>
+  const moduleNames = useMemo(
+    () => new Map((spec?.modules ?? []).filter((m) => m.slug)
+      .map((m) => [m.slug!, m.name])),
+    [spec],
+  )
+  const plannedSlugs = useMemo(
+    () => new Set(buildings.filter((m) => m.has_plan && m.slug)
+      .map((m) => m.slug!)),
+    [spec],
+  )
+
   if (missing)
     return (
       <div className="doc-body">
@@ -190,20 +203,8 @@ export function GenplanView() {
 
   if (!manifest && !spec) return null
 
-  const buildings = spec?.modules.filter((m) => !LANDSCAPE.test(m.type)) ?? []
   const landscape = spec?.modules.filter((m) => LANDSCAPE.test(m.type)) ?? []
   const selected = sel ? buildings.find((m) => m.slug === sel) : null
-  // slug-модули: GLB-узлы называются site/<slug>/<kind>
-  const moduleNames = useMemo(
-    () => new Map((spec?.modules ?? []).filter((m) => m.slug)
-      .map((m) => [m.slug!, m.name])),
-    [spec],
-  )
-  const plannedSlugs = useMemo(
-    () => new Set(buildings.filter((m) => m.has_plan && m.slug)
-      .map((m) => m.slug!)),
-    [buildings],
-  )
 
   // делегирование клика по инлайн-SVG: ближайшая группа с data-slug;
   // открываем только здания с чертежами (data-plan="1")
