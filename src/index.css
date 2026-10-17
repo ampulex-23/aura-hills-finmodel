@@ -485,5 +485,14 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
 .genplan-canvas img { display: block; width: 100%; height: auto; }
 .genplan-files { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 
+/* Интерактивный генплан: инлайн-SVG, здания с планировкой кликабельны */
+.genplan-map { padding: 0; }
+.genplan-map svg { display: block; width: 100%; height: auto; }
+.genplan-map g[data-plan] { cursor: pointer; }
+.genplan-map g[data-plan]:hover { filter: brightness(1.15) saturate(1.2); }
+.month-table tr.clickable { cursor: pointer; }
+.month-table tr.clickable:hover td { background: #1d2940; }
+.month-table tr.clickable:hover td.sticky { background: #1d2940; }
+
 /* Вторая строка в клетке месячной таблицы: количество списанного и т.п. */
 .cell-sub { font-size: 10px; color: #6b86ad; margin-top: 1px; }
