@@ -82,7 +82,11 @@ export function runModel(
   // векторы загрузки и планы членства умножаются на один коэффициент.
   if (overrides.loadMult !== undefined) {
     const L = overrides.loadMult
-    for (const key of ['bathsLoad', 'steamLoad', 'massageLoad', 'extraLoad', 'glampLoad', 'publicBathLoad', 'restLoad'] as const)
+    for (const key of [
+      'bathsLoad', 'steamLoad', 'massageLoad', 'extraLoad', 'glampLoad',
+      'bathsLoadP2', 'steamLoadP2', 'massageLoadP2', 'extraLoadP2',
+      'publicBathLoad', 'restLoad',
+    ] as const)
       sc[key] = sc[key].map((v) => v * L)
     sc.membersMonth = sc.membersMonth.map((v) => v * L)
   }

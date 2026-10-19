@@ -167,6 +167,14 @@ export const useModel = create<ModelState>()(
         setMatrixCell: (path, col, value) => {
           const copy = JSON.parse(JSON.stringify(get().matrix))
           const keys = path.split('.')
+          // Опциональные блоки очереди 2 могут отсутствовать в старых
+          // матрицах — сеем их копией векторов очереди 1 при первой правке
+          // (соответствует резолву fallback'а в scenario.ts).
+          const p2Base: Record<string, string> = {
+            bathsP2: 'baths', steamP2: 'steam', massageP2: 'massage', extraP2: 'extra',
+          }
+          if (keys.length > 1 && copy[keys[0]] === undefined && p2Base[keys[0]])
+            copy[keys[0]] = JSON.parse(JSON.stringify(copy[p2Base[keys[0]]]))
           let cur = copy
           for (let i = 0; i < keys.length - 1; i++) cur = cur[keys[i]]
           cur[keys[keys.length - 1]][col] = value

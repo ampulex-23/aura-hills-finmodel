@@ -331,6 +331,12 @@ export interface ScenarioMatrix {
   publicBath?: YearVectors
   /** Загрузка ресторана (% от seats × turnsPerDay) — очередь 2 */
   restaurant?: YearVectors
+  // Загрузки ОЧЕРЕДИ 2 по тем же потокам (бани/парения/массаж/допы).
+  // Отсутствует → поток использует общий вектор очереди 1.
+  bathsP2?: YearVectors
+  steamP2?: YearVectors
+  massageP2?: YearVectors
+  extraP2?: YearVectors
 }
 
 // Резолвленный сценарий: все годовые векторы раскрыты на 5 лет
@@ -340,6 +346,11 @@ export interface ResolvedScenario {
   steamLoad: number[]
   massageLoad: number[]
   extraLoad: number[]
+  /** Загрузки очереди 2 (резолвятся = вектору оч. 1, если строки нет) */
+  bathsLoadP2: number[]
+  steamLoadP2: number[]
+  massageLoadP2: number[]
+  extraLoadP2: number[]
   glampLoad: number[]
   membersMonth: number[]
   priceGrowth: number
@@ -362,8 +373,11 @@ export interface RevenueMonth {
   yearIdx: number
   monthOfYear: number // 1..12
   ramp: number
-  bathsLoad: number
+  bathsLoad: number    // загрузка модулей очереди 1
+  bathsLoadP2: number  // загрузка модулей очереди 2
   slots: number
+  slotsP1: number      // проданные слоты очереди 1 (после вытеснения)
+  slotsP2: number      // проданные слоты очереди 2
   guests: number
   slotCounts: number[] // по типам слотов (время суток — аналитика, цена одинакова в бане)
   bathCounts: number[] // проданные слоты по каждой бане-модулю (индекс = params.modules)

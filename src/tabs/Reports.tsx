@@ -52,7 +52,7 @@ function revenueHints(params: Params, r: ModelResult) {
         title: 'Загрузка бань',
         text: 'Доля проданных слотов: множитель спроса × целевая загрузка года (сценарий) × сезонность месяца × раскачка после открытия. Не выше 100%.',
         tex: String.raw`\mathrm{load}=\min(1,\ \mathrm{спрос}\cdot\mathrm{цель_{год}}\cdot\mathrm{сезон}\cdot\mathrm{ramp})`,
-        calc: `min(100%, ${dm} × ${pc(sc.bathsLoad[m.yearIdx])} × ${season(m)} × ${pc(m.ramp)}) = ${pc(m.bathsLoad)}`,
+        calc: `min(100%, ${dm} × оч.1 ${pc(sc.bathsLoad[m.yearIdx])} / оч.2 ${pc(sc.bathsLoadP2[m.yearIdx])} × ${season(m)} × ${pc(m.ramp)}) = ${pc(m.bathsLoad)} / ${pc(m.bathsLoadP2)}`,
       }
     },
     slots: (i: number): CellHint => {
@@ -84,7 +84,7 @@ function revenueHints(params: Params, r: ModelResult) {
         title: 'Парения',
         text: `Процедуры из депозитного кошелька по базе ${e0(params.deposit.steamBase)} + доплаты за апгрейд (${pc(params.service.upgradeShare)} гостей).`,
         tex: String.raw`\mathrm{слоты}\cdot\mathrm{гостей/слот}\cdot\mathrm{доля}\cdot\big[(1-w_{доп})\,P_{база}+u_{апгр}\,\overline{(P-P_{база})}\big]\cdot\mathrm{рост}`,
-        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${upLdTxt(sc.steamLoad[m.yearIdx], i)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
+        calc: `слоты оч.1 ${fmt(m.slotsP1)} × гостей × ${upLdTxt(sc.steamLoad[m.yearIdx], i)} + слоты оч.2 ${fmt(m.slotsP2)} × гостей × ${upLdTxt(sc.steamLoadP2[m.yearIdx], i)} × [${pc(1 - wExtra)}×${e0(params.deposit.steamBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.steamTotal)}`,
       }
     },
     massage: (i: number): CellHint => {
@@ -92,7 +92,7 @@ function revenueHints(params: Params, r: ModelResult) {
       return {
         title: 'Массаж',
         text: `Та же схема, что у парений: база в кошельке ${e0(params.deposit.massageBase)} + доплаты за апгрейд.`,
-        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} гостей × ${upLdTxt(sc.massageLoad[m.yearIdx], i)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
+        calc: `слоты оч.1 ${fmt(m.slotsP1)} × гостей × ${upLdTxt(sc.massageLoad[m.yearIdx], i)} + слоты оч.2 ${fmt(m.slotsP2)} × гостей × ${upLdTxt(sc.massageLoadP2[m.yearIdx], i)} × [${pc(1 - wExtra)}×${e0(params.deposit.massageBase)} + апгр.] × рост ${gAt(i).toFixed(2)} = ${e0(m.massageTotal)}`,
       }
     },
     extra: (i: number): CellHint => {
@@ -100,7 +100,7 @@ function revenueHints(params: Params, r: ModelResult) {
       return {
         title: 'Доп.услуги',
         text: `Доля кошелька на доп.услуги (${pc(wExtra)}) × депозит ${e0(params.deposit.base)} × распределение по услугам.`,
-        calc: `${fmt(m.slots)} × ${fmt(cap, 1)} × ${upLdTxt(sc.extraLoad[m.yearIdx], i)} × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
+        calc: `(слоты оч.1 ${fmt(m.slotsP1)} × ${upLdTxt(sc.extraLoad[m.yearIdx], i)} + слоты оч.2 ${fmt(m.slotsP2)} × ${upLdTxt(sc.extraLoadP2[m.yearIdx], i)}) × гостей × ${pc(wExtra)} × ${e0(params.deposit.base)} × рост ${gAt(i).toFixed(2)} = ${e0(m.extraTotal)}`,
       }
     },
     glamping: (i: number): CellHint => {
@@ -183,7 +183,7 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
     hint: (ci): CellHint => ({
       title: `Модуль №${m.id}`,
       text: 'Проданные слоты модуля — после вытеснения членами/сертификатами в пик (общий масштабирующий коэффициент).',
-      calc: `30 × ${m.slotsPerDay} сл/д × аптайм ${pc(m.uptime, 0)} × loadK ${pc(m.loadK, 0)} × загрузка ${pc(R[ci].bathsLoad)}${(m.phase ?? 1) === 2 ? ' × рампа оч. 2' : ''} = ${fmt(R[ci].bathCounts[i] ?? 0)}`,
+      calc: `30 × ${m.slotsPerDay} сл/д × аптайм ${pc(m.uptime, 0)} × loadK ${pc(m.loadK, 0)} × загрузка ${pc((m.phase ?? 1) === 2 ? R[ci].bathsLoadP2 : R[ci].bathsLoad)}${(m.phase ?? 1) === 2 ? ' × рампа оч. 2' : ''} = ${fmt(R[ci].bathCounts[i] ?? 0)}`,
     }),
   }))
   const slotTypeKids: RowDef[] = slotLabels.map((n, j) => ({
@@ -219,6 +219,8 @@ export function Revenue({ r, labels }: { r: ModelResult; labels: string[] }) {
 
   const rows: RowDef[] = [
     { label: 'Загрузка бань', values: stream((m) => m.bathsLoad), fmt: 'pct' as const, hint: h.load },
+    { label: '— из них очередь 2', values: stream((m) => m.bathsLoadP2), fmt: 'pct' as const,
+      tip: 'Загрузка VIP-модулей очереди 2: свой сценарный вектор + своя раскачка от даты ввода.' },
     {
       label: 'Слоты (шт)', values: stream((m) => m.slots), hint: h.slots,
       children: [...moduleKids, ...slotTypeKids],

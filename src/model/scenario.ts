@@ -36,6 +36,12 @@ export function resolveScenario(
     steamLoad: years(matrix.steam),
     massageLoad: years(matrix.massage),
     extraLoad: years(matrix.extra).map((v) => Math.max(0, v)),
+    // Очередь 2: свои векторы загрузок; строка отсутствует → поток
+    // использует вектор очереди 1 (совместимость со старыми матрицами).
+    bathsLoadP2: years(matrix.bathsP2 ?? matrix.baths),
+    steamLoadP2: years(matrix.steamP2 ?? matrix.steam),
+    massageLoadP2: years(matrix.massageP2 ?? matrix.massage),
+    extraLoadP2: years(matrix.extraP2 ?? matrix.extra).map((v) => Math.max(0, v)),
     glampLoad: years(matrix.glamping),
     membersMonth,
     priceGrowth: pick(matrix.priceGrowth),

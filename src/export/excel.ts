@@ -224,7 +224,8 @@ export async function exportWorkbook(
   const SCr = {
     baths: 2, steam: 7, massage: 12, extra: 17, glamping: 22, membersMonth: 27,
     publicBath: 32, restaurant: 37,
-    priceGrowth: 43, capexAdj: 44, rampMonths: 45, uptake: 46, delay: 47, energyMult: 48,
+    bathsP2: 42, steamP2: 47, massageP2: 52, extraP2: 57,
+    priceGrowth: 63, capexAdj: 64, rampMonths: 65, uptake: 66, delay: 67, energyMult: 68,
   }
   // Резолвленные сценарные значения через INDEX(блок, №года, №сценария)
   const scenAt = (row: number) => `INDEX('Сценарии'!$B$${row}:$D$${row + 4},{{Y}}+1,${'{'}SCENIDX{'}'})` // unused
@@ -563,6 +564,10 @@ export async function exportWorkbook(
       [SCr.membersMonth, 'Членов (мес)', YEAR_KEYS.map((y) => matrix.membersMonth[y]), FMT_INT],
       [SCr.publicBath, 'Обществ. баня, загрузка', YEAR_KEYS.map((y) => matrix.publicBath?.[y] ?? [0, 0, 0]), FMT_PCT],
       [SCr.restaurant, 'Ресторан, загрузка', YEAR_KEYS.map((y) => matrix.restaurant?.[y] ?? [0, 0, 0]), FMT_PCT],
+      [SCr.bathsP2, 'Бани оч. 2, загрузка', YEAR_KEYS.map((y) => matrix.bathsP2?.[y] ?? matrix.baths[y]), FMT_PCT],
+      [SCr.steamP2, 'Парения оч. 2, загрузка', YEAR_KEYS.map((y) => matrix.steamP2?.[y] ?? matrix.steam[y]), FMT_PCT],
+      [SCr.massageP2, 'Массаж оч. 2, загрузка', YEAR_KEYS.map((y) => matrix.massageP2?.[y] ?? matrix.massage[y]), FMT_PCT],
+      [SCr.extraP2, 'Допы оч. 2, загрузка', YEAR_KEYS.map((y) => matrix.extraP2?.[y] ?? matrix.extra[y]), FMT_PCT],
     ]
     for (const [r0, label, vecs, fmt] of streams)
       YEAR_KEYS.forEach((_, i) => putAt(r0 + i, `${label} — Год ${i + 1}`, vecs[i], fmt))
@@ -1336,6 +1341,8 @@ export async function exportWorkbook(
     publicGuests: 32, pbRev: 33, guestsPrePub: 34, guests: 35,
     memberSpend: 36, publicSpend: 37, streamSpend: 38,
     upSt: 39, upMass: 40, upExtra: 41, restCovers: 42, restRev: 43,
+    bathsLoadP2: 44, capAvgP1: 45, capAvgP2: 46, slotsP1: 47, slotsP2: 48,
+    upStP2: 49, upMassP2: 50, upExtraP2: 51,
   }
   // кеши для result-значений драйверов
   const capAvgOf = (i: number) => {
@@ -1344,6 +1351,32 @@ export async function exportWorkbook(
     const all = params.modules.filter((m) => m.status === 'Активен')
     return all.length ? all.reduce((s, m) => s + m.capacity, 0) / all.length : Infinity
   }
+  // Пофазные величины — JS-зеркала движка (revenue.ts)
+  const loadBaths = (i: number, ph: 1 | 2) =>
+    Math.min(1, params.service.demandMult * (ph === 2 ? scen.bathsLoadP2 : scen.bathsLoad)[r.revenue[i].yearIdx] *
+      params.seasonality.baths[r.revenue[i].monthOfYear - 1] * r.revenue[i].ramp)
+  const capAvgPhase = (i: number, ph: 1 | 2) => {
+    const act = params.modules.filter((m) => (m.phase ?? 1) === ph && m.status === 'Активен' &&
+      ymIdx(m.launchDate) <= openIdxBase + scen.constructionDelayMonths + i)
+    return act.length ? act.reduce((s, m) => s + m.capacity, 0) / act.length : 0
+  }
+  const capP = (i: number, ph: 1 | 2) => {
+    const v = capAvgPhase(i, ph)
+    if (v > 0) return v
+    const all = capAvgOf(i)
+    return all === Infinity ? 0 : all
+  }
+  // потенциал модуля (слоты без загрузки, с рампой оч. 2) — как 'Услуги'!pot
+  const potOf = (mi: number, i: number): number => {
+    const m = modules[mi]
+    if (m.status !== 'Активен' || ymIdx(m.launchDate) > openIdxBase + scen.constructionDelayMonths + i) return 0
+    const mr = (m.phase ?? 1) === 2
+      ? Math.min(1, (openIdxBase + scen.constructionDelayMonths + i - ymIdx(m.launchDate) + 1) / Math.max(1, params.phase2?.rampMonths ?? 1))
+      : 1
+    return 30 * m.slotsPerDay * m.uptime * m.loadK * mr
+  }
+  // 'Модули'!$D = очередь: фрагмент SUMPRODUCT-фильтра по фазе
+  const phF = (ph: 1 | 2) => `('Модули'!$D$${MOD.first}:$D$${MOD.last}=${ph})`
   const memRamp = (i: number) =>
     (Math.floor(i / 12) === 0 && params.members.enabled && params.units.presaleMode === 'deferred' && params.units.presaleMonths > 0 ? 1 : Math.min(1, (i + 1) / Math.max(1, scen.rampMonths)))
   // Блоки «Услуги»: потенциал модулей / проданные слоты / выручка спек / кол-во
@@ -1397,12 +1430,14 @@ export async function exportWorkbook(
     dr('certsSold', 'сертификатов продано', (i) => f(`IF(${C.certsOn}="Да",${C.certsPerMonth}*${C.dm}*${D(DR.ramp, i)}*INDEX(${C.seasC},1,${D(DR.mo, i)}),0)`, r.revenue[i].certsSold))
     dr('certGuests', 'гостей по сертификатам', (i) => f(`${D(DR.certsSold, i)}*${C.certRedem}*${C.certGuests}`, r.revenue[i].certGuests))
     dr('certSlots', 'слотов сертификатов', (i) => f(`IF(${D(DR.capAvg, i)}>0,${D(DR.certGuests, i)}/${D(DR.capAvg, i)},0)`, capAvgOf(i) > 0 && capAvgOf(i) !== Infinity ? r.revenue[i].certGuests / capAvgOf(i) : 0))
-    dr('capSlots', 'ёмкость слотов (потенциал)', (i) => f(`SUM('Услуги'!${L(i + 2)}$${SV.pot0}:${L(i + 2)}$${SV.pot0 + nMod - 1})`, r.revenue[i].bathCounts.reduce((s, b) => s + b, 0) / Math.max(1e-9, r.revenue[i].bathsLoad)))
-    dr('slotsPre', 'слоты до вытеснения', (i) => f(`${D(DR.capSlots, i)}*${D(DR.bathsLoad, i)}`, r.revenue[i].bathCounts.reduce((s, b) => s + b, 0)))
+    dr('capSlots', 'ёмкость слотов (потенциал)', (i) => f(`SUM('Услуги'!${L(i + 2)}$${SV.pot0}:${L(i + 2)}$${SV.pot0 + nMod - 1})`, modules.reduce((s, _m, mi) => s + potOf(mi, i), 0)))
+    // слоты до вытеснения = Σ потенциал × загрузка СВОЕЙ очереди (оч. 1 ↔ bathsLoad, оч. 2 ↔ bathsLoadP2)
+    dr('slotsPre', 'слоты до вытеснения', (i) => f(`SUMPRODUCT('Услуги'!${L(i + 2)}$${SV.pot0}:${L(i + 2)}$${SV.pot0 + nMod - 1}*${phF(1)})*${D(DR.bathsLoad, i)}+SUMPRODUCT('Услуги'!${L(i + 2)}$${SV.pot0}:${L(i + 2)}$${SV.pot0 + nMod - 1}*${phF(2)})*${D(DR.bathsLoadP2, i)}`, modules.reduce((s, m, mi) => s + potOf(mi, i) * loadBaths(i, (m.phase ?? 1) === 2 ? 2 : 1), 0)))
     dr('displacing', 'вытесняющие слоты', (i) => f(`(${D(DR.memberSlots, i)}+${D(DR.certSlots, i)})*${C.peak}`, ((capAvgOf(i) > 0 && capAvgOf(i) !== Infinity ? r.revenue[i].memberGuests / capAvgOf(i) : 0) + (capAvgOf(i) > 0 && capAvgOf(i) !== Infinity ? r.revenue[i].certGuests / capAvgOf(i) : 0)) * (params.members.peakShare ?? 1)))
     dr('slots', 'слоты проданные', (i) => f(`IF(AND(${D(DR.displacing, i)}>0,${D(DR.capSlots, i)}>0),MAX(0,MIN(${D(DR.slotsPre, i)},${D(DR.capSlots, i)}-${D(DR.displacing, i)})),${D(DR.slotsPre, i)})`, r.revenue[i].slots))
     dr('scale', 'масштаб вытеснения', (i) => f(`IF(AND(${D(DR.displacing, i)}>0,${D(DR.capSlots, i)}>0),IF(${D(DR.slotsPre, i)}>0,${D(DR.slots, i)}/${D(DR.slotsPre, i)},1),1)`, r.revenue[i].displacedSlots > 0 && r.revenue[i].bathCounts.reduce((s, b) => s + b, 0) > 0 ? r.revenue[i].slots / Math.max(1e-9, r.revenue[i].bathCounts.reduce((s, b) => s + b, 0)) : 1))
-    dr('guestsBath', 'гости (бани, платные)', (i) => f(`${D(DR.scale, i)}*${D(DR.bathsLoad, i)}*SUMPRODUCT('Услуги'!${L(i + 2)}$${SV.pot0}:${L(i + 2)}$${SV.pot0 + nMod - 1},'Модули'!$E$${MOD.first}:$E$${MOD.last})`, r.revenue[i].bathCounts.reduce((s, b, mi) => s + b * modules[mi].capacity, 0)))
+    // гости = Σ проданные слоты × вместимость — проданные уже несут загрузку своей очереди и масштаб вытеснения
+    dr('guestsBath', 'гости (бани, платные)', (i) => f(`SUMPRODUCT('Услуги'!${L(i + 2)}$${SV.sold0}:${L(i + 2)}$${SV.sold0 + nMod - 1},'Модули'!$E$${MOD.first}:$E$${MOD.last})`, r.revenue[i].bathCounts.reduce((s, b, mi) => s + b * modules[mi].capacity, 0)))
     dr('pbRamp', 'рампа обществ. бани', (i) => f(`IF(AND(${C.pbOn}="Да",${C.pbLaunchIdx}<=${D(DR.absIdx, i)}),MIN(1,(${D(DR.absIdx, i)}-${C.pbLaunchIdx}+1)/${C.p2Ramp}),0)`, params.publicBath?.enabled && ymIdx(params.publicBath.launchDate) <= openIdxBase + scen.constructionDelayMonths + i ? Math.min(1, (openIdxBase + scen.constructionDelayMonths + i - ymIdx(params.publicBath.launchDate) + 1) / Math.max(1, params.phase2?.rampMonths ?? 1)) : 0))
     dr('pubLoad', 'загрузка обществ. бани', (i) => f(`MIN(1,${C.dm}*INDEX('Сценарии'!$B$${SCr.publicBath}:$D$${SCr.publicBath + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})*INDEX(${C.seasB},1,${D(DR.mo, i)})*${D(DR.pbRamp, i)})`, r.revenue[i].publicGuests > 0 ? Math.min(1, params.service.demandMult * scen.publicBathLoad[r.revenue[i].yearIdx] * params.seasonality.baths[r.revenue[i].monthOfYear - 1] * Math.min(1, (openIdxBase + scen.constructionDelayMonths + i - ymIdx(params.publicBath!.launchDate) + 1) / Math.max(1, params.phase2?.rampMonths ?? 1))) : 0))
     dr('publicGuests', 'гости обществ. бани', (i) => f(`30*${C.pbCap}*${D(DR.pubLoad, i)}`, r.revenue[i].publicGuests))
@@ -1417,6 +1452,15 @@ export async function exportWorkbook(
     dr('upExtra', 'реализация допов', (i) => f(`${C.uptakeEff}*IF(${C.svcLoads}="Да",MIN(1,INDEX('Сценарии'!$B$${SCr.extra}:$D$${SCr.extra + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})),1)`, scen.effectiveUptake * (params.service.serviceLoads ? Math.min(1, Math.max(0, scen.extraLoad[r.revenue[i].yearIdx])) : 1)))
     dr('restCovers', 'посадки ресторана', (i) => f(`IF(AND(${C.restOn}="Да",${D(DR.pbRamp, i)}>0,INDEX('Сценарии'!$B$${SCr.restaurant}:$D$${SCr.restaurant + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})>0),30*${C.restSeats}*${C.restTurns}*MIN(1,${C.dm}*INDEX('Сценарии'!$B$${SCr.restaurant}:$D$${SCr.restaurant + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})*INDEX(${C.seasB},1,${D(DR.mo, i)})*${D(DR.pbRamp, i)}),0)`, r.revenue[i].restCovers))
     dr('restRev', 'выручка ресторана', (i) => f(`${D(DR.restCovers, i)}*${C.restCheck}*${D(DR.infl, i)}`, r.revenue[i].restaurant))
+    // ─── Очередь 2: пофазные загрузки и базы услуг ───
+    dr('bathsLoadP2', 'загрузка бань оч. 2', (i) => f(`MIN(1,${C.dm}*INDEX('Сценарии'!$B$${SCr.bathsP2}:$D$${SCr.bathsP2 + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})*INDEX(${C.seasB},1,${D(DR.mo, i)})*${D(DR.ramp, i)})`, loadBaths(i, 2)))
+    dr('capAvgP1', 'ср. ёмкость оч. 1', (i) => f(`IF(SUMPRODUCT('Модули'!$C$${MOD.first}:$C$${MOD.last}*${phF(1)}*('Модули'!$K$${MOD.first}:$K$${MOD.last}<=${D(DR.absIdx, i)}))>0,SUMPRODUCT('Модули'!$C$${MOD.first}:$C$${MOD.last}*${phF(1)}*('Модули'!$K$${MOD.first}:$K$${MOD.last}<=${D(DR.absIdx, i)})*'Модули'!$E$${MOD.first}:$E$${MOD.last})/SUMPRODUCT('Модули'!$C$${MOD.first}:$C$${MOD.last}*${phF(1)}*('Модули'!$K$${MOD.first}:$K$${MOD.last}<=${D(DR.absIdx, i)})),${C.avgCapAll})`, capP(i, 1)))
+    dr('capAvgP2', 'ср. ёмкость оч. 2', (i) => f(`IF(SUMPRODUCT('Модули'!$C$${MOD.first}:$C$${MOD.last}*${phF(2)}*('Модули'!$K$${MOD.first}:$K$${MOD.last}<=${D(DR.absIdx, i)}))>0,SUMPRODUCT('Модули'!$C$${MOD.first}:$C$${MOD.last}*${phF(2)}*('Модули'!$K$${MOD.first}:$K$${MOD.last}<=${D(DR.absIdx, i)})*'Модули'!$E$${MOD.first}:$E$${MOD.last})/SUMPRODUCT('Модули'!$C$${MOD.first}:$C$${MOD.last}*${phF(2)}*('Модули'!$K$${MOD.first}:$K$${MOD.last}<=${D(DR.absIdx, i)})),${C.avgCapAll})`, capP(i, 2)))
+    dr('slotsP1', 'слоты проданные оч. 1', (i) => f(`SUMPRODUCT('Услуги'!${L(i + 2)}$${SV.sold0}:${L(i + 2)}$${SV.sold0 + nMod - 1}*${phF(1)})`, r.revenue[i].slotsP1))
+    dr('slotsP2', 'слоты проданные оч. 2', (i) => f(`SUMPRODUCT('Услуги'!${L(i + 2)}$${SV.sold0}:${L(i + 2)}$${SV.sold0 + nMod - 1}*${phF(2)})`, r.revenue[i].slotsP2))
+    dr('upStP2', 'реализация парений оч. 2', (i) => f(`${C.uptakeEff}*IF(${C.svcLoads}="Да",MIN(1,INDEX('Сценарии'!$B$${SCr.steamP2}:$D$${SCr.steamP2 + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})),1)`, scen.effectiveUptake * (params.service.serviceLoads ? Math.min(1, scen.steamLoadP2[r.revenue[i].yearIdx]) : 1)))
+    dr('upMassP2', 'реализация массажа оч. 2', (i) => f(`${C.uptakeEff}*IF(${C.svcLoads}="Да",MIN(1,INDEX('Сценарии'!$B$${SCr.massageP2}:$D$${SCr.massageP2 + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})),1)`, scen.effectiveUptake * (params.service.serviceLoads ? Math.min(1, scen.massageLoadP2[r.revenue[i].yearIdx]) : 1)))
+    dr('upExtraP2', 'реализация допов оч. 2', (i) => f(`${C.uptakeEff}*IF(${C.svcLoads}="Да",MIN(1,INDEX('Сценарии'!$B$${SCr.extraP2}:$D$${SCr.extraP2 + 4},${D(DR.yIdx, i)}+1,${C.scenIdx})),1)`, scen.effectiveUptake * (params.service.serviceLoads ? Math.min(1, Math.max(0, scen.extraLoadP2[r.revenue[i].yearIdx])) : 1)))
   }
   const DD = (row: number, i: number) => `'Драйверы'!${L(i + 2)}$${row}`
 
@@ -1462,7 +1506,7 @@ export async function exportWorkbook(
       ws.getCell(rN, 1).font = { ...ARIAL, color: { argb: GREY } }
       for (let i = 0; i < ops; i++) {
         putCell(ws, rN, i + 2, {
-          f: `${L(i + 2)}$${SV.pot0 + mi}*${DD(DR.bathsLoad, i)}*${DD(DR.scale, i)}`,
+          f: `${L(i + 2)}$${SV.pot0 + mi}*IF('Модули'!$D$${MOD.first + mi}=2,${DD(DR.bathsLoadP2, i)},${DD(DR.bathsLoad, i)})*${DD(DR.scale, i)}`,
           v: r.revenue[i].bathCounts[mi] ?? 0,
         }, '0.0')
       }
@@ -1480,18 +1524,22 @@ export async function exportWorkbook(
         let v = 0
         const p_ = `'Спеки'!$D$${srow}`
         const w_ = `'Спеки'!$E$${srow}`
+        // база услуг пофазная: слоты оч.1 × ср.ёмкость оч.1 × реализация оч.1
+        // + то же для оч. 2 — загрузки услуг у очередей свои
+        const svcPh = (up1: number, up2: number) =>
+          `(${DD(DR.slotsP1, i)}*${DD(DR.capAvgP1, i)}*${DD(up1, i)}+${DD(DR.slotsP2, i)}*${DD(DR.capAvgP2, i)}*${DD(up2, i)})`
         if (s.direction === 'Парения') {
           const j = services.filter((x) => x.direction === 'Парения').indexOf(s)
           v = r.revenue[i].steam[j] ?? 0
-          fo = `IF(${C.swpSteam}>0,${DD(DR.slots, i)}*${DD(DR.capAvg, i)}*${DD(DR.upSt, i)}*((1-${C.walletExtraShare})*${C.depSteam}*${w_}*${p_}/${C.swpSteam}+${C.upgradeShare}*${w_}*(${p_}-${C.depSteam}))*${DD(DR.growth, i)}+IF(${C.baseW}>0,${DD(DR.streamSpend, i)}*${C.shSteam}*${w_}*${p_}/${C.swpSteam},0),0)`
+          fo = `IF(${C.swpSteam}>0,${svcPh(DR.upSt, DR.upStP2)}*((1-${C.walletExtraShare})*${C.depSteam}*${w_}*${p_}/${C.swpSteam}+${C.upgradeShare}*${w_}*(${p_}-${C.depSteam}))*${DD(DR.growth, i)}+IF(${C.baseW}>0,${DD(DR.streamSpend, i)}*${C.shSteam}*${w_}*${p_}/${C.swpSteam},0),0)`
         } else if (s.direction === 'Массаж') {
           const j = services.filter((x) => x.direction === 'Массаж').indexOf(s)
           v = r.revenue[i].massage[j] ?? 0
-          fo = `IF(${C.swpMass}>0,${DD(DR.slots, i)}*${DD(DR.capAvg, i)}*${DD(DR.upMass, i)}*((1-${C.walletExtraShare})*${C.depMass}*${w_}*${p_}/${C.swpMass}+${C.upgradeShare}*${w_}*(${p_}-${C.depMass}))*${DD(DR.growth, i)}+IF(${C.baseW}>0,${DD(DR.streamSpend, i)}*${C.shMass}*${w_}*${p_}/${C.swpMass},0),0)`
+          fo = `IF(${C.swpMass}>0,${svcPh(DR.upMass, DR.upMassP2)}*((1-${C.walletExtraShare})*${C.depMass}*${w_}*${p_}/${C.swpMass}+${C.upgradeShare}*${w_}*(${p_}-${C.depMass}))*${DD(DR.growth, i)}+IF(${C.baseW}>0,${DD(DR.streamSpend, i)}*${C.shMass}*${w_}*${p_}/${C.swpMass},0),0)`
         } else if (s.direction === 'Доп. услуги') {
           const j = services.filter((x) => x.direction === 'Доп. услуги').indexOf(s)
           v = r.revenue[i].extra[j] ?? 0
-          fo = `IF(${C.swpExtra}>0,${DD(DR.slots, i)}*${DD(DR.capAvg, i)}*${DD(DR.upExtra, i)}*${C.walletExtraShare}*${C.depBase}*${w_}*${p_}/${C.swpExtra}*${DD(DR.growth, i)}+IF(${C.baseW}>0,${DD(DR.streamSpend, i)}*${C.shExtra}*${w_}*${p_}/${C.swpExtra},0),0)`
+          fo = `IF(${C.swpExtra}>0,${svcPh(DR.upExtra, DR.upExtraP2)}*${C.walletExtraShare}*${C.depBase}*${w_}*${p_}/${C.swpExtra}*${DD(DR.growth, i)}+IF(${C.baseW}>0,${DD(DR.streamSpend, i)}*${C.shExtra}*${w_}*${p_}/${C.swpExtra},0),0)`
         }
         putCell(ws, rN, i + 2, fo === '0' ? v : { f: fo, v }, FMT_EUR2)
       }

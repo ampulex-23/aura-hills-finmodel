@@ -119,7 +119,7 @@ const TOOLS = [
     type: 'function',
     function: {
       name: 'get_scenarios',
-      description: 'Сценарная матрица по 5 годам для 3 сценариев: baths, steam, massage, extra, glamping, publicBath, restaurant (загрузки), membersMonth, priceGrowth, capexAdj, rampMonths, uptake, constructionDelayMonths, energyCostMult. Год 6 = год 5.',
+      description: 'Сценарная матрица по 5 годам для 3 сценариев: baths, steam, massage, extra — загрузки очереди 1; bathsP2, steamP2, massageP2, extraP2 — отдельные загрузки очереди 2 (VIP-модули); glamping, publicBath, restaurant (загрузки), membersMonth, priceGrowth, capexAdj, rampMonths, uptake, constructionDelayMonths, energyCostMult. Год 6 = год 5.',
       parameters: { type: 'object', properties: {}, required: [] },
     },
   },
@@ -263,7 +263,7 @@ async function systemPrompt(live) {
     'Строки сметы оч. 2 несут object (public, vip1–vip4) — платятся при включённом объекте; общие строки — если включён ≥1 объект. ' +
     'CAPEX оч. 2 по умолчанию 1 502 950 € (общ. комплекс 617 550 + VIP 628 200 + общие 257 200), буфер свой 10% → 1 653 245 €; отток равномерно по 24 месяцам окна; амортизация объектов с их ввода. ' +
     'Рампа оч. 2 своя — 9 мес от ввода. Финансирование: ops (из операционного CF, разрывы закрывает общий equity-механизм) или equity (отдельный транш = отток месяца). ' +
-    'Выручка VIP идёт в обычные потоки аренды/услуг/F&B; общ. баня и ресторан — отдельные потоки 9 и 10 с загрузками publicBath/restaurant из матрицы.\n\n' +
+    'Выручка VIP идёт в обычные потоки аренды/услуг/F&B, но загрузки у очереди 2 свои — отдельные векторы матрицы bathsP2/steamP2/massageP2/extraP2 (по умолчанию = векторам очереди 1; отсутствие строк в старой матрице = fallback на оч. 1). Общ. баня и ресторан — отдельные потоки 9 и 10 с загрузками publicBath/restaurant.\n\n' +
 
     'ПРАВИЛА:\n' +
     '1. Цифры бери ТОЛЬКО из инструментов — ничего не выдумывай. Нет данных — скажи прямо.\n' +

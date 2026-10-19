@@ -141,3 +141,79 @@ describe('очередь 2: данные и инварианты', () => {
     expect(r.capex.totalEur).toBeCloseTo(off.capex.totalEur, 6)
   })
 })
+
+describe('очередь 2: пофазные загрузки сценария', () => {
+  it('старая матрица без строк *P2 → загрузки оч. 2 = векторам оч. 1', () => {
+    const m = baselineMatrix()
+    delete m.bathsP2
+    delete m.steamP2
+    delete m.massageP2
+    delete m.extraP2
+    const p = allP2(clone())
+    const r1 = runModel(p, m, items, services, 'Base')
+    const r2 = runModel(p, baselineMatrix(), items, services, 'Base')
+    expect(r1.revenue.map((x) => x.total)).toEqual(r2.revenue.map((x) => x.total))
+    expect(r1.pnl.map((x) => x.netProfit)).toEqual(r2.pnl.map((x) => x.netProfit))
+  })
+
+  it('загрузка бань оч. 2 действует только на модули оч. 2', () => {
+    const p = allP2(clone())
+    p.seasonality.baths = Array(12).fill(1)
+    const m = baselineMatrix()
+    const col = m.names.indexOf('Base')
+    const p1load = matrix.baths.y5[col]
+    m.bathsP2!.y5[col] = 0.1 // оч. 1 y5 остаётся 0.75
+    const base = runModel(p, baselineMatrix(), items, services, 'Base')
+    const r = runModel(p, m, items, services, 'Base')
+    const k = 48 // год 5: оч. 2 работает, рампы исчерпаны
+    // очередь 1 не изменилась ни по загрузке, ни по слотам
+    expect(r.revenue[k].bathsLoad).toBeCloseTo(base.revenue[k].bathsLoad, 8)
+    expect(r.revenue[k].slotsP1).toBeCloseTo(base.revenue[k].slotsP1, 8)
+    // очередь 2 упала пропорционально вектору
+    expect(r.revenue[k].bathsLoadP2).toBeCloseTo(0.1, 6)
+    expect(base.revenue[k].slotsP2).toBeGreaterThan(0)
+    expect(r.revenue[k].slotsP2 / base.revenue[k].slotsP2).toBeCloseTo(0.1 / p1load, 3)
+    // итоговые слоты = сумма по очередям
+    expect(r.revenue[k].slots).toBeCloseTo(r.revenue[k].slotsP1 + r.revenue[k].slotsP2, 8)
+    // вытекающие: аренда, итог выручки и P&L следуют за падением оч. 2
+    expect(r.revenue[k].rental).toBeLessThan(base.revenue[k].rental)
+    expect(r.revenue[k].total).toBeLessThan(base.revenue[k].total)
+    expect(r.pnl[k].netProfit).toBeLessThan(base.pnl[k].netProfit)
+  })
+
+  it('загрузки услуг оч. 2 меняют только долю услуг её гостей', () => {
+    const p = allP2(clone())
+    p.service.serviceLoads = true // в baseline выключено для паритета с оракулом
+    const m = baselineMatrix()
+    const col = m.names.indexOf('Base')
+    m.steamP2!.y5[col] = 0 // гости оч. 2 перестают брать парения
+    const base = runModel(p, baselineMatrix(), items, services, 'Base')
+    const r = runModel(p, m, items, services, 'Base')
+    const k = 48
+    // слоты и аренда не тронуты — меняется только база услуг оч. 2
+    expect(r.revenue[k].slots).toBeCloseTo(base.revenue[k].slots, 8)
+    expect(r.revenue[k].rental).toBeCloseTo(base.revenue[k].rental, 8)
+    // парения упали, массаж и допы — как в базе
+    expect(r.revenue[k].steamTotal).toBeLessThan(base.revenue[k].steamTotal)
+    expect(r.revenue[k].massageTotal).toBeCloseTo(base.revenue[k].massageTotal, 8)
+    expect(r.revenue[k].extraTotal).toBeCloseTo(base.revenue[k].extraTotal, 8)
+    // объёмы спек парений снизились → меньше COGS услуг в OPEX
+    const baseSteamQty = Object.values(base.revenue[k].serviceCounts).reduce((a, b) => a + b, 0)
+    const rSteamQty = Object.values(r.revenue[k].serviceCounts).reduce((a, b) => a + b, 0)
+    expect(rSteamQty).toBeLessThan(baseSteamQty)
+    expect(r.opex[k].variableTotal).toBeLessThan(base.opex[k].variableTotal)
+  })
+
+  it('до ввода оч. 2 slotsP2 = 0, загрузки P2 не влияют', () => {
+    const p = allP2(clone())
+    const m = baselineMatrix()
+    const col = m.names.indexOf('Base')
+    m.bathsP2!.y1[col] = 0.99 // аномально высокая — но год 1 оч. 2 ещё не введена
+    const r = runModel(p, m, items, services, 'Base')
+    expect(r.revenue.slice(0, 12).every((x) => x.slotsP2 === 0)).toBe(true)
+    // год 1 идентичен базовой матрице
+    const base = runModel(p, baselineMatrix(), items, services, 'Base')
+    expect(r.revenue.slice(0, 12).map((x) => x.total))
+      .toEqual(base.revenue.slice(0, 12).map((x) => x.total))
+  })
+})

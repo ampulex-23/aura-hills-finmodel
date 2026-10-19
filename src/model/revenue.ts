@@ -56,7 +56,11 @@ export function computeRevenueMonth(
   const seas = params.seasonality.baths[at.month - 1]
   const seasG = params.seasonality.glamping[at.month - 1]
 
+  // Загрузки по очередям: у очереди 2 свой сценарный вектор (резолв = оч. 1,
+  // если строки в матрице нет). Сезонность и рампа общие; раскачка оч. 2
+  // идёт через moduleRamp ниже.
   const bathsLoad = Math.min(1, dm * sc.bathsLoad[yearIdx] * seas * ramp)
+  const bathsLoadP2 = Math.min(1, dm * sc.bathsLoadP2[yearIdx] * seas * ramp)
   const glampLoad = Math.min(1, dm * sc.glampLoad[yearIdx] * seasG * ramp)
 
   // Рампа очереди 2: новые мощности раскачиваются со своей rampMonths от
@@ -76,15 +80,24 @@ export function computeRevenueMonth(
   let capSlots = 0 // ёмкость без фактора загрузки — для вычета слотов членов
   let capSum = 0 // ёмкость гостей активных ЭТОГО месяца модулей (не всех «Активен»)
   let capN = 0
+  let slotsP1 = 0 // проданные слоты по очередям — база услуг с пофазными загрузками
+  let slotsP2 = 0
+  let capSumP1 = 0 // средняя вместимость по очереди — гости услуг своей очереди
+  let capSumP2 = 0
+  let capNP1 = 0
+  let capNP2 = 0
   const slotCounts = params.slotMix.map(() => 0)
   const bathCounts = params.modules.map(() => 0) // слоты по баням — база спек аренды
   params.modules.forEach((m, i) => {
     if (m.status !== 'Активен' || !moduleActive(params, m.launchDate, at)) return
     capSum += m.capacity
     capN++
+    const p2 = (m.phase ?? 1) === 2
+    if (p2) { capSumP2 += m.capacity; capNP2++ } else { capSumP1 += m.capacity; capNP1++ }
     capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK * moduleRamp(m)
-    const s = 30 * m.slotsPerDay * m.uptime * m.loadK * bathsLoad * moduleRamp(m)
+    const s = 30 * m.slotsPerDay * m.uptime * m.loadK * (p2 ? bathsLoadP2 : bathsLoad) * moduleRamp(m)
     slots += s
+    if (p2) slotsP2 += s; else slotsP1 += s
     guests += s * m.capacity
     bathCounts[i] = s
     // Цена слота фиксирована баней — временной микс (slotMix) на деньги
@@ -136,6 +149,8 @@ export function computeRevenueMonth(
     displacedSlots = slots - paidSlots
     const scale = slots > 0 ? paidSlots / slots : 1
     slots = paidSlots
+    slotsP1 *= scale
+    slotsP2 *= scale
     rental *= scale
     for (let j = 0; j < slotCounts.length; j++) slotCounts[j] *= scale
     for (let j = 0; j < bathCounts.length; j++) bathCounts[j] *= scale
@@ -156,13 +171,21 @@ export function computeRevenueMonth(
   const up = sc.effectiveUptake
   // Векторы загрузки услуг из матрицы сценариев — множители доли реализации.
   // Отключаемы флагом service.serviceLoads (golden-master держит паритет с оракулом).
+  // У очереди 2 свои векторы: услуги её гостей идут по загрузкам *P2.
   const ld = params.service.serviceLoads
-  const upSteam = up * (ld ? Math.min(1, sc.steamLoad[yearIdx]) : 1)
-  const upMassage = up * (ld ? Math.min(1, sc.massageLoad[yearIdx]) : 1)
-  const upExtra = up * (ld ? Math.min(1, sc.extraLoad[yearIdx]) : 1)
+  const upSteam1 = up * (ld ? Math.min(1, sc.steamLoad[yearIdx]) : 1)
+  const upSteam2 = up * (ld ? Math.min(1, sc.steamLoadP2[yearIdx]) : 1)
+  const upMassage1 = up * (ld ? Math.min(1, sc.massageLoad[yearIdx]) : 1)
+  const upMassage2 = up * (ld ? Math.min(1, sc.massageLoadP2[yearIdx]) : 1)
+  const upExtra1 = up * (ld ? Math.min(1, sc.extraLoad[yearIdx]) : 1)
+  const upExtra2 = up * (ld ? Math.min(1, sc.extraLoadP2[yearIdx]) : 1)
   // Услуги привязаны к слотам ТЕКУЩЕГО месяца (slots), а не первого:
   // исходный Excel баг — ссылка на C13 как константа — исправлен и здесь, и в книге.
-  const svc = slots
+  // Пофазно: гости оч.1 покупают услуги по загрузкам оч.1, гости оч.2 — по своим.
+  const svcP1 = slotsP1
+  const svcP2 = slotsP2
+  const capP1 = capNP1 ? capSumP1 / capNP1 : cap
+  const capP2 = capNP2 ? capSumP2 / capNP2 : cap
   // Меню услуг = спецификации направления: цена и вес продаж живут в спеке,
   // удаление услуги убирает её поток целиком. Пустое направление → поток 0.
   const steamSpecs = services.filter((s) => s.direction === 'Парения')
@@ -176,7 +199,7 @@ export function computeRevenueMonth(
   const steam = steamSpecs.map((s) => {
     const w = s.weight ?? 0
     return steamTot > 0 ? (
-      svc * cap * upSteam *
+      (svcP1 * capP1 * upSteam1 + svcP2 * capP2 * upSteam2) *
       ((1 - params.service.walletExtraShare) * params.deposit.steamBase * w * s.price / steamTot +
         params.service.upgradeShare * w * (s.price - params.deposit.steamBase)) * growth
     ) : 0
@@ -185,7 +208,7 @@ export function computeRevenueMonth(
   const massage = massageSpecs.map((s) => {
     const w = s.weight ?? 0
     return massageTot > 0 ? (
-      svc * cap * upMassage *
+      (svcP1 * capP1 * upMassage1 + svcP2 * capP2 * upMassage2) *
       ((1 - params.service.walletExtraShare) * params.deposit.massageBase * w * s.price / massageTot +
         params.service.upgradeShare * w * (s.price - params.deposit.massageBase)) * growth
     ) : 0
@@ -194,7 +217,8 @@ export function computeRevenueMonth(
   const extraTot = swp(extraSpecs)
   const extra = extraSpecs.map((s) =>
     extraTot > 0 ? (
-      svc * cap * upExtra * params.service.walletExtraShare * params.deposit.base *
+      (svcP1 * capP1 * upExtra1 + svcP2 * capP2 * upExtra2) *
+      params.service.walletExtraShare * params.deposit.base *
       ((s.weight ?? 0) * s.price) / extraTot * growth
     ) : 0,
   )
@@ -268,7 +292,10 @@ export function computeRevenueMonth(
     monthOfYear: at.month,
     ramp,
     bathsLoad,
+    bathsLoadP2,
     slots,
+    slotsP1,
+    slotsP2,
     guests,
     slotCounts,
     bathCounts,
