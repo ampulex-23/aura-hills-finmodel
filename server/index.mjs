@@ -95,6 +95,21 @@ const TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'get_revenue_detail',
+      description: 'Помесячная детализация операционных месяцев (72 строки ops): те же строки, что раскрываются «—» под агрегатами в таблицах Выручка/OPEX. По месяцу: bathsLoad/bathsLoadP2/ramp, slots/slotsP1/slotsP2/memberSlots/displacedSlots, slotsByModule (слоты каждой бани), slotsByTime (утро/день/вечер), guests, fbGuests (гости чайной зоны = guests − publicGuests), memberGuests, certGuests, publicGuests, restCovers, membersMonthCount, certsSold, serviceCounts (объёмы услуг по кодам спек), потоки € (rental/steam/massage/extra/glamping/membership+membersMonth/membersYear/certificates/fb/publicBath/restaurant), P&L (vatOut/ebitda/amortization/cit/netProfit), opex. С month — полный ряд включая serviceCounts и opexVariable (переменный OPEX по статьям).',
+      parameters: {
+        type: 'object',
+        properties: {
+          scenario: { type: 'string', description: 'Conservative | Base | Aggressive' },
+          month: { type: 'string', description: 'опционально метка месяца, напр. "Мар 2028" — вернёт только эту строку' },
+        },
+        required: ['scenario'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'get_capex',
       description: 'Смета CAPEX сценария: итоги очереди 1 (totalEur, буфер, adjustedEur, амортизация) и очереди 2 (totalEur, свой буфер, adjustedEur, окно оттока, какие объекты включены), плюс группы сметы со строками (name, object, eur) по обеим очередям. Для вопросов «сколько стоит стройка / что входит в CAPEX / сколько стоит VIP-3».',
       parameters: {
@@ -180,6 +195,29 @@ async function runTool(name, args, live) {
       if (preferLive(args.scenario)) return JSON.stringify(liveSc.revenueStreamsTotal)
       const d = snap?.scenarios?.[args.scenario]
       return d ? JSON.stringify(d.revenueStreamsTotal) : `нет сценария "${args.scenario}"`
+    }
+    case 'get_revenue_detail': {
+      const pick = (d) => {
+        const ops = d?.ops
+        if (!ops) return null
+        if (args.month) {
+          const row = ops.find((m) => m.month === args.month)
+          return JSON.stringify(row ?? `нет месяца "${args.month}"`)
+        }
+        // без месяца — облегчённая выдача (два словаря — самые тяжёлые
+        // поля — доступны через фильтр month), чтобы уместиться в лимит
+        const slim = ops.map(({ serviceCounts, opexVariable, ...r }) => r)
+        return JSON.stringify({
+          note: 'serviceCounts (объёмы спек) и opexVariable (OPEX по статьям) — укажи month для полного ряда',
+          ops: slim,
+        })
+      }
+      if (preferLive(args.scenario)) {
+        const v = pick(liveSc)
+        if (v !== null) return v
+      }
+      return pick(snap?.scenarios?.[args.scenario]) ??
+        `нет сценария "${args.scenario}" или снимок без детализации (ops)`
     }
     case 'get_capex': {
       if (preferLive(args.scenario) && liveSc.capex) return JSON.stringify(liveSc.capex).slice(0, 45000)
@@ -267,11 +305,12 @@ async function systemPrompt(live) {
 
     'ПРАВИЛА:\n' +
     '1. Цифры бери ТОЛЬКО из инструментов — ничего не выдумывай. Нет данных — скажи прямо.\n' +
-    '2. Не гадай: не хватает данных — вызови инструмент. Для "как считается X" и расшифровок терминов — search_guide (руководство актуально и подробно). Для инвестиций и сметы — get_capex. Для допущений — get_params с path.\n' +
+    '2. Не гадай: не хватает данных — вызови инструмент. Для "как считается X" и расшифровок терминов — search_guide (руководство актуально и подробно). Для инвестиций и сметы — get_capex. Для допущений — get_params с path. ' +
+    'Для расшифровки помесячных деталей (строки «— ...» в таблицах: гости чайной зоны, посетители общ. бани, посадки ресторана, слоты членов, слоты по модулям/времени суток, объёмы услуг по спекам, переменный OPEX по статьям) — get_revenue_detail.\n' +
     '3. Отвечай по-русски, структурировано и по делу. Rich text приветствуется: **жирный**, таблицы markdown, формулы LaTeX ($...$, $$...$$) для выкладок.\n' +
     '4. Отвечая про конкретные числа, называй показатель, сценарий и период; если есть live-данные — отвечай по ним и упоминай, что это с правками пользователя.\n' +
     '5. Прикреплённые пользователем данные (📌-пины) — готовые значения из таблиц: объясняй строку/показатель по ним (смысл, формула, из чего сложилось), ' +
-    'при необходимости контекста вызывай инструменты (search_guide — «что это за строка», get_monthly — проверить ряд).\n\n' +
+    'при необходимости контекста вызывай инструменты (search_guide — «что это за строка», get_revenue_detail — помесячные детали и раскрытые строки, get_monthly — проверить ряд).\n\n' +
 
     'ГЛОССАРИЙ И ПРАВИЛА МОДЕЛИ:\n' +
     '- Налоги Кипра (реформа 2026): CIT 15% по календарным годам с переносом убытков, база — EBIT с налоговой амортизацией (capital allowances: конструкции 25 лет, оборудование 7, прочее 5; бухгалтерская 10/7/5); авансы 31 июля и 31 декабря. ' +

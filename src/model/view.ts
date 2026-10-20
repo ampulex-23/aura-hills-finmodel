@@ -5,6 +5,8 @@ import type { ModelResult, Params } from './types'
 // видит те же числа, что пользователь видит в таблицах, с учётом его правок.
 const R = (v: number | undefined | null) =>
   typeof v === 'number' && isFinite(v) ? Math.round(v) : v
+const R3 = (v: number | undefined | null) =>
+  typeof v === 'number' && isFinite(v) ? Math.round(v * 1000) / 1000 : v
 
 export function scenarioView(r: ModelResult, params: Params) {
   const capexM = params.meta.capexMonths
@@ -102,6 +104,40 @@ export function scenarioView(r: ModelResult, params: Params) {
     groups: [...groups.values()].map((g) => ({ ...g, eur: R(g.eur) })),
   }
 
+  // Детализация операционных месяцев — те же строки, что раскрываются
+  // под агрегатами в таблицах «Выручка»/«OPEX»: драйверы загрузки, слоты
+  // по очередям/модулям/времени, гости по каналам, счётчики членств и
+  // сертификатов, объёмы спек, потоки выручки, P&L и переменный OPEX
+  // по статьям. Агент получает их инструментом get_revenue_detail.
+  const ops = r.revenue.map((m, i) => {
+    const p = r.pnl[i]
+    const o = r.opex[i]
+    return {
+      month: r.cashflow[i + capexM]?.label,
+      bathsLoad: R3(m.bathsLoad), bathsLoadP2: R3(m.bathsLoadP2), ramp: R3(m.ramp),
+      slots: R(m.slots), slotsP1: R(m.slotsP1), slotsP2: R(m.slotsP2),
+      memberSlots: R(m.memberSlots), displacedSlots: R(m.displacedSlots),
+      slotsByModule: m.bathCounts.map(R),
+      slotsByTime: m.slotCounts.map(R),
+      guests: R(m.guests),
+      fbGuests: R(m.guests - m.publicGuests),
+      memberGuests: R(m.memberGuests), certGuests: R(m.certGuests),
+      publicGuests: R(m.publicGuests), restCovers: R(m.restCovers),
+      membersMonthCount: R(m.membersMonthCount), certsSold: R(m.certsSold),
+      serviceCounts: Object.fromEntries(Object.entries(m.serviceCounts).map(([k, v]) => [k, R(v)])),
+      rental: R(m.rental), steam: R(m.steamTotal), massage: R(m.massageTotal),
+      extra: R(m.extraTotal), glamping: R(m.glamping),
+      membership: R(m.membershipTotal), membersMonth: R(m.membersMonth),
+      membersYear: R(m.membersYear), certificates: R(m.certificates),
+      fb: R(m.fb), publicBath: R(m.publicBath), restaurant: R(m.restaurant),
+      revenue: R(m.total),
+      vatOut: R(p?.vatOut), ebitda: R(p?.ebitda), amortization: R(p?.amortization),
+      cit: R(p?.cit), netProfit: R(p?.netProfit),
+      opex: R(o?.total),
+      opexVariable: o ? Object.fromEntries(o.variable.map((v) => [v.article, R(v.amount)])) : null,
+    }
+  })
+
   return {
     // Опциональные слои выручки (тоглы Допущений; выключенный слой = 0 в потоках)
     features: {
@@ -124,6 +160,7 @@ export function scenarioView(r: ModelResult, params: Params) {
     revenueStreamsTotal: Object.fromEntries(Object.entries(streams).map(([k, v]) => [k, R(v)])),
     yearly: [...byYear.values()].map((g) => Object.fromEntries(Object.entries(g).map(([k, v]) => [k, R(v as number)]))),
     monthly,
+    ops,
     capex,
   }
 }
