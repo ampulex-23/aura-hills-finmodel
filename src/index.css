@@ -483,6 +483,14 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
   padding: 12px; margin: 8px 0 16px; overflow: auto;
 }
 .genplan-canvas img { display: block; width: 100%; height: auto; }
+
+/* Включаемые инженерные слои поверх плана здания (layer-wk/el.svg —
+   прозрачные оверлеи в той же СК и viewBox, что plan.svg) */
+.genplan-layered { position: relative; }
+.genplan-layered img.mep-layer {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: .9; pointer-events: none;
+}
 .genplan-files { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
 
 /* Интерактивный генплан: инлайн-SVG, здания с планировкой кликабельны */

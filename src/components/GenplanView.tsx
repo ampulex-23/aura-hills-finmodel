@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Anchor, Button, Text } from '@mantine/core'
+import { Anchor, Button, Checkbox, Text } from '@mantine/core'
 import { fmt } from './ui'
 import { Genplan3D } from './Genplan3D'
 
@@ -26,6 +26,35 @@ interface SpecSpace {
   geom_area?: number
   outdoor?: boolean
 }
+interface SpecMepWater {
+  points_cold: number
+  points_hot: number
+  pipe_m: Record<string, number>
+  recirculation_m: number
+  manifolds: number
+  q_total_ls: number
+}
+interface SpecMepDrain {
+  points: Record<string, number>
+  pipe_m: Record<string, number>
+  stacks: number
+  vent_stacks: number
+  traps: number
+  max_drop_m: number
+}
+interface SpecMepEl {
+  lights: number
+  outlets: number
+  switches: number
+  lights_ip44: number
+  lights_heat: number
+  equipment: number
+  groups: number
+  groups_rcd: number
+  cable_m: Record<string, number>
+  installed_kw: number
+  panel_modules: number
+}
 interface SpecModule {
   name: string
   slug?: string
@@ -37,6 +66,7 @@ interface SpecModule {
   spaces?: SpecSpace[]
   spaces_area_m2?: number
   has_plan?: boolean
+  mep?: { water?: SpecMepWater; drain?: SpecMepDrain; electrical?: SpecMepEl }
 }
 interface Spec {
   site: string
@@ -85,9 +115,82 @@ function FileLink({ file, label }: { file: string; label: string }) {
   )
 }
 
+// Сводка инженерных сетей здания из spec.json → mep (компилируется
+// из mep.yaml репозитория bim-as-code).
+function MepSummary({ mep }: { mep: NonNullable<SpecModule['mep']> }) {
+  const w = mep.water
+  const d = mep.drain
+  const e = mep.electrical
+  const dn = (m: Record<string, number>, unit = 'м') =>
+    Object.entries(m).map(([k, v]) => `Ø${k}: ${fmt(v, 1)} ${unit}`).join(' · ')
+  const mm = (m: Record<string, number>) =>
+    Object.entries(m).map(([k, v]) => `${k} мм²: ${fmt(v, 0)} м`).join(' · ')
+  const drainPts = d ? Object.entries(d.points)
+    .map(([k, v]) => `Ø${k} × ${v}`).join(' · ') : ''
+  return (
+    <>
+      <h3>Инженерные сети</h3>
+      <div className="table-wrap">
+        <table className="month-table">
+          <thead>
+            <tr>
+              <th className="sticky">Система</th>
+              <th>Точки / приборы</th>
+              <th>Трубопроводы / кабели</th>
+              <th>Узлы и оборудование</th>
+            </tr>
+          </thead>
+          <tbody>
+            {w && (
+              <tr>
+                <td className="sticky">В1/Т3 — водопровод</td>
+                <td>{w.points_cold} ХВС + {w.points_hot} ГВС
+                  {' · '}q {fmt(w.q_total_ls, 2)} л/с</td>
+                <td>{dn(w.pipe_m)}
+                  {w.recirculation_m > 0 &&
+                    ` · рецирк. ${fmt(w.recirculation_m, 1)} м`}</td>
+                <td>{w.manifolds} коллектора</td>
+              </tr>
+            )}
+            {d && (
+              <tr>
+                <td className="sticky">К1 — канализация</td>
+                <td>{drainPts}</td>
+                <td>{dn(d.pipe_m)}</td>
+                <td>{d.stacks} стояков ({d.vent_stacks} вент.) · {d.traps} трапов
+                  {' · '}падение ≤ {fmt(d.max_drop_m, 2)} м</td>
+              </tr>
+            )}
+            {e && (
+              <tr>
+                <td className="sticky">ЭОМ — электрика</td>
+                <td>{e.lights} свет. ({e.lights_ip44} IP44,
+                  {' '}{e.lights_heat} термост.) · {e.outlets} роз. ·{' '}
+                  {e.switches} выкл. · {e.equipment} оборуд.</td>
+                <td>{mm(e.cable_m)}</td>
+                <td>{e.groups} групп ({e.groups_rcd} под УЗО) ·{' '}
+                  {fmt(e.installed_kw, 1)} кВт · ЩР {e.panel_modules} мод.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Text size="xs" c="dimmed" mt="xs" mb="md">
+        Количества компилируются из mep.yaml: точки сетей следуют за
+        санприборами и мебелью плана, трассы и метражи — по маршрутам
+        коллекторов/стояков/групп. Детализация — docs/12 пресметы инженерки.
+      </Text>
+    </>
+  )
+}
+
 // Детальный вид здания: план 1 этажа + фасады + экспликация помещений.
 function BuildingDetail({ m, onBack }: { m: SpecModule; onBack: () => void }) {
   const rooms = m.spaces ?? []
+  const [showWk, setShowWk] = useState(false)
+  const [showEl, setShowEl] = useState(false)
+  const hasWk = !!(m.mep?.water || m.mep?.drain)
+  const hasEl = !!m.mep?.electrical
   return (
     <>
       <Button variant="subtle" size="sm" mb="xs" onClick={onBack}>
@@ -103,9 +206,46 @@ function BuildingDetail({ m, onBack }: { m: SpecModule; onBack: () => void }) {
       </Text>
 
       <h3>План 1 этажа</h3>
+      {(hasWk || hasEl) && (
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center',
+                      margin: '4px 0 8px' }}>
+          {hasWk && (
+            <Checkbox size="sm" label="ВК/К1 — вода и канализация"
+                      checked={showWk}
+                      onChange={(ev) => setShowWk(ev.currentTarget.checked)} />
+          )}
+          {hasEl && (
+            <Checkbox size="sm" label="ЭОМ — электрика"
+                      checked={showEl}
+                      onChange={(ev) => setShowEl(ev.currentTarget.checked)} />
+          )}
+          {(showWk || showEl) && (
+            <Text size="xs" c="dimmed">
+              полные чертежи слоёв:{' '}
+              {showWk && <Anchor href={`${BASE}/buildings/${m.slug}/plan-wk.svg`}
+                                 target="_blank">ВК/К1</Anchor>}
+              {showWk && showEl && ' · '}
+              {showEl && <Anchor href={`${BASE}/buildings/${m.slug}/plan-el.svg`}
+                                 target="_blank">ЭОМ</Anchor>}
+            </Text>
+          )}
+        </div>
+      )}
       <div className="genplan-canvas">
-        <img src={`${BASE}/buildings/${m.slug}/plan.svg`}
-             alt={`План — ${m.name}`} />
+        <div className="genplan-layered">
+          <img src={`${BASE}/buildings/${m.slug}/plan.svg`}
+               alt={`План — ${m.name}`} />
+          {showWk && (
+            <img className="mep-layer"
+                 src={`${BASE}/buildings/${m.slug}/layer-wk.svg`}
+                 alt="Слой ВК/К1" />
+          )}
+          {showEl && (
+            <img className="mep-layer"
+                 src={`${BASE}/buildings/${m.slug}/layer-el.svg`}
+                 alt="Слой ЭОМ" />
+          )}
+        </div>
       </div>
 
       <h3>Фасады</h3>
@@ -147,6 +287,8 @@ function BuildingDetail({ m, onBack }: { m: SpecModule; onBack: () => void }) {
           </div>
         </>
       )}
+
+      {m.mep && <MepSummary mep={m.mep} />}
     </>
   )
 }
