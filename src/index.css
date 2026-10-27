@@ -518,6 +518,12 @@ body:has(.ai-drawer.open) .month-table th:hover { outline: 1px solid #5b8dd9; ou
   position: absolute; left: 10px; bottom: 8px; pointer-events: none;
   color: #5b6b85; font-size: 11px;
 }
+.genplan-3d-reset {
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  background: #1d2940cc; border: 1px solid #35507c; border-radius: 4px;
+  color: #dce6f5; font-size: 12px; padding: 4px 10px; cursor: pointer;
+}
+.genplan-3d-reset:hover { background: #26375a; }
 
 /* Вторая строка в клетке месячной таблицы: количество списанного и т.п. */
 .cell-sub { font-size: 10px; color: #6b86ad; margin-top: 1px; }
