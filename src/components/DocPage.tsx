@@ -1,13 +1,22 @@
 // Страница документа библиотеки Data Room: просмотр (DocView),
 // редактирование markdown-источника, история версий (git log файла),
 // переименование/перемещение и удаление — всё через /api/docs/*.
-import { useCallback, useEffect, useState } from 'react'
-import { Button, Group, Modal, Select, Text, TextInput, Textarea } from '@mantine/core'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
+import { Button, Group, Modal, SegmentedControl, Select, Text, TextInput, Textarea } from '@mantine/core'
 import {
   IconDeviceFloppy, IconDownload, IconEdit, IconHistory,
   IconPencil, IconTrash, IconX,
 } from '@tabler/icons-react'
 import { DocView } from './DocView'
+
+// Редактор тяжёлый (Lexical ~1,5 МБ) — грузим чанком только при входе в правку.
+// needsSourceMode живёт здесь, а не в MdEditor, чтобы статический импорт
+// не тянул редактор в основной бандл.
+const MdEditor = lazy(() => import('./MdEditor').then((m) => ({ default: m.MdEditor })))
+
+/** Конструкции, которые WYSIWYG не переживёт: KaTeX, mermaid, raw HTML. */
+const needsSourceMode = (md: string) =>
+  /\$\$[\s\S]*?\$\$/.test(md) || /```mermaid/.test(md) || /^\s*<[a-zA-Z]/m.test(md)
 import type { DocEntry } from '../docs'
 import { docsApi, type DocFile, type DocVersion } from '../lib/docsApi'
 
@@ -27,6 +36,7 @@ export function DocPage({
   const [file, setFile] = useState<DocFile | null>(null)
   const [err, setErr] = useState('')
   const [editing, setEditing] = useState(false)
+  const [editMode, setEditMode] = useState<'rich' | 'source'>('rich')
   const [draft, setDraft] = useState('')
   const [title, setTitle] = useState(entry.title)
   const [busy, setBusy] = useState(false)
@@ -140,7 +150,12 @@ export function DocPage({
               </>
             ) : (
               <Button size="compact-xs" variant="default" leftSection={<IconEdit size={13} />}
-                onClick={() => { setDraft(file?.source ?? ''); setEditing(true) }}>Править</Button>
+                onClick={() => {
+                  const src = file?.source ?? ''
+                  setDraft(src)
+                  setEditMode(needsSourceMode(src) ? 'source' : 'rich')
+                  setEditing(true)
+                }}>Править</Button>
             )}
             <Button size="compact-xs" variant="default" leftSection={<IconHistory size={13} />}
               onClick={() => void openHistory()}>История</Button>
@@ -182,15 +197,32 @@ export function DocPage({
 
       {editing && (
         <div className="doc-editor">
-          <TextInput size="xs" label="Заголовок" value={title}
-            onChange={(e) => setTitle(e.currentTarget.value)} mb="xs" />
-          <Textarea
-            className="doc-editor-area"
-            value={draft}
-            onChange={(e) => setDraft(e.currentTarget.value)}
-            autosize minRows={24} maxRows={60}
-            styles={{ input: { fontFamily: 'monospace', fontSize: 12.5, lineHeight: 1.5 } }}
-          />
+          <Group justify="space-between" mb="xs" align="flex-end">
+            <TextInput size="xs" label="Заголовок" value={title}
+              onChange={(e) => setTitle(e.currentTarget.value)} style={{ flex: 1, maxWidth: 480 }} />
+            <SegmentedControl size="xs" value={editMode}
+              onChange={(v) => setEditMode(v as 'rich' | 'source')}
+              data={[{ value: 'rich', label: 'Визуальный' }, { value: 'source', label: 'Исходник' }]} />
+          </Group>
+          {editMode === 'rich' ? (
+            <Suspense fallback={<Text size="sm" c="dimmed">Загрузка редактора…</Text>}>
+              <MdEditor key={entry.path} value={draft} onChange={setDraft} />
+            </Suspense>
+          ) : (
+            <Textarea
+              className="doc-editor-area"
+              value={draft}
+              onChange={(e) => setDraft(e.currentTarget.value)}
+              autosize minRows={24} maxRows={60}
+              styles={{ input: { fontFamily: 'monospace', fontSize: 12.5, lineHeight: 1.5 } }}
+            />
+          )}
+          {needsSourceMode(draft) && (
+            <Text size="xs" c="dimmed" mt={6}>
+              Документ содержит расширенную разметку (формулы, mermaid или HTML) —
+              визуальный режим может её потерять, используйте «Исходник».
+            </Text>
+          )}
         </div>
       )}
 

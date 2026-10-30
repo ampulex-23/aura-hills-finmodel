@@ -150,6 +150,32 @@ function bootstrap() {
         'commit', '-m', 'baseline: manifest с категориями Data Room'])
       await push()
     }
+    // Встроенные документы приложения (src/docs/*.md) засеваем в библиотеку —
+    // тогда «Руководство» и др. редактируются и версионируются как все docs.
+    // Идемпотентно: существующие пути пропускаем. Дедуп на фронте (docs.ts).
+    const SEED_CAT = { 'model-guide': 'finance', navigation: 'navigation' }
+    const seedDir = join(REPO_ROOT, 'src', 'docs')
+    const m = await readManifest()
+    let seeded = false
+    for (const f of await readdir(seedDir).catch(() => [])) {
+      if (!f.endsWith('.md')) continue
+      const slug = basename(f, '.md')
+      const cat = SEED_CAT[slug] ?? 'navigation'
+      const p = `${cat}/${slug}.md`
+      if (await exists(join(DOCS_DIR, p))) continue
+      if (!m.categories.some((c) => c.id === cat))
+        m.categories.push({ id: cat, title: cat === 'navigation' ? 'Навигация' : cat })
+      await mkdir(dirname(join(DOCS_DIR, p)), { recursive: true })
+      await atomicWrite(join(DOCS_DIR, p), await readFile(join(seedDir, f), 'utf8'))
+      seeded = true
+    }
+    if (seeded) {
+      await atomicWrite(join(DOCS_DIR, 'manifest.json'), JSON.stringify(m, null, 2))
+      await git(['add', '-A'])
+      await git(['-c', 'user.name=AURA Docs', '-c', 'user.email=aura-docs@local',
+        'commit', '-m', 'seed: встроенные документы приложения'])
+      await push()
+    }
     return true
   })().catch((e) => { console.error('[docs] bootstrap failed:', e.message); ready = null; return false })
   return ready

@@ -102,7 +102,10 @@ const catIdx = (t: string) => {
   return i < 0 ? 900 : i
 }
 
-/** Объединённое дерево: встроенные + библиотека, сгруппировано по названию раздела */
+/** Объединённое дерево: встроенные + библиотека, сгруппировано по названию раздела.
+ *  Встроенные md-документы (Руководство и др.) засеваются сервером в DOCS_DIR —
+ *  если в библиотеке есть doc с тем же slug, показываем библиотечный (редактируемый),
+ *  а статичный дубль скрываем. */
 export function docGroups(tree: DocsTree | null): { title: string; docs: DocEntry[] }[] {
   const map = new Map<string, DocEntry[]>()
   const put = (d: DocEntry, catTitle: string) => {
@@ -110,7 +113,14 @@ export function docGroups(tree: DocsTree | null): { title: string; docs: DocEntr
     arr.push(d)
     map.set(catTitle, arr)
   }
-  for (const d of BUILTIN_DOCS) put(d, d.category)
+  const libSlugs = new Set(
+    (tree?.categories ?? []).flatMap((c) =>
+      c.docs.map((d) => d.id.split('/').pop()))
+  )
+  for (const d of BUILTIN_DOCS) {
+    if (d.kind === 'md' && libSlugs.has(d.id)) continue
+    put(d, d.category)
+  }
   const catTitle = new Map((tree?.categories ?? []).map((c) => [c.id, c.title]))
   for (const c of tree?.categories ?? [])
     for (const d of c.docs) put(libToEntry(d), catTitle.get(c.id) ?? c.title)

@@ -1,0 +1,57 @@
+/* MDXEditor под тёмную тему сайта */
+.mdxeditor {
+  --accentBase: #1a2334;
+  --accentBgSubtle: #141d30;
+  --accentBg: #1a2334;
+  --accentBgHover: #223052;
+  --accentBgActive: #26314a;
+  --accentBgSubtleHover: #223052;
+  --accentBgSubtleActive: #26314a;
+  --accentText: #8cb4ff;
+  --accentTextContrast: #0d1420;
+  --accentSolid: #3b82f6;
+  --accentSolidHover: #2563eb;
+  --accentLine: #26314a;
+  --baseBase: #93a3bc;
+  --baseBgSubtle: #101826;
+  --baseBg: #101826;
+  --baseBgHover: #16203a;
+  --baseBgActive: #1a2334;
+  --baseBgSubtleHover: #16203a;
+  --baseBgSubtleActive: #1a2334;
+  --baseText: #c9d4e3;
+  --baseTextContrast: #0d1420;
+  --baseSolid: #2a3548;
+  --baseSolidHover: #3a4a66;
+  --baseLine: #26314a;
+  --font-body: inherit;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #0d1420;
+  border: 1px solid #26314a;
+  border-radius: 8px;
+  color: #c9d4e3;
+}
+.mdxeditor .mdx-content {
+  min-height: 320px;
+  padding: 14px 18px;
+  caret-color: #c9d4e3;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.mdxeditor-toolbar {
+  background: #101826 !important;
+  border-bottom: 1px solid #26314a;
+  border-radius: 8px 8px 0 0;
+}
+.mdxeditor table { border-collapse: collapse; width: 100%; }
+.mdxeditor th, .mdxeditor td {
+  border: 1px solid #26314a; padding: 6px 12px; vertical-align: top;
+}
+.mdxeditor th { background: #1a2334; color: #93a3bc; }
+.mdxeditor blockquote {
+  border-left: 3px solid #3b82f6; margin: 8px 0; padding: 2px 14px; color: #93a3bc;
+}
+.mdxeditor pre, .mdxeditor code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.mdxeditor-popup, .mdxeditor select, .mdxeditor input[type="text"], .mdxeditor input[type="url"] {
+  background: #101826; color: #c9d4e3; border: 1px solid #26314a;
+}

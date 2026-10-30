@@ -3,6 +3,7 @@ import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import rehypeRaw from 'rehype-raw'
 import type { DocEntry } from '../docs'
 
 // Рендер markdown-документа Data Room: GFM-таблицы + KaTeX-формулы +
@@ -129,7 +130,7 @@ export function DocView({ doc }: { doc: DocEntry }) {
       <article className="doc-body">
         <Markdown
           remarkPlugins={[remarkGfm, remarkMath]}
-          rehypePlugins={[rehypeKatex]}
+          rehypePlugins={[rehypeRaw, rehypeKatex]}
           components={mdComponents}
         >
           {doc.source}
