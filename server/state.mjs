@@ -8,7 +8,7 @@
 // (приватный репо) для бэкапа: push после каждого коммита, ошибки не фатальны.
 import { execFile } from 'node:child_process'
 import { mkdir, readFile, writeFile, rename, copyFile } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import { join, dirname, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO_ROOT = fileURLToPath(new URL('..', import.meta.url))

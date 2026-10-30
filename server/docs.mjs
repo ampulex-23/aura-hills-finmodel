@@ -121,6 +121,10 @@ function bootstrap() {
       await git(['init', '-b', 'main'])
       await git(['config', 'user.name', 'AURA Docs']).catch(() => {})
       await git(['config', 'user.email', 'aura-docs@local']).catch(() => {})
+      // фиксируем любые файлы, оказавшиеся в каталоге до первого init
+      await git(['add', '-A'])
+      await git(['-c', 'user.name=AURA Docs', '-c', 'user.email=aura-docs@local',
+        'commit', '-m', 'init: существующие файлы']).catch(() => {})
     }
     if (DOCS_REMOTE) {
       const remotes = await git(['remote']).catch(() => '')

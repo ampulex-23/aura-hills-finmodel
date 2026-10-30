@@ -79,6 +79,27 @@ node scripts/build-static.mjs   # только статика: снимок, doc
   из DATA_DIR. Поменять дефолт = правка в коде через git/PR как раньше.
 - Тест: `tests/state-api.test.mjs` (vitest, реальный git в tmp).
 
+## Библиотека документов Data Room (git-репо)
+
+Документы DR живут в **отдельном git-репозитории** `DOCS_DIR` (env, дефолт
+`<repo>/docs-data`, gitignored). Файловая система = дерево:
+`<категория>/<slug>.md|.typ`, оригиналы импортов и вложения — в `assets/`,
+`manifest.json` — порядок/названия категорий и мета документов (title,
+confidential). Каждая правка/удаление/перенос — коммит; история append-only
+с `--follow`. `DOCS_REMOTE` (env) — опциональный remote для бэкапа.
+
+- API: `GET /api/docs/tree|file|history|version|raw`, `PUT /api/docs/file`,
+  `POST /api/docs/create|move|asset`, `DELETE /api/docs/file`,
+  `PUT /api/docs/manifest`. `/api/health → docs: true/false`.
+- Клиент: `src/lib/docsApi.ts`; встроенные доки (`src/docs/*.md`, deck,
+  генплан) + библиотека объединяются в дереве `docGroups()` (`src/docs.ts`),
+  рендер — `DocPage` (просмотр DocView + правка + история + перенос + удаление),
+  импорт — `DocUpload` → `src/lib/convert.ts` (docx/pdf/xlsx → markdown
+  в браузере, сервер остаётся zero-dep).
+- `.typ` принимаются и хранятся, typst-компиляция — следующий этап
+  (сейчас показывается исходник).
+- Тест: `tests/docs-api.test.mjs` (реальный git в tmp).
+
 ## Деплой (не делать из агента без запроса)
 
 `deploy/deploy-vds.sh` — git pull → npm ci → VITE_BASE=/ build → pm2 restart aura.
