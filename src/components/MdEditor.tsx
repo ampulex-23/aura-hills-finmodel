@@ -23,6 +23,7 @@ export function MdEditor({ value, onChange }: {
     <MDXEditor
       markdown={value}
       onChange={onChange}
+      className="dark-theme"
       contentEditableClassName="mdx-content"
       plugins={[
         headingsPlugin(), listsPlugin(), quotePlugin(), thematicBreakPlugin(),

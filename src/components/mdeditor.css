@@ -1,5 +1,7 @@
 /* MDXEditor под тёмную тему сайта */
 .mdxeditor {
+  color-scheme: dark;
+  --basePageBg: #0d1420;
   --accentBase: #1a2334;
   --accentBgSubtle: #141d30;
   --accentBg: #1a2334;
@@ -12,6 +14,8 @@
   --accentSolid: #3b82f6;
   --accentSolidHover: #2563eb;
   --accentLine: #26314a;
+  --accentBorder: #3a4a66;
+  --accentBorderHover: #4a5d85;
   --baseBase: #93a3bc;
   --baseBgSubtle: #101826;
   --baseBg: #101826;
@@ -24,6 +28,20 @@
   --baseSolid: #2a3548;
   --baseSolidHover: #3a4a66;
   --baseLine: #26314a;
+  --baseBorder: #26314a;
+  --baseBorderHover: #3a4a66;
+  --admonitionBg: #101826;
+  --admonitionBorder: #26314a;
+  --admonitionInfoBg: #141d30;
+  --admonitionInfoBorder: #3b82f6;
+  --admonitionNoteBg: #141d30;
+  --admonitionNoteBorder: #3a4a66;
+  --admonitionTipBg: #14241c;
+  --admonitionTipBorder: #34a06a;
+  --admonitionCautionBg: #241e14;
+  --admonitionCautionBorder: #b78a2e;
+  --admonitionDangerBg: #241414;
+  --admonitionDangerBorder: #b73e3e;
   --font-body: inherit;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   background: #0d1420;
