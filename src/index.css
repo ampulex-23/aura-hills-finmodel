@@ -97,6 +97,18 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .doc-hist-item:hover { background: rgba(110, 140, 190, .08); }
 .doc-hist-item code { color: #7fb2f0; font-size: 11px; }
 .doc-hist-date { margin-left: auto; color: #5d6b82; font-size: 11px; white-space: nowrap; }
+/* Широкие таблицы документа: горизонтальный скролл вместо налезания на содержание */
+.doc-table-wrap { overflow-x: auto; max-width: 100%; margin: 10px 0; }
+.doc-table-wrap table { margin: 0; }
+/* Скролл в цветах сайта, минимально заметный */
+.doc-table-wrap::-webkit-scrollbar { height: 5px; }
+.doc-table-wrap::-webkit-scrollbar-track { background: transparent; }
+.doc-table-wrap::-webkit-scrollbar-thumb {
+  background: #2a3548; border-radius: 3px;
+}
+.doc-table-wrap::-webkit-scrollbar-thumb:hover { background: #3a4a66; }
+.doc-table-wrap { scrollbar-width: thin; scrollbar-color: #2a3548 transparent; }
+
 .doc-typ-src {
   font-family: monospace; font-size: 12.5px; line-height: 1.5; color: #c9d4e3;
   background: #141c2c; border: 1px solid #22304a; border-radius: 8px;

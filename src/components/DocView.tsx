@@ -67,6 +67,11 @@ const heading = (Tag: 'h2' | 'h3') =>
 const mdComponents = {
   h2: heading('h2'),
   h3: heading('h3'),
+  table({ children }: { children?: ReactNode }) {
+    // Широкие таблицы не лезут в колонку — горизонтальный скролл,
+    // иначе они наезжают на правое содержание
+    return <div className="doc-table-wrap"><table>{children}</table></div>
+  },
   pre({ children }: { children?: ReactNode }) {
     const child = children as any
     const cls: string = child?.props?.className ?? ''
