@@ -4,7 +4,7 @@ import { useHotkeys, useMediaQuery } from '@mantine/hooks'
 import {
   IconAdjustmentsHorizontal, IconArrowsExchange, IconBook2, IconChartLine,
   IconCheck, IconChevronLeft, IconChevronRight, IconClipboardList, IconCoins, IconCopy, IconCpu,
-  IconDeviceFloppy, IconFlask2, IconHistory, IconLayoutDashboard, IconListDetails, IconMenu2,
+  IconDeviceFloppy, IconFilePlus, IconFlask2, IconHistory, IconLayoutDashboard, IconListDetails, IconMenu2,
   IconPercentage, IconReceipt2, IconReportMoney, IconShoppingCart, IconSparkles, IconUserCog, IconUsers, IconVersions,
 } from '@tabler/icons-react'
 import { useModel } from './store'
@@ -27,8 +27,10 @@ import { Sensitivity } from './tabs/Sensitivity'
 import { DocView } from './components/DocView'
 import { DeckView } from './components/DeckView'
 import { GenplanView } from './components/GenplanView'
+import { DocPage } from './components/DocPage'
+import { DocUpload } from './components/DocUpload'
 import { AiChat, useChat } from './components/AiChat'
-import { DOCS, getDoc } from './docs'
+import { docGroups, getDoc, useDocLibrary } from './docs'
 
 type Tab =
   | 'Дашборд' | 'Допущения' | 'Сценарии' | 'Версии' | 'Штат' | 'Номенклатура' | 'Смета стройки' | 'Смета закупа' | 'Спецификации' | 'IT'
@@ -44,11 +46,10 @@ const TAB_SLUGS: Record<Tab, string> = {
   'Налоги': 'taxes', 'P&L': 'pnl', 'Cash-Flow': 'cashflow', 'Sensitivity': 'sensitivity',
 }
 const SLUG_TABS = new Map(Object.entries(TAB_SLUGS).map(([t, s]) => [s, t as Tab]))
-const DOC_IDS = new Set(DOCS.map((d) => d.id))
 type Route = Tab | `doc:${string}`
 const routeFromHash = (): Route | null => {
   const h = location.hash.replace(/^#\//, '')
-  if (h.startsWith('doc/') && DOC_IDS.has(h.slice(4))) return `doc:${h.slice(4)}`
+  if (h.startsWith('doc/') && h.length > 4) return `doc:${h.slice(4)}`
   return SLUG_TABS.get(h) ?? null
 }
 const slugOf = (r: Route) => (r.startsWith('doc:') ? `doc/${r.slice(4)}` : TAB_SLUGS[r as Tab])
@@ -61,7 +62,7 @@ type NavItem = { id: Route; label: string; icon: typeof IconCpu }
 const NAV: { group: string; items: NavItem[] }[] = [
   {
     group: 'Data Room',
-    items: DOCS.map((d) => ({ id: `doc:${d.id}` as Route, label: d.navTitle, icon: IconBook2 })),
+    items: [], // собирается динамически из docGroups (встроенные + библиотека)
   },
   {
     group: 'Параметры',
@@ -99,6 +100,14 @@ export default function App() {
     setAuthor, syncVersions, keepDraft, applyServer, restoreStash, saveVersion, exitPreview, restoreVersion,
   } = useModel()
   const { open: aiOpen, pins: aiPins, toggle: aiToggle } = useChat()
+  const { tree: docsTree, enabled: docsOn, refresh: refreshDocs } = useDocLibrary()
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const docSections = useMemo(() => docGroups(docsTree), [docsTree])
+  const docById = useMemo(
+    () => new Map(docSections.flatMap((s) => s.docs.map((d) => [d.id, d]))),
+    [docSections],
+  )
+  const libCategories = docsTree?.categories ?? []
   const [saveOpen, setSaveOpen] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [saveBusy, setSaveBusy] = useState(false)
@@ -283,7 +292,42 @@ export default function App() {
                   <IconChevronLeft size={13} stroke={2} className={`nav-caret${closed ? ' closed' : ''}`} />
                 </button>
               )}
-              {!closed && g.items.map(({ id, label, icon: Icon }) => {
+              {!closed && g.group === 'Data Room' && (
+                <>
+                  {docSections.map((sec) => (
+                    <div key={sec.title} className="nav-sub">
+                      {!rail && <div className="nav-sub-label">{sec.title}</div>}
+                      {sec.docs.map((d) => {
+                        const id = `doc:${d.id}` as Route
+                        const btn = (
+                          <button
+                            key={id}
+                            className={`nav-item nav-doc${tab === id ? ' active' : ''}`}
+                            onClick={() => setTab(id)}
+                          >
+                            <IconBook2 size={17} stroke={1.7} />
+                            {!rail && <span>{d.navTitle}</span>}
+                          </button>
+                        )
+                        return rail ? (
+                          <Tooltip key={id} label={`${sec.title} · ${d.navTitle}`} position="right" withArrow offset={8}>
+                            {btn}
+                          </Tooltip>
+                        ) : (
+                          btn
+                        )
+                      })}
+                    </div>
+                  ))}
+                  {docsOn && !rail && (
+                    <button className="nav-item nav-doc nav-add" onClick={() => setUploadOpen(true)}>
+                      <IconFilePlus size={17} stroke={1.7} />
+                      <span>Документ…</span>
+                    </button>
+                  )}
+                </>
+              )}
+              {!closed && g.group !== 'Data Room' && g.items.map(({ id, label, icon: Icon }) => {
                 const btn = (
                   <button
                     key={id}
@@ -459,10 +503,22 @@ export default function App() {
           {tab === 'Sensitivity' && <Sensitivity r={result} />}
           {tab === 'Версии' && <Versions />}
           {tab.startsWith('doc:') && (() => {
-            const d = getDoc(tab.slice(4))
-            if (!d) return null
+            const d = docById.get(tab.slice(4)) ?? getDoc(tab.slice(4))
+            if (!d) return <Text c="dimmed" size="sm">Документ не найден.</Text>
             if (d.kind === 'genplan') return <GenplanView key={d.id} />
-            return d.kind === 'deck' ? <DeckView key={d.id} /> : <DocView key={d.id} doc={d} />
+            if (d.kind === 'deck') return <DeckView key={d.id} />
+            if (d.kind === 'lib')
+              return (
+                <DocPage
+                  key={d.id}
+                  entry={d}
+                  author={author}
+                  categories={libCategories}
+                  onRefresh={refreshDocs}
+                  onDeleted={() => setTab('Дашборд')}
+                />
+              )
+            return <DocView key={d.id} doc={d} />
           })()}
         </main>
       </div>
@@ -505,6 +561,16 @@ export default function App() {
           </Group>
         </Stack>
       </Modal>
+
+      <DocUpload
+        opened={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        author={author}
+        categories={libCategories}
+        onSaved={(path) => {
+          void refreshDocs().then(() => setTab(`doc:${path.replace(/\.[^.]+$/, '')}` as Route))
+        }}
+      />
 
       <AiChat />
     </div>

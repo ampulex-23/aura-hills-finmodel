@@ -7,4 +7,5 @@ public/
 scripts/.snap.mjs
 out/
 data/
+docs-data/
 AUTH.md

@@ -69,6 +69,41 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
 .shell.rail .nav-item { justify-content: center; padding: 8px 0; }
 .shell.rail .nav-item.active::before { left: -8px; }
 
+/* Дерево Data Room: разделы внутри группы */
+.nav-sub { margin: 2px 0 6px; }
+.nav-sub-label {
+  font-size: 9.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .07em; color: #46536a; padding: 8px 10px 3px 20px;
+  user-select: none;
+}
+.nav-doc { padding-left: 20px; font-size: 12.5px; }
+.shell.rail .nav-doc { padding-left: 0; }
+.nav-add { color: #5d7ba6; border: 1px dashed #2a3a55; margin-top: 6px; }
+.nav-add:hover { color: #b9cdf0; border-color: #3d5580; }
+
+/* Тулбар и редактор документа библиотеки */
+.doc-toolbar {
+  padding-bottom: 10px; border-bottom: 1px solid #1d2636; margin-bottom: 14px !important;
+}
+.doc-history {
+  border: 1px solid #22304a; border-radius: 8px; padding: 10px 12px;
+  margin-bottom: 14px; background: rgba(20, 28, 44, .4); max-height: 260px; overflow: auto;
+}
+.doc-hist-item {
+  display: flex; gap: 8px; align-items: baseline; width: 100%; text-align: left;
+  background: none; border: 0; padding: 4px 2px; color: #b9c6da; font-size: 12px;
+  font-family: inherit; cursor: pointer; border-radius: 4px;
+}
+.doc-hist-item:hover { background: rgba(110, 140, 190, .08); }
+.doc-hist-item code { color: #7fb2f0; font-size: 11px; }
+.doc-hist-date { margin-left: auto; color: #5d6b82; font-size: 11px; white-space: nowrap; }
+.doc-typ-src {
+  font-family: monospace; font-size: 12.5px; line-height: 1.5; color: #c9d4e3;
+  background: #141c2c; border: 1px solid #22304a; border-radius: 8px;
+  padding: 14px; white-space: pre-wrap; max-width: 860px;
+}
+.doc-editor { max-width: 900px; }
+
 .side-foot { padding: 8px; border-top: 1px solid #1d2636; }
 .collapse-btn { color: #7f93b8; }
 .collapse-btn:hover { color: #e8ecf3; }

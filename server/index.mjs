@@ -7,6 +7,7 @@
 import http from 'node:http'
 import { readFile, stat } from 'node:fs/promises'
 import { stateApi } from './state.mjs'
+import { docsApi } from './docs.mjs'
 import { createReadStream } from 'node:fs'
 import { extname, join, normalize } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -504,11 +505,65 @@ async function handleState(req, res) {
   return json(res, 404, { error: 'unknown endpoint' })
 }
 
+// ---------- библиотека документов Data Room (git) ----------
+async function handleDocs(req, res) {
+  const url = new URL(req.url, 'http://x')
+  const path = url.pathname
+  const q = (k) => url.searchParams.get(k) ?? ''
+  if (path === '/api/docs/tree' && req.method === 'GET')
+    return json(res, 200, await docsApi.tree())
+  if (path === '/api/docs/file' && req.method === 'GET')
+    return json(res, 200, await docsApi.get(q('path')))
+  if (path === '/api/docs/file' && req.method === 'PUT') {
+    const body = await readJsonBody(req, res)
+    if (body == null) return
+    return json(res, 200, await docsApi.save(body))
+  }
+  if (path === '/api/docs/create' && req.method === 'POST') {
+    const body = await readJsonBody(req, res)
+    if (body == null) return
+    return json(res, 200, await docsApi.create(body))
+  }
+  if (path === '/api/docs/move' && req.method === 'POST') {
+    const body = await readJsonBody(req, res)
+    if (body == null) return
+    return json(res, 200, await docsApi.move(body))
+  }
+  if (path === '/api/docs/file' && req.method === 'DELETE') {
+    const body = (await readJsonBody(req, res)) ?? { path: q('path') }
+    return json(res, 200, await docsApi.remove(body))
+  }
+  if (path === '/api/docs/asset' && req.method === 'POST') {
+    const body = await readJsonBody(req, res)
+    if (body == null) return
+    return json(res, 200, await docsApi.saveAsset(body))
+  }
+  if (path === '/api/docs/raw' && req.method === 'GET') {
+    const { data, mime, name } = await docsApi.raw(q('path'))
+    res.writeHead(200, {
+      'Content-Type': mime,
+      'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(name)}`,
+      'Content-Length': data.length,
+    })
+    return res.end(data)
+  }
+  if (path === '/api/docs/history' && req.method === 'GET')
+    return json(res, 200, { history: await docsApi.history(q('path')) })
+  if (path === '/api/docs/version' && req.method === 'GET')
+    return json(res, 200, await docsApi.version(q('path'), q('sha')))
+  if (path === '/api/docs/manifest' && req.method === 'PUT') {
+    const body = await readJsonBody(req, res)
+    if (body == null) return
+    return json(res, 200, await docsApi.saveManifest(body))
+  }
+  return json(res, 404, { error: 'unknown endpoint' })
+}
+
 const server = http.createServer((req, res) => {
   const url = req.url || '/'
   if (url === '/api/health') {
-    return void stateApi.isReady().then((versioning) =>
-      json(res, 200, { ok: true, configured: Boolean(API_KEY), model: MODEL, agent: true, versioning }))
+    return void Promise.all([stateApi.isReady(), docsApi.isReady()]).then(([versioning, docs]) =>
+      json(res, 200, { ok: true, configured: Boolean(API_KEY), model: MODEL, agent: true, versioning, docs }))
   }
   if (url.startsWith('/api/chat')) {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
@@ -517,6 +572,8 @@ const server = http.createServer((req, res) => {
   }
   if (url.startsWith('/api/state') || url.startsWith('/api/versions'))
     return void handleState(req, res).catch((e) => apiError(res, e))
+  if (url.startsWith('/api/docs'))
+    return void handleDocs(req, res).catch((e) => apiError(res, e))
   if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
   void serveStatic(req, res).catch(() => { res.writeHead(500); res.end() })
 })

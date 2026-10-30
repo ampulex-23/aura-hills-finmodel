@@ -1,6 +1,11 @@
-// Документы Data Room: .md-файлы в src/docs/ — коммитятся в git,
-// бандлятся статикой (Vite raw import) и рендерятся с формулами/таблицами.
-// Презентация — отдельный вид записи: слайды-изображения из src/docs/deck/.
+// Документы Data Room. Два источника:
+// 1) встроенные — .md в src/docs/ (коммитятся в git приложения, бандлятся
+//    статикой) + презентация (слайды) + генплан (артефакты bim-as-code);
+// 2) библиотека — документы из серверного DOCS_DIR (git-репо документов),
+//    загружаются через /api/docs/tree, редактируются из UI.
+import { useCallback, useEffect, useState } from 'react'
+import { docsApi, type DocsTree, type LibDoc } from './lib/docsApi'
+
 const raw = import.meta.glob('./docs/*.md', {
   query: '?raw',
   import: 'default',
@@ -22,20 +27,34 @@ export interface DocEntry {
   title: string
   navTitle: string
   source: string
-  kind: 'md' | 'deck' | 'genplan'
+  kind: 'md' | 'deck' | 'genplan' | 'lib'
+  /** путь в DOCS_DIR (только kind='lib') */
+  path?: string
+  ext?: string
+  /** отображаемая категория в дереве Data Room */
+  category: string
+  builtin: boolean
 }
 
 const NAV_TITLES: Record<string, string> = {
   'model-guide': 'Руководство',
 }
+const BUILTIN_CATEGORY: Record<string, string> = {
+  'pitch-deck': 'Презентация',
+  'genplan': 'Проект',
+  'model-guide': 'Финансы',
+  'navigation': 'Навигация',
+}
 
-export const DOCS: DocEntry[] = [
+export const BUILTIN_DOCS: DocEntry[] = [
   {
     id: 'pitch-deck',
     title: 'Презентация проекта',
     navTitle: 'Презентация',
     source: '',
     kind: 'deck',
+    category: 'Презентация',
+    builtin: true,
   },
   {
     id: 'genplan',
@@ -43,14 +62,75 @@ export const DOCS: DocEntry[] = [
     navTitle: 'Генплан',
     source: '',
     kind: 'genplan',
+    category: 'Проект',
+    builtin: true,
   },
   ...Object.entries(raw)
     .map(([path, source]) => {
       const id = path.replace('./docs/', '').replace(/\.md$/, '')
       const title = source.match(/^#\s+(.+)/m)?.[1]?.trim() ?? id
-      return { id, title, navTitle: NAV_TITLES[id] ?? title, source, kind: 'md' as const }
+      return {
+        id, title, navTitle: NAV_TITLES[id] ?? title, source,
+        kind: 'md' as const,
+        category: BUILTIN_CATEGORY[id] ?? 'Прочее',
+        builtin: true,
+      }
     })
     .sort((a, b) => a.id.localeCompare(b.id)),
 ]
 
+// Обратная совместимость
+export const DOCS = BUILTIN_DOCS
 export const getDoc = (id: string) => DOCS.find((d) => d.id === id)
+
+export const libToEntry = (d: LibDoc): DocEntry => ({
+  id: d.id,
+  title: d.title,
+  navTitle: d.title,
+  source: '',
+  kind: 'lib',
+  path: d.path,
+  ext: d.ext,
+  category: d.category,
+  builtin: false,
+})
+
+// Канонический порядок разделов в дереве Data Room
+const CAT_ORDER = ['Презентация', 'Концепция', 'Продукт', 'Проект', 'Финансы', 'Юридическое', 'Навигация', 'Входящие', 'inbox']
+const catIdx = (t: string) => {
+  const i = CAT_ORDER.indexOf(t)
+  return i < 0 ? 900 : i
+}
+
+/** Объединённое дерево: встроенные + библиотека, сгруппировано по названию раздела */
+export function docGroups(tree: DocsTree | null): { title: string; docs: DocEntry[] }[] {
+  const map = new Map<string, DocEntry[]>()
+  const put = (d: DocEntry, catTitle: string) => {
+    const arr = map.get(catTitle) ?? []
+    arr.push(d)
+    map.set(catTitle, arr)
+  }
+  for (const d of BUILTIN_DOCS) put(d, d.category)
+  const catTitle = new Map((tree?.categories ?? []).map((c) => [c.id, c.title]))
+  for (const c of tree?.categories ?? [])
+    for (const d of c.docs) put(libToEntry(d), catTitle.get(c.id) ?? c.title)
+  return [...map.entries()]
+    .sort((a, b) => catIdx(a[0]) - catIdx(b[0]) || a[0].localeCompare(b[0]))
+    .map(([title, docs]) => ({ title, docs }))
+}
+
+/** Хук загрузки дерева библиотеки. enabled=false — сервер без git/docs. */
+export function useDocLibrary() {
+  const [tree, setTree] = useState<DocsTree | null>(null)
+  const [enabled, setEnabled] = useState<boolean | null>(null)
+  const refresh = useCallback(async () => {
+    try {
+      setTree(await docsApi.tree())
+      setEnabled(true)
+    } catch {
+      setEnabled(false)
+    }
+  }, [])
+  useEffect(() => { void refresh() }, [refresh])
+  return { tree, enabled, refresh }
+}

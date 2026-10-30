@@ -40,7 +40,10 @@ function bootstrap() {
   if (ready) return ready
   ready = (async () => {
     await mkdir(DATA_DIR, { recursive: true })
-    const isRepo = await git(['rev-parse', '--is-inside-work-tree']).then(() => true).catch(() => false)
+    // DATA_DIR — корень СВОЕГО репозитория: is-inside-work-tree истинен
+    // и внутри чужого репо, тогда коммиты уедут в репо приложения.
+    const top = await git(['rev-parse', '--show-toplevel']).then((s) => s.trim()).catch(() => null)
+    const isRepo = !!top && normalize(top) === normalize(DATA_DIR)
     if (!isRepo) await git(['init', '-b', 'main'])
     if (DATA_REMOTE) {
       const remotes = await git(['remote']).catch(() => '')
@@ -134,7 +137,7 @@ export const stateApi = {
         await git(['-c', `user.name=${author}`, '-c', 'user.email=aura-model@local',
           'commit', '-m', message])
       } catch (e) {
-        if (/nothing to commit/.test(e.stderr || '')) return { head, sha: head, unchanged: true }
+        if (/nothing to commit/.test((e.stderr || '') + (e.message || ''))) return { head, sha: head, unchanged: true }
         await git(['checkout', '--', '.']).catch(() => {})
         throw e
       }
