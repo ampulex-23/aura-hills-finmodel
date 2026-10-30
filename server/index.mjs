@@ -469,11 +469,11 @@ async function serveStatic(req, res) {
 }
 
 // ---------- версионирование состояния модели (git) ----------
-async function readJsonBody(req, res) {
+async function readJsonBody(req, res, limit = 2_000_000) {
   let body = ''
   for await (const c of req) {
     body += c
-    if (body.length > 2_000_000) { json(res, 413, { error: 'Запрос слишком большой' }); return null }
+    if (body.length > limit) { json(res, 413, { error: 'Запрос слишком большой' }); return null }
   }
   try { return JSON.parse(body) } catch { json(res, 400, { error: 'невалидный JSON' }); return null }
 }
@@ -534,7 +534,7 @@ async function handleDocs(req, res) {
     return json(res, 200, await docsApi.remove(body))
   }
   if (path === '/api/docs/asset' && req.method === 'POST') {
-    const body = await readJsonBody(req, res)
+    const body = await readJsonBody(req, res, 90_000_000) // base64 бинарника ~1.37×
     if (body == null) return
     return json(res, 200, await docsApi.saveAsset(body))
   }
