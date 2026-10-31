@@ -86,7 +86,13 @@ node scripts/build-static.mjs   # только статика: снимок, doc
 `<категория>/<slug>.md|.typ`, оригиналы импортов и вложения — в `assets/`,
 `manifest.json` — порядок/названия категорий и мета документов (title,
 confidential). Каждая правка/удаление/перенос — коммит; история append-only
-с `--follow`. `DOCS_REMOTE` (env) — опциональный remote для бэкапа.
+с `--follow`. `DOCS_REMOTE` (env) — remote для бэкапа: на проде пушит в приватный репо
+`ampulex-23/aura-hills-docs-data` после каждого коммита (push не фатален).
+Встроенные документы `src/docs/*.md` засеваются в `DOCS_DIR` при старте
+(`SEED_CAT` в `docs.mjs`; фронт прячет статичный дубль по slug) — поэтому
+«Руководство» и «Навигация» редактируются через API как все документы.
+Редактор — `MdEditor` (MDXEditor, lazy-чанк, `dark-theme` + `mdeditor.css`);
+документы с `$$`/mermaid/raw HTML открываются в режиме «Исходник».
 
 - API: `GET /api/docs/tree|file|history|version|raw`, `PUT /api/docs/file`,
   `POST /api/docs/create|move|asset`, `DELETE /api/docs/file`,
