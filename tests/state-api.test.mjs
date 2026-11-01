@@ -40,6 +40,14 @@ test('getVersion / restoreVersion: история читается, откат �
   expect(after.length).toBe(versions.length + 1)
 })
 
+test('saveState: сохранение без изменений — unchanged, без коммита', async () => {
+  const { head, state } = await stateApi.getState()
+  const r = await stateApi.saveState({ ...state, message: 'noop', base: head })
+  expect(r).toMatchObject({ unchanged: true, sha: head })
+  const versions = await stateApi.listVersions()
+  expect(versions[0].sha).toBe(head)
+})
+
 test('saveState: валидация отклоняет мусор', async () => {
   await expect(stateApi.saveState({ params: {}, matrix: {}, items: [], services: [] }))
     .rejects.toMatchObject({ status: 400 })

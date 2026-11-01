@@ -133,6 +133,24 @@ export const stateApi = {
       await atomicWrite(join(DATA_DIR, 'meta.json'),
         JSON.stringify({ scenario: body.scenario ?? null }, null, 2))
       await git(['add', '-A'])
+      // «nothing to commit» уходит в stdout, не в stderr — надёжнее проверить
+      // staged-дерево до коммита (no-op save → unchanged, а не 500).
+      // Сравнение каноническое (parse+stringify): после restoreVersion на диске
+      // байты старой версии, и первая же запись давала бы форматовый «коммит».
+      let dirty = await git(['diff', '--cached', '--quiet']).then(() => false).catch(() => true)
+      if (dirty) {
+        let same = true
+        for (const f of STATE_FILES) {
+          const old = await git(['show', `HEAD:${f}`]).then((t) => {
+            try { return JSON.stringify(JSON.parse(t), null, 2) } catch { return t }
+          }).catch(() => null)
+          if (old == null || old !== await readFile(join(DATA_DIR, f), 'utf8').catch(() => null)) {
+            same = false; break
+          }
+        }
+        if (same) { await git(['restore', '--staged', '--worktree', '.']).catch(() => {}); dirty = false }
+      }
+      if (!dirty) return { head, sha: head, unchanged: true }
       try {
         await git(['-c', `user.name=${author}`, '-c', 'user.email=aura-model@local',
           'commit', '-m', message])
