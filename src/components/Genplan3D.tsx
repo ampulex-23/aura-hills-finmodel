@@ -34,12 +34,24 @@ const slugOf = (obj: THREE.Object3D | null): string | null => {
   return null
 }
 
+// семейство узлов «крыши» для режима без кровли: сама мембрана,
+// борта, ФЭП и аэраторы (печная труба detail-chimney остаётся —
+// она часть печи внутри парной)
+const ROOF_KINDS = new Set([
+  'roof', 'rooftop', 'parapet', 'parapet_in', 'solar_panel', 'aerator'])
+const kindOf = (raw: string | undefined): string | undefined =>
+  raw?.split('/')[2]?.replace(/_\d+$/, '')
+
 export function Genplan3D({ url, names, planned, onSelect, slug,
                            fallback }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const tip = useRef<HTMLDivElement>(null)
   const resetRef = useRef<() => void>(() => {})
+  const modelRef = useRef<THREE.Object3D | null>(null)
+  const roofOffRef = useRef(false)          // в эффекте — актуальное
   const [failed, setFailed] = useState(false)
+  const [roofOff, setRoofOff] = useState(false)
+  const setRoof = (v: boolean) => { roofOffRef.current = v; setRoofOff(v) }
 
   useEffect(() => {
     const el = host.current
@@ -221,7 +233,16 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
             o.userData.slug =
               parts[0] === 'site' && parts[1] ? parts[1]
               : (o.parent?.userData.slug as string | undefined)
+            // «крыша» — для переключателя без кровли (страница здания);
+            // дети мультипримитивных мешей наследуют метку родителя
+            const kind = kindOf(raw)
+            o.userData.roofish = kind !== undefined
+              ? ROOF_KINDS.has(kind)
+              : (o.parent?.userData.roofish as boolean | undefined) ?? false
           })
+          modelRef.current = root
+          if (roofOffRef.current)
+            root.traverse((o) => { if (o.userData.roofish) o.visible = false })
           // режим «одно здание»: удаляем узлы других модулей
           if (slug) {
             let found = false
@@ -338,6 +359,14 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
     }
   }, [url, slug]) // names/planned/onSelect — стабильные в рамках страницы
 
+  // переключатель «без кровли»: видимость узлов семейства roof
+  // (мембрана, борта, ФЭП, аэраторы) — геометрия не трогается
+  useEffect(() => {
+    modelRef.current?.traverse((o) => {
+      if (o.userData.roofish) o.visible = !roofOff
+    })
+  }, [roofOff])
+
   // host-div монтирован всегда — иначе при ошибке canvas уходил бы в
   // отсоединённый DOM, а animation loop продолжал работать на зомби
   return (
@@ -345,6 +374,11 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
       {failed ? fallback : (
         <>
           <div ref={tip} className="genplan-3d-tip" style={{ display: 'none' }} />
+          {slug && (
+            <button className="genplan-3d-roof" type="button"
+                    onClick={() => setRoof(!roofOff)}>
+              {roofOff ? 'С кровлей' : 'Без кровли'}</button>
+          )}
           <button className="genplan-3d-reset" type="button"
                   onClick={() => resetRef.current()}>⟲ обзор</button>
           <div className="genplan-3d-hint">drag — вращение · колесо — зум
