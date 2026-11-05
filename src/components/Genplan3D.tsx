@@ -35,12 +35,52 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
   const host = useRef<HTMLDivElement>(null)
   const tip = useRef<HTMLDivElement>(null)
   const resetRef = useRef<() => void>(() => {})
-  const [error, setError] = useState(false)
+  const [failed, setFailed] = useState(false)
 
   useEffect(() => {
     const el = host.current
     if (!el) return
-    let dead = false
+    let dead = false   // эффект отменён (unmount/смена deps/ошибка)
+    let torn = false   // teardown уже выполнен (идемпотентность)
+    setFailed(false)
+
+    // Полная остановка: rAF-цикл, слушатели, сцена, контекст.
+    // ВАЖНО: вызывается и при unmount, и при любой ошибке — иначе
+    // animation loop продолжает крутиться на отсоединённом canvas
+    // вечно (зомби-рендер), держит GL-контекст и всю сцену в памяти.
+    function teardown() {
+      if (torn) return
+      torn = true
+      ro.disconnect()
+      renderer.setAnimationLoop(null)
+      renderer.domElement.removeEventListener('pointermove', onMove)
+      renderer.domElement.removeEventListener('pointerdown', onClick)
+      renderer.domElement.removeEventListener('pointerleave', onLeave)
+      controls.dispose()
+      scene.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (m.isMesh) {
+          m.geometry.dispose()
+          for (const x of Array.isArray(m.material) ? m.material : [m.material])
+            x?.dispose()
+        }
+      })
+      renderer.dispose()
+      // отдаём GL-контекст сразу — иначе при переходах генплан↔здание
+      // контексты копятся до лимита браузера и создание новых падает
+      renderer.forceContextLoss()
+      pmrem?.dispose()
+      renderer.domElement.remove()
+    }
+
+    // Ошибка = teardown + fallback-оверлей (host-div остаётся смонтирован,
+    // так что canvas и цикл не превращаются в зомби)
+    const fail = () => {
+      if (dead) return
+      dead = true
+      teardown()
+      setFailed(true)
+    }
 
     // WebGL может быть недоступен (лимит контекстов, отключённый GPU) —
     // падаем в fallback, а не в error boundary всей страницы
@@ -48,7 +88,7 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true })
     } catch {
-      setError(true)
+      setFailed(true)
       return
     }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
@@ -62,10 +102,24 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x0e1522)
 
-    // мягкое окружение для PBR — убирает «пластилиновые» чёрные тени
-    const pmrem = new THREE.PMREMGenerator(renderer)
-    scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
-    scene.environmentIntensity = 0.4
+    // мягкое окружение для PBR — убирает «пластилиновые» чёрные тени;
+    // fromScene — GPU-операция, может бросить на умирающем контексте —
+    // тогда teardown минимальный (остальное ещё не создано, ro/controls
+    // в TDZ — полный teardown() вызывать нельзя)
+    let pmrem: THREE.PMREMGenerator | undefined
+    try {
+      pmrem = new THREE.PMREMGenerator(renderer)
+      scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
+      scene.environmentIntensity = 0.4
+    } catch {
+      dead = true
+      pmrem?.dispose()
+      renderer.dispose()
+      renderer.forceContextLoss()
+      renderer.domElement.remove()
+      setFailed(true)
+      return
+    }
 
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 2000)
     const controls = new OrbitControls(camera, renderer.domElement)
@@ -144,41 +198,43 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
       url,
       (gltf) => {
         if (dead) return
-        const root = gltf.scene
-        // режим «одно здание»: удаляем узлы других модулей —
-        // узлы названы site/<slug>/<kind> (emit_gltf)
-        if (slug) {
-          const mine = (o: THREE.Object3D) =>
-            o.name === `site/${slug}` || o.name.startsWith(`site/${slug}/`)
-          let found = false
-          const junk: THREE.Object3D[] = []
+        try {
+          const root = gltf.scene
+          // режим «одно здание»: удаляем узлы других модулей —
+          // узлы названы site/<slug>/<kind> (emit_gltf)
+          if (slug) {
+            const mine = (o: THREE.Object3D) =>
+              o.name === `site/${slug}` || o.name.startsWith(`site/${slug}/`)
+            let found = false
+            const junk: THREE.Object3D[] = []
+            root.traverse((o) => {
+              if (!o.name.startsWith('site/')) return
+              if (mine(o)) found = true
+              else junk.push(o)
+            })
+            if (!found) { fail(); return }
+            for (const o of junk) o.parent?.remove(o)
+          }
+          // GLB из компилятора — Z-up (участок в XY, высоты по Z);
+          // three.js мир Y-up → кладём участок горизонтально
+          root.rotation.x = -Math.PI / 2
           root.traverse((o) => {
-            if (!o.name.startsWith('site/')) return
-            if (mine(o)) found = true
-            else junk.push(o)
+            const m = o as THREE.Mesh
+            if (!m.isMesh) return
+            m.castShadow = m.receiveShadow = true
+            // материалы могут шариться между узлами — клонируем,
+            // чтобы подсветка ховера не красила чужие модули
+            if (Array.isArray(m.material))
+              m.material = m.material.map((x) => x.clone())
+            else if (m.material) m.material = m.material.clone()
           })
-          if (!found) { setError(true); return }
-          for (const o of junk) o.parent?.remove(o)
-        }
-        // GLB из компилятора — Z-up (участок в XY, высоты по Z);
-        // three.js мир Y-up → кладём участок горизонтально
-        root.rotation.x = -Math.PI / 2
-        root.traverse((o) => {
-          const m = o as THREE.Mesh
-          if (!m.isMesh) return
-          m.castShadow = m.receiveShadow = true
-          // материалы могут шариться между узлами — клонируем,
-          // чтобы подсветка ховера не красила чужие модули
-          if (Array.isArray(m.material))
-            m.material = m.material.map((x) => x.clone())
-          else if (m.material) m.material = m.material.clone()
-        })
-        scene.add(root)
-        root.updateMatrixWorld(true)
-        fit(new THREE.Box3().setFromObject(root))
+          scene.add(root)
+          root.updateMatrixWorld(true)
+          fit(new THREE.Box3().setFromObject(root))
+        } catch { fail() }
       },
       undefined,
-      () => setError(true),
+      fail,
     )
 
     resetRef.current = () => {
@@ -251,43 +307,30 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
     resize()
 
     renderer.setAnimationLoop(() => {
+      if (dead) return
       controls.update()
       renderer.render(scene, camera)
     })
 
     return () => {
       dead = true
-      ro.disconnect()
-      renderer.setAnimationLoop(null)
-      renderer.domElement.removeEventListener('pointermove', onMove)
-      renderer.domElement.removeEventListener('pointerdown', onClick)
-      renderer.domElement.removeEventListener('pointerleave', onLeave)
-      scene.traverse((o) => {
-        const m = o as THREE.Mesh
-        if (m.isMesh) {
-          m.geometry.dispose()
-          for (const x of Array.isArray(m.material) ? m.material : [m.material])
-            x?.dispose()
-        }
-      })
-      renderer.dispose()
-      // отдаём GL-контекст сразу — иначе при переходах генплан↔здание
-      // контексты копятся до лимита браузера и создание новых падает
-      renderer.forceContextLoss()
-      pmrem.dispose()
-      renderer.domElement.remove()
+      teardown()
     }
   }, [url, slug]) // names/planned/onSelect — стабильные в рамках страницы
 
-  if (error) return <>{fallback}</>
-
+  // host-div монтирован всегда — иначе при ошибке canvas уходил бы в
+  // отсоединённый DOM, а animation loop продолжал работать на зомби
   return (
     <div className="genplan-3d" ref={host}>
-      <div ref={tip} className="genplan-3d-tip" style={{ display: 'none' }} />
-      <button className="genplan-3d-reset" type="button"
-              onClick={() => resetRef.current()}>⟲ обзор</button>
-      <div className="genplan-3d-hint">drag — вращение · колесо — зум
-        {slug ? '' : ' · клик по зданию с ⌗ — план'}</div>
+      {failed ? fallback : (
+        <>
+          <div ref={tip} className="genplan-3d-tip" style={{ display: 'none' }} />
+          <button className="genplan-3d-reset" type="button"
+                  onClick={() => resetRef.current()}>⟲ обзор</button>
+          <div className="genplan-3d-hint">drag — вращение · колесо — зум
+            {slug ? '' : ' · клик по зданию с ⌗ — план'}</div>
+        </>
+      )}
     </div>
   )
 }
