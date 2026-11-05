@@ -42,7 +42,15 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
     if (!el) return
     let dead = false
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
+    // WebGL может быть недоступен (лимит контекстов, отключённый GPU) —
+    // падаем в fallback, а не в error boundary всей страницы
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true })
+    } catch {
+      setError(true)
+      return
+    }
     renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
     renderer.shadowMap.enabled = true
     renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -263,6 +271,9 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
         }
       })
       renderer.dispose()
+      // отдаём GL-контекст сразу — иначе при переходах генплан↔здание
+      // контексты копятся до лимита браузера и создание новых падает
+      renderer.forceContextLoss()
       pmrem.dispose()
       renderer.domElement.remove()
     }
