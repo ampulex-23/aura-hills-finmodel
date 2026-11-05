@@ -5,8 +5,12 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 
 // Интерактивный 3D-вид генплана: site.glb из /genplan/ (тот же артефакт,
-// что качается из «Файлов модели»). Узлы сцены названы `site/<slug>/<kind>`
+// что качается из «Файлов модели»). Узлы glTF названы `site/<slug>/<kind>`
 // (emit_gltf) — по ним клик/ховер маппится на модули спецификации.
+// ВАЖНО: GLTFLoader санитизирует Object3D.name (PropertyBinding.
+// sanitizeNodeName вырезает [].:/ и пробелы) — 'site/a/wall' становится
+// 'siteawall'. Поэтому слуг модуля берём из ИСХОДНОГО имени узла через
+// parser.associations → json.nodes[i].name и кладём в userData.slug.
 
 interface Props {
   url: string
@@ -24,8 +28,8 @@ interface Props {
 
 const slugOf = (obj: THREE.Object3D | null): string | null => {
   for (let o = obj; o; o = o.parent) {
-    const n = o.name
-    if (n.startsWith('site/')) return n.split('/')[1] ?? null
+    const s = o.userData.slug as string | undefined
+    if (s) return s
   }
   return null
 }
@@ -203,16 +207,29 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
         if (dead) return
         try {
           const root = gltf.scene
-          // режим «одно здание»: удаляем узлы других модулей —
-          // узлы названы site/<slug>/<kind> (emit_gltf)
+          // Аннотируем узлы slug'ом модуля по ИСХОДНЫМ именам glTF:
+          // associations: Object3D → {nodes: idx} → json.nodes[idx].name.
+          // Дети узла без собственной ассоциации (мультипримитивные меши)
+          // наследуют slug родителя — traverse идёт сверху вниз.
+          const assoc = gltf.parser.associations as
+            Map<THREE.Object3D, { nodes?: number }> | undefined
+          const gNodes = (gltf.parser.json.nodes ?? []) as { name?: string }[]
+          root.traverse((o) => {
+            const idx = assoc?.get(o)?.nodes
+            const raw = idx != null ? gNodes[idx]?.name : undefined
+            const parts = typeof raw === 'string' ? raw.split('/') : []
+            o.userData.slug =
+              parts[0] === 'site' && parts[1] ? parts[1]
+              : (o.parent?.userData.slug as string | undefined)
+          })
+          // режим «одно здание»: удаляем узлы других модулей
           if (slug) {
-            const mine = (o: THREE.Object3D) =>
-              o.name === `site/${slug}` || o.name.startsWith(`site/${slug}/`)
             let found = false
             const junk: THREE.Object3D[] = []
             root.traverse((o) => {
-              if (!o.name.startsWith('site/')) return
-              if (mine(o)) found = true
+              const s = o.userData.slug as string | undefined
+              if (s === undefined) return
+              if (s === slug) found = true
               else junk.push(o)
             })
             if (!found) { fail('no-nodes', slug); return }
@@ -254,9 +271,9 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
       ray.setFromCamera(ptr, camera)
       const hit = ray.intersectObjects(scene.children, true)[0]
       if (!hit) return null
-      // поднимаемся до узла site/<slug>
+      // поднимаемся до узла модуля (userData.slug проставлен при загрузке)
       for (let o: THREE.Object3D | null = hit.object; o; o = o.parent)
-        if (o.name.startsWith('site/')) return o
+        if (o.userData.slug) return o
       return null
     }
 
