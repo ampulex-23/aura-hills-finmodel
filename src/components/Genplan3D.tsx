@@ -75,10 +75,11 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
 
     // Ошибка = teardown + fallback-оверлей (host-div остаётся смонтирован,
     // так что canvas и цикл не превращаются в зомби)
-    const fail = () => {
+    const fail = (why: string, e?: unknown) => {
       if (dead) return
       dead = true
       teardown()
+      console.error('[Genplan3D]', why, e)
       setFailed(true)
     }
 
@@ -87,7 +88,8 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
     let renderer: THREE.WebGLRenderer
     try {
       renderer = new THREE.WebGLRenderer({ antialias: true })
-    } catch {
+    } catch (e) {
+      console.error('[Genplan3D] webgl-context', e)
       setFailed(true)
       return
     }
@@ -111,8 +113,9 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
       pmrem = new THREE.PMREMGenerator(renderer)
       scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture
       scene.environmentIntensity = 0.4
-    } catch {
+    } catch (e) {
       dead = true
+      console.error('[Genplan3D] env-map', e)
       pmrem?.dispose()
       renderer.dispose()
       renderer.forceContextLoss()
@@ -212,7 +215,7 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
               if (mine(o)) found = true
               else junk.push(o)
             })
-            if (!found) { fail(); return }
+            if (!found) { fail('no-nodes', slug); return }
             for (const o of junk) o.parent?.remove(o)
           }
           // GLB из компилятора — Z-up (участок в XY, высоты по Z);
@@ -231,10 +234,10 @@ export function Genplan3D({ url, names, planned, onSelect, slug,
           scene.add(root)
           root.updateMatrixWorld(true)
           fit(new THREE.Box3().setFromObject(root))
-        } catch { fail() }
+        } catch (e) { fail('scene-build', e) }
       },
       undefined,
-      fail,
+      (e) => fail('glb-load', e),
     )
 
     resetRef.current = () => {
