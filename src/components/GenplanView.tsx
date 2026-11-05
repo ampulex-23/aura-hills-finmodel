@@ -82,6 +82,10 @@ interface Spec {
 
 const LANDSCAPE = /^(terrain|road|site)\//
 
+const EMPTY = new Map<string, string>()
+const EMPTY_SET = new Set<string>()
+const NOOP = () => {}
+
 const PROGRAM: Record<string, string> = {
   steam: 'парная', wash: 'мойка/душ', wc: 'санузел', rest: 'отдых',
   lobby: 'холл', massage: 'массаж', changing: 'раздевалка',
@@ -204,6 +208,24 @@ function BuildingDetail({ m, onBack }: { m: SpecModule; onBack: () => void }) {
         {m.spaces_area_m2 != null && ` · помещения ${fmt(m.spaces_area_m2, 0)} м²`}
         {' · этажей: '}{m.storeys}
       </Text>
+
+      {m.slug && (
+        <>
+          <h3>3D-вид</h3>
+          <Genplan3D
+            url={`${BASE}/site.glb`}
+            names={EMPTY}
+            planned={EMPTY_SET}
+            onSelect={NOOP}
+            slug={m.slug}
+            fallback={
+              <div className="genplan-canvas">
+                <img src={`${BASE}/iso.svg`} alt="Изометрия модели" />
+              </div>
+            }
+          />
+        </>
+      )}
 
       <h3>План 1 этажа</h3>
       {(hasWk || hasEl) && (

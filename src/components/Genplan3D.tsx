@@ -15,6 +15,9 @@ interface Props {
   // slugs зданий с планировкой — по ним клик открывает чертежи
   planned: Set<string>
   onSelect: (slug: string) => void
+  // режим «одно здание» (страница модуля): оставить только узлы
+  // site/<slug>/… и подогнать камеру под него; клик/подсказки off
+  slug?: string
   // что показать, если GLB не загрузился / нет WebGL
   fallback: React.ReactNode
 }
@@ -27,7 +30,8 @@ const slugOf = (obj: THREE.Object3D | null): string | null => {
   return null
 }
 
-export function Genplan3D({ url, names, planned, onSelect, fallback }: Props) {
+export function Genplan3D({ url, names, planned, onSelect, slug,
+                           fallback }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const tip = useRef<HTMLDivElement>(null)
   const resetRef = useRef<() => void>(() => {})
@@ -60,7 +64,7 @@ export function Genplan3D({ url, names, planned, onSelect, fallback }: Props) {
     controls.enableDamping = true
     controls.dampingFactor = 0.08
     controls.maxPolarAngle = Math.PI * 0.49 // не уходить под землю
-    controls.minDistance = 15
+    controls.minDistance = slug ? 3 : 15   // одно здание — ближе к деталям
     controls.maxDistance = 600
 
     // свет: небо + солнце с тенями
@@ -133,6 +137,21 @@ export function Genplan3D({ url, names, planned, onSelect, fallback }: Props) {
       (gltf) => {
         if (dead) return
         const root = gltf.scene
+        // режим «одно здание»: удаляем узлы других модулей —
+        // узлы названы site/<slug>/<kind> (emit_gltf)
+        if (slug) {
+          const mine = (o: THREE.Object3D) =>
+            o.name === `site/${slug}` || o.name.startsWith(`site/${slug}/`)
+          let found = false
+          const junk: THREE.Object3D[] = []
+          root.traverse((o) => {
+            if (!o.name.startsWith('site/')) return
+            if (mine(o)) found = true
+            else junk.push(o)
+          })
+          if (!found) { setError(true); return }
+          for (const o of junk) o.parent?.remove(o)
+        }
         // GLB из компилятора — Z-up (участок в XY, высоты по Z);
         // three.js мир Y-up → кладём участок горизонтально
         root.rotation.x = -Math.PI / 2
@@ -205,9 +224,13 @@ export function Genplan3D({ url, names, planned, onSelect, fallback }: Props) {
       hovered = null
       if (tip.current) tip.current.style.display = 'none'
     }
-    renderer.domElement.addEventListener('pointermove', onMove)
-    renderer.domElement.addEventListener('pointerdown', onClick)
-    renderer.domElement.addEventListener('pointerleave', onLeave)
+    // в режиме одного здания клик/ховер-подсветка не нужны —
+    // на странице уже и так выбранный модуль
+    if (!slug) {
+      renderer.domElement.addEventListener('pointermove', onMove)
+      renderer.domElement.addEventListener('pointerdown', onClick)
+      renderer.domElement.addEventListener('pointerleave', onLeave)
+    }
 
     const resize = () => {
       const w = el.clientWidth, h = el.clientHeight
@@ -243,7 +266,7 @@ export function Genplan3D({ url, names, planned, onSelect, fallback }: Props) {
       pmrem.dispose()
       renderer.domElement.remove()
     }
-  }, [url]) // names/planned/onSelect — стабильные в рамках страницы
+  }, [url, slug]) // names/planned/onSelect — стабильные в рамках страницы
 
   if (error) return <>{fallback}</>
 
@@ -252,7 +275,8 @@ export function Genplan3D({ url, names, planned, onSelect, fallback }: Props) {
       <div ref={tip} className="genplan-3d-tip" style={{ display: 'none' }} />
       <button className="genplan-3d-reset" type="button"
               onClick={() => resetRef.current()}>⟲ обзор</button>
-      <div className="genplan-3d-hint">drag — вращение · колесо — зум · клик по зданию с ⌗ — план</div>
+      <div className="genplan-3d-hint">drag — вращение · колесо — зум
+        {slug ? '' : ' · клик по зданию с ⌗ — план'}</div>
     </div>
   )
 }
