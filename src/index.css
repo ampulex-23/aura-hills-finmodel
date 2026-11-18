@@ -76,7 +76,12 @@ h3 { font-size: 14px; font-weight: 600; margin: 20px 0 10px; color: #b8c4d6; }
   letter-spacing: .07em; color: #46536a; padding: 8px 10px 3px 20px;
   user-select: none;
 }
-.nav-doc { padding-left: 20px; font-size: 12.5px; }
+.nav-doc {
+  padding-left: 20px; font-size: 11.5px; align-items: flex-start;
+}
+.nav-doc svg { margin-top: 2px; }
+/* названия документов переносятся, а не обрезаются */
+.nav-doc span { white-space: normal; overflow: visible; line-height: 1.35; overflow-wrap: break-word; }
 .shell.rail .nav-doc { padding-left: 0; }
 .nav-add { color: #5d7ba6; border: 1px dashed #2a3a55; margin-top: 6px; }
 .nav-add:hover { color: #b9cdf0; border-color: #3d5580; }
