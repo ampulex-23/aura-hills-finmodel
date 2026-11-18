@@ -140,8 +140,34 @@ export interface CapmInputs {
   sizePremium: number
 }
 
+/** Методика — набор правил расчёта (не значений). Пресеты и резолв — methodology.ts */
+export interface Methodology {
+  id: string
+  label: string
+  /** Дней в месяце для потоков «в день»: ровно 30 или календарные (28–31) */
+  daysBasis: 'fixed30' | 'calendar'
+  /** База индекса цен услуг: операционный год | календарный год (оба — степень priceGrowth)
+   *  | явная таблица по календарным годам (priceIndexTable) */
+  priceIndex: 'opsYear' | 'calendarYear' | 'table'
+  priceIndexTable?: Record<string, number>
+  /** Индексация KPI-бонусов: нет | инфляцией затрат | индексом цен услуг */
+  bonusIndex: 'none' | 'inflation' | 'price'
+  tax: {
+    /** annualLossCarry — годовой CIT с переносом убытков и уплатой в июле/декабре;
+     *  monthly — CIT от базы каждого месяца, уплата в том же месяце */
+    cit: 'annualLossCarry' | 'monthly'
+    /** monthly: отрицательный CIT убыточного месяца приходит в кэш сразу (иначе 0) */
+    allowNegative: boolean
+    /** monthly: годовая ставка условных процентов на накопленный дефицит FCFF —
+     *  уменьшают базу CIT, в кэш не платятся; 0 — выключено */
+    notionalInterestRate: number
+  }
+}
+
 export interface Params {
   meta: ModelMeta
+  /** Методика расчёта: id пресета + переопределения правил. Нет поля → 'cyprus' */
+  methodology?: Partial<Omit<Methodology, 'tax'>> & { tax?: Partial<Methodology['tax']> }
   general: {
     inflation: number
     /** Ставка дисконтирования (эффективная годовая). При waccMode='capm' перезаписывается расчётом */
@@ -237,6 +263,8 @@ export interface Params {
     pctOfRevenue?: number
     /** Энергетическая статья — масштабируется сценарным energyCostMult */
     energy?: boolean
+    /** Не уменьшает базу CIT: расход идёт в P&L и кэш, но налогом не признаётся */
+    nonDeductible?: boolean
   }[]
   // IT / АСУ: кастомный слой — подписки и инфраструктура помесячно, внедрение в CAPEX.
   // enabled=false возвращает модель к поведению исходного Excel (нужно golden-тестам).
@@ -370,6 +398,10 @@ export interface ResolvedScenario {
 }
 
 export interface RevenueMonth {
+  /** Дней в месяце по методике (30 или календарные) */
+  days: number
+  /** Индекс цен услуг месяца по методике */
+  priceIndex: number
   yearIdx: number
   monthOfYear: number // 1..12
   ramp: number
@@ -419,6 +451,8 @@ export interface RevenueMonth {
 export interface OpexMonth {
   fixed: number[]
   fixedTotal: number
+  /** Часть fixedTotal по строкам nonDeductible — возвращается в базу CIT */
+  fixedNonDeductible: number
   it: { name: string; amount: number }[]
   itTotal: number
   landRent: number // аренда земли в операционке (mode='lease'), с инфляцией
@@ -464,6 +498,8 @@ export interface TaxMonth {
   /** НДС, фактически уплаченный в этом месяце (квартальный график) */
   vatPaid: number
   cit: number
+  /** Условные проценты на дефицит, вычтенные из базы CIT (методика monthly) */
+  notionalInterest: number
   /** Дивиденды брутто (до удержания SDC/GESY) — это и есть отток компании */
   dividends: number
   /** Удержано из дивидендов в пользу бюджета (не доп. отток компании) */
@@ -573,6 +609,8 @@ export interface Kpis {
 }
 
 export interface ModelResult {
+  /** Действующая методика прогона (пресет + переопределения) */
+  methodology: Methodology
   scenario: ResolvedScenario
   revenue: RevenueMonth[]
   opex: OpexMonth[]

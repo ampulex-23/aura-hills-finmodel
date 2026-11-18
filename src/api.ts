@@ -16,6 +16,10 @@ export interface VersionInfo {
   date: string
   author: string
   message: string
+  /** Коммит ядра, которым версия считалась при сохранении; null — версия старше привязки */
+  core: string | null
+  /** id методики расчёта на момент сохранения */
+  methodology: string | null
 }
 
 const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
@@ -32,14 +36,14 @@ const req = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
 export const api = {
   health: () => req<{ ok: boolean; versioning?: boolean }>('/api/health'),
-  getState: () => req<{ head: string; state: ModelBundle }>('/api/state'),
+  getState: () => req<{ head: string; core?: string; state: ModelBundle }>('/api/state'),
   saveState: (bundle: ModelBundle, message: string, author: string, base?: string | null) =>
     req<{ sha: string; unchanged?: boolean }>('/api/state', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...bundle, message, author, base: base ?? undefined }),
     }),
-  listVersions: () => req<{ versions: VersionInfo[] }>('/api/versions'),
+  listVersions: () => req<{ versions: VersionInfo[]; core?: string }>('/api/versions'),
   getVersion: (sha: string) => req<{ sha: string; state: ModelBundle }>(`/api/versions/${sha}`),
   restoreVersion: (sha: string, author: string) =>
     req<{ sha: string; state: ModelBundle }>(`/api/versions/${sha}/restore`, {

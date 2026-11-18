@@ -23,6 +23,23 @@ const git = (args) =>
       e ? reject(Object.assign(new Error('git ' + args[0] + ': ' + (err || e.message).trim()), { stderr: err }))
         : resolve(out)))
 
+// Версия ЯДРА, которым считается состояние: коммит репозитория приложения.
+// Результат расчёта = ядро × параметры, поэтому каждый коммит параметров
+// несёт трейлеры `Core: <sha>` и `Methodology: <id>` — иначе старая версия
+// параметров на новом ядре молча даёт другие цифры. CORE_SHA (env) — для
+// сборок без .git; нет ни того ни другого → 'unknown'.
+let coreSha = null
+const core = () =>
+  (coreSha ??= process.env.CORE_SHA
+    ? Promise.resolve(process.env.CORE_SHA)
+    : new Promise((resolve) =>
+        execFile('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' },
+          (e, out) => resolve(e ? 'unknown' : out.trim()))))
+// Трейлеры из пользовательского сообщения срезаются: привязку ставит только сервер.
+const subject = (message) => String(message).split('\n')[0].trim()
+const trailers = async (params) =>
+  `\n\nCore: ${await core()}\nMethodology: ${String(params?.methodology?.id ?? 'cyprus').replace(/\s+/g, '-').slice(0, 40)}`
+
 // Все записи сериализуются — гонка коммитов недопустима
 let queue = Promise.resolve()
 const enqueue = (fn) => (queue = queue.then(fn, fn))
@@ -61,7 +78,8 @@ function bootstrap() {
         JSON.stringify({ scenario: JSON.parse(await readFile(join(DATA_DIR, 'params.json'), 'utf8')).meta?.scenario ?? 'Base' }, null, 2))
       await git(['add', '-A'])
       await git(['-c', 'user.name=AURA Model', '-c', 'user.email=aura-model@local',
-        'commit', '-m', 'baseline: дефолты из src/data'])
+        'commit', '-m', 'baseline: дефолты из src/data' +
+          await trailers(JSON.parse(await readFile(join(DATA_DIR, 'params.json'), 'utf8')))])
       await push()
     }
     return true
@@ -109,10 +127,11 @@ function validate(body) {
 
 export const stateApi = {
   async isReady() { return bootstrap() },
+  core,
 
   async getState() {
     await bootstrap() || Promise.reject(new Error('versioning unavailable'))
-    return { head: await sha(), state: await stateAt(), updatedAt: new Date().toISOString() }
+    return { head: await sha(), core: await core(), state: await stateAt(), updatedAt: new Date().toISOString() }
   },
 
   async saveState(body) {
@@ -153,7 +172,7 @@ export const stateApi = {
       if (!dirty) return { head, sha: head, unchanged: true }
       try {
         await git(['-c', `user.name=${author}`, '-c', 'user.email=aura-model@local',
-          'commit', '-m', message])
+          'commit', '-m', subject(message) + await trailers(body.params)])
       } catch (e) {
         if (/nothing to commit/.test((e.stderr || '') + (e.message || ''))) return { head, sha: head, unchanged: true }
         await git(['checkout', '--', '.']).catch(() => {})
@@ -167,10 +186,13 @@ export const stateApi = {
 
   async listVersions(limit = 200) {
     await bootstrap() || Promise.reject(new Error('versioning unavailable'))
-    const out = await git(['log', `--format=%H%x1f%aI%x1f%an%x1f%s`, '-n', String(limit)])
-    return out.trim().split('\n').filter(Boolean).map((line) => {
-      const [s, date, author, message] = line.split('\x1f')
-      return { sha: s, date, author, message }
+    const tr = (key) => `%(trailers:key=${key},valueonly,separator=%x20)`
+    const out = await git(['log',
+      `--format=%H%x1f%aI%x1f%an%x1f%s%x1f${tr('Core')}%x1f${tr('Methodology')}%x1e`, '-n', String(limit)])
+    return out.split('\x1e').map((l) => l.trim()).filter(Boolean).map((line) => {
+      const [s, date, author, message, coreAt, methodology] = line.split('\x1f')
+      // Версии до привязки трейлеров не несут: ядро неизвестно (null)
+      return { sha: s, date, author, message, core: coreAt?.trim() || null, methodology: methodology?.trim() || null }
     })
   },
 
@@ -193,7 +215,8 @@ export const stateApi = {
       }
       await git(['add', '-A'])
       await git(['-c', `user.name=${String(author).slice(0, 80)}`, '-c', 'user.email=aura-model@local',
-        'commit', '-m', `restore ${s.slice(0, 7)}: ${src.trim().slice(0, 200)}`])
+        'commit', '-m', `restore ${s.slice(0, 7)}: ${src.trim().slice(0, 200)}` +
+          await trailers(await readJson('params.json'))])
       const next = await sha()
       push()
       return { head: next, sha: next, state: await stateAt() }

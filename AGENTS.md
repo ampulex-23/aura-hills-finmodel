@@ -8,7 +8,7 @@ TypeScript-ядро расчёта — единственный источник
 
 ```bash
 npm ci                    # установка
-npx vitest run            # тесты (71 шт, все должны быть зелёными)
+npx vitest run            # тесты (все должны быть зелёными)
 npx tsc -b                # типизация
 npm run build             # prebuild (build-static → public/) + vite build
 node scripts/build-static.mjs   # только статика: снимок, docs, llms.txt
@@ -17,6 +17,7 @@ node scripts/build-static.mjs   # только статика: снимок, doc
 ## Структура
 
 - `src/model/` — движок: `run.ts` (оркестрация), `revenue/opex/fot/capex/taxes/pnl/cashflow/kpis.ts`, `scenario.ts`, `view.ts` (снимок для ИИ и статики), `types.ts`
+- `src/model/methodology.ts` — **методики**: именованные наборы правил расчёта (см. раздел «Методики» ниже)
 - `src/data/` — входы: `params.json` (дефолтные допущения), `scenarios.json` (3 сценария), `nomenclature.json`, `services.json`
 - `src/tabs/` — UI-вкладки; `src/components/` — общие (MonthTable, AiChat, Hint)
 - `src/docs/` — md-документы Data Room (автоматически в сайдбаре; нужны таблица + KaTeX — есть docrender-тест)
@@ -24,7 +25,8 @@ node scripts/build-static.mjs   # только статика: снимок, doc
 - `server/state.mjs` — версионирование состояния через git (см. «Версии модели» ниже)
 - `src/api.ts`, `src/diff.ts`, `src/tabs/Versions.tsx` — клиент API, семантический diff, вкладка версий
 - `scripts/build-static.mjs` — генерация public/: model-snapshot.json, docs, llms.txt
-- `tests/` — `_baseline.ts` (клон дефолтов, откат к эпохе оракула), `golden`, `invariants`, `audit-regressions`, `phase2`, `sensitivity`, `docrender`
+- `tests/` — `_baseline.ts` (клон дефолтов, откат к эпохе оракула), `golden`, `invariants`, `audit-regressions`, `phase2`, `sensitivity`, `docrender`, `methodology`, `investor-parity` (+ эталон `tests/oracle/`)
+- `scenarios/<имя>/bundle.json` — готовые версии состояния модели (формат `POST /api/state`), собираются скриптом из `scripts/`
 
 ## Правила работы
 
@@ -49,9 +51,32 @@ node scripts/build-static.mjs   # только статика: снимок, doc
   сезонность — по КАЛЕНДАРНЫМ месяцам (`revenue[k].monthOfYear`), годовые
   векторы — по операционным годам (yearIdx).
 - Метки месяцев — «Янв 2027» (полный год); месячная арифметика — `y*12 + (m-1)`.
-- После изменений: `npx vitest run` (71/71), `npx tsc -b`, при изменении модели —
+- После изменений: `npx vitest run`, `npx tsc -b`, при изменении модели —
   обновить model-guide.md / подсказки / промпт ИИ-консультанта (server/index.mjs)
   / llms.txt (scripts/build-static.mjs).
+
+## Методики (правила расчёта отдельно от значений)
+
+Результат = ядро × методика × параметры. Параметры — значения («сколько»),
+методика — правила («как считать»): `daysBasis` (30 дн | календарные),
+`priceIndex` (опер. год | календарный год | таблица), `bonusIndex`
+(нет | инфляция | индекс цен), `tax` (годовой кипрский CIT с переносом убытков |
+помесячный, с опциями отрицательного налога и условных процентов на дефицит).
+Плюс флаг строки `opexFixed[].nonDeductible` (расход вне базы CIT).
+
+- Пресеты — `METHODOLOGY_PRESETS` в `src/model/methodology.ts`: `cyprus`
+  (дефолт; поведение ядра до слоя методик, его держат golden-тесты) и `investor`.
+  `params.methodology = { id, ...переопределения }`; поля нет → `cyprus`.
+- **Новое расхождение «в правилах» с чужой моделью — это новое значение правила
+  в методике, а не флаг в params и не ветка git.** Дефолтная ветка расчёта при
+  этом не меняется бит-в-бит. Правило добавляется вместе с тестом в
+  `tests/methodology.test.ts`, строкой в `src/docs/methodology.md` и селектором
+  в «Допущения → Методика расчёта».
+- Версия «Инвестор — СПА Авдиму»: `scenarios/investor-avdimou/` (bundle + README
+  с мостом расхождений), сборка `node scripts/build-investor-scenario.mjs` из
+  эталона `tests/oracle/investor-avdimou.json` (снят
+  `scripts/extract-investor-oracle.py`, нужен openpyxl). Сверка —
+  `tests/investor-parity.test.ts`.
 
 ## Версии модели (git-версионирование параметров)
 
@@ -60,6 +85,10 @@ node scripts/build-static.mjs   # только статика: снимок, doc
 НЕ внутри репо приложения: deploy делает `git pull --ff-only`, вложенный репо его сломает).
 При первом старте сервер делает `git init` и сеет baseline из `src/data/`.
 
+- Каждый коммит параметров несёт трейлеры `Core: <sha репо приложения>` и
+  `Methodology: <id>` (ставит сервер; `CORE_SHA` env — для сборок без .git).
+  `GET /api/versions` отдаёт их по каждой версии + текущий `core`; вкладка «Версии»
+  подсвечивает версии, сохранённые на другом ядре. Версии старше привязки — `core: null`.
 - Каждое сохранение из UI («Сохранить версию») = один коммит с автором и сообщением.
   История append-only: «Откатить» создаёт новый коммит `restore <sha>`, не переписывает историю.
 - `DATA_REMOTE` (env) — опциональный remote (приватный репо): push после каждого коммита,

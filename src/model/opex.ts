@@ -46,6 +46,7 @@ export function computeOpexMonth(
     return f.pctOfRevenue ? Math.max(base, f.pctOfRevenue * rev.total) : base
   })
   const fixedTotal = fixed.reduce((a, b) => a + b, 0)
+  const fixedNonDeductible = fixed.reduce((s, v, i) => s + (params.opexFixed[i].nonDeductible ? v : 0), 0)
 
   // IT / АСУ: подписки и инфраструктура с индексацией на инфляцию
   const it = params.it.enabled
@@ -159,6 +160,7 @@ export function computeOpexMonth(
   return {
     fixed,
     fixedTotal,
+    fixedNonDeductible,
     it,
     itTotal,
     landRent,

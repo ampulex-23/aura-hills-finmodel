@@ -153,7 +153,7 @@ function bootstrap() {
     // Встроенные документы приложения (src/docs/*.md) засеваем в библиотеку —
     // тогда «Руководство» и др. редактируются и версионируются как все docs.
     // Идемпотентно: существующие пути пропускаем. Дедуп на фронте (docs.ts).
-    const SEED_CAT = { 'model-guide': 'finance', navigation: 'navigation' }
+    const SEED_CAT = { 'model-guide': 'finance', methodology: 'finance', navigation: 'navigation' }
     const seedDir = join(REPO_ROOT, 'src', 'docs')
     const m = await readManifest()
     let seeded = false

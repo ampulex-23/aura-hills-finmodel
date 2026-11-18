@@ -1,6 +1,7 @@
 import type { FotMonth, Params, RevenueMonth, ServiceSpec } from './types'
 import { dirCounts } from './revenue'
 import { serviceLaborShare } from './spec'
+import { resolveMethodology } from './methodology'
 
 // Численность штата на операционный месяц k: базовый вектор count,
 // с месяца `from` каждой фазы — полный вектор фазы (последняя подошедшая
@@ -43,6 +44,11 @@ export function computeFotMonth(
   const infl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
   const salaries = baseSalariesMonthly(params, k) * infl
 
+  // Индексация бонусов — правило методики: нет (бонус от базового прайса) |
+  // инфляцией затрат | индексом цен услуг.
+  const bi = resolveMethodology(params).bonusIndex
+  const bonusIdx = bi === 'inflation' ? infl : bi === 'price' ? rev.priceIndex : 1
+
   let bonuses = 0
   let procCount = 0
   const byDir = new Map<string, number>()
@@ -51,7 +57,7 @@ export function computeFotMonth(
     const dirSpecs = services.filter((s) => s.direction === dir)
     const counts = dirCounts(rev, dir, dirSpecs, params)
     dirSpecs.forEach((s, idx) => {
-      const amt = (counts[idx] ?? 0) * s.price * serviceLaborShare(s, params)
+      const amt = (counts[idx] ?? 0) * s.price * serviceLaborShare(s, params) * bonusIdx
       if (amt > 0) {
         bonuses += amt
         procCount += counts[idx]

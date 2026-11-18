@@ -19,6 +19,19 @@ test('bootstrap: репо инициализируется и сеет baseline 
   expect(versions[0].message).toContain('baseline')
 })
 
+test('версия параметров привязана к коммиту ядра и методике', async () => {
+  const { core, head, state } = await stateApi.getState()
+  expect(core).toMatch(/^[0-9a-f]{40}$/)
+  expect((await stateApi.listVersions())[0]).toMatchObject({ core, methodology: 'cyprus' })
+  state.params.methodology = { id: 'investor' }
+  // Трейлер в пользовательском сообщении не должен подменить привязку
+  await stateApi.saveState({ ...state, message: 'смена методики\n\nCore: поддельный', author: 't', base: head })
+  const v = (await stateApi.listVersions())[0]
+  expect(v).toMatchObject({ core, methodology: 'investor', message: 'смена методики' })
+  delete state.params.methodology
+  await stateApi.saveState({ ...state, message: 'назад', author: 't', base: v.sha })
+})
+
 test('saveState: коммит + конфликт по устаревшему base', async () => {
   const { head, state } = await stateApi.getState()
   state.params.general.inflation = 0.099

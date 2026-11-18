@@ -1,4 +1,4 @@
-import type { ModelResult, NomenclatureItem, Params, ScenarioName, ScenarioMatrix, ServiceSpec } from './types'
+import type { ModelResult, NomenclatureItem, Params, ScenarioName, ScenarioMatrix, ServiceSpec, TaxMonth } from './types'
 import { resolveScenario } from './scenario'
 import { computeRevenue } from './revenue'
 import { computeOpex } from './opex'
@@ -9,6 +9,7 @@ import { computePnl } from './pnl'
 import { computeCashFlow } from './cashflow'
 import { computeKpis } from './kpis'
 import { computeBalance } from './balance'
+import { resolveMethodology } from './methodology'
 
 /** Стоимость капитала по CAPM: ke = rf + β·ERP + страновая + size/startup премии.
  *  Проект без долга → WACC = ke. */
@@ -106,21 +107,49 @@ export function runModel(
   // Дивиденды берут ЧП с лагом 12 мес → второй проход с реальной базой.
   // CIT считается от налоговой базы: EBIT с налоговой амортизацией (capital
   // allowances) вместо бухгалтерской — на Кипре они разные графики.
-  const citEbit = ebit.map((e, k) => e + capex.amortMonthly[k] - capex.taxDeprMonthly[k])
-  const citPass = computeProfitTaxes(p, revenue, citEbit, citEbit.map(() => 0), vat)
+  // Строки OPEX с nonDeductible возвращаются в базу: расход есть, вычета нет.
+  const citEbit = ebit.map(
+    (e, k) => e + capex.amortMonthly[k] - capex.taxDeprMonthly[k] + opex[k].fixedNonDeductible,
+  )
+  const cashFlowOf = (t: TaxMonth[]) =>
+    computeCashFlow(
+      p, computePnl(p, revenue, opex, fot, t, capex.amortMonthly), capex.adjustedEur,
+      sc.presaleMonthly, capex.deferred, capex.amortizableEur, capex.deferredPhase1Total,
+      capex.phase2Outflow,
+    )
+  // Методика tax.cit='monthly': CIT от базы каждого месяца. Условные проценты
+  // считаются от накопленного FCFF прошлого месяца, а он сам зависит от уже
+  // уплаченного CIT — поэтому проход последовательный поверх доналогового CF.
+  const meth = resolveMethodology(p)
+  let monthly: { cit: number[]; interest: number[] } | undefined
+  if (meth.tax.cit === 'monthly') {
+    const zeros = citEbit.map(() => 0)
+    const cf0 = cashFlowOf(
+      computeProfitTaxes(p, revenue, citEbit, zeros, vat, { cit: zeros, interest: zeros }).taxes,
+    )
+    const c = p.meta.capexMonths
+    let cum = cf0.slice(0, c).reduce((s, m) => s + m.fcff, 0)
+    monthly = { cit: [], interest: [] }
+    for (let k = 0; k < citEbit.length; k++) {
+      const interest = (Math.max(0, -cum) * meth.tax.notionalInterestRate) / 12
+      const raw = p.taxes.cit * (citEbit[k] - interest)
+      const cit = meth.tax.allowNegative ? raw : Math.max(0, raw)
+      monthly.cit.push(cit)
+      monthly.interest.push(interest)
+      cum += cf0[c + k].fcff - cit
+    }
+  }
+  const citPass = computeProfitTaxes(p, revenue, citEbit, citEbit.map(() => 0), vat, monthly)
   const netPreDiv = ebit.map((e, k) => e - citPass.taxes[k].cit)
-  const { taxes, citByYear } = computeProfitTaxes(p, revenue, citEbit, netPreDiv, vat)
+  const { taxes, citByYear } = computeProfitTaxes(p, revenue, citEbit, netPreDiv, vat, monthly)
 
   const pnl = computePnl(p, revenue, opex, fot, taxes, capex.amortMonthly)
-  const cashflow = computeCashFlow(
-    p, pnl, capex.adjustedEur, sc.presaleMonthly, capex.deferred,
-    capex.amortizableEur, capex.deferredPhase1Total, capex.phase2Outflow,
-  )
+  const cashflow = cashFlowOf(taxes)
   const balance = computeBalance(cashflow)
   const kpis = computeKpis(p, cashflow, pnl)
 
   return {
-    scenario: sc, revenue, opex, fot, taxes, pnl, cashflow, balance, capex, citByYear, kpis,
+    scenario: sc, methodology: meth, revenue, opex, fot, taxes, pnl, cashflow, balance, capex, citByYear, kpis,
   }
 }
 

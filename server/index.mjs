@@ -492,7 +492,7 @@ async function handleState(req, res) {
     return json(res, 200, await stateApi.saveState(body))
   }
   if (path === '/api/versions' && req.method === 'GET')
-    return json(res, 200, { versions: await stateApi.listVersions() })
+    return json(res, 200, { versions: await stateApi.listVersions(), core: await stateApi.core() })
   const mShow = path.match(/^\/api\/versions\/([0-9a-f]{7,40})$/i)
   if (mShow && req.method === 'GET')
     return json(res, 200, await stateApi.getVersion(mShow[1]))

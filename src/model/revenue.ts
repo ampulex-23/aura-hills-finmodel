@@ -1,4 +1,5 @@
 import type { Params, RevenueMonth, ResolvedScenario, ServiceSpec } from './types'
+import { daysInMonth, priceIndexAt, resolveMethodology } from './methodology'
 
 // Направление спецификации → вектор проданных услуг месяца, выровненный
 // по порядку спек этого направления. Парения/массаж/доп. услуги — по коду
@@ -51,7 +52,10 @@ export function computeRevenueMonth(
   const at = addMonths(params.meta.openingDate, k)
   const yearIdx = Math.min(4, Math.floor(k / 12))
   const ramp = Math.min(1, (k + 1) / sc.rampMonths)
-  const growth = Math.pow(1 + sc.priceGrowth, Math.floor(k / 12))
+  // Правила методики: дней в месяце и база индекса цен (дефолт — 30 дн, опер. год)
+  const meth = resolveMethodology(params)
+  const days = daysInMonth(meth, at.year, at.month)
+  const growth = priceIndexAt(meth, sc.priceGrowth, k, at.year, Number(params.meta.openingDate.slice(0, 4)))
   const dm = params.service.demandMult
   const seas = params.seasonality.baths[at.month - 1]
   const seasG = params.seasonality.glamping[at.month - 1]
@@ -94,8 +98,8 @@ export function computeRevenueMonth(
     capN++
     const p2 = (m.phase ?? 1) === 2
     if (p2) { capSumP2 += m.capacity; capNP2++ } else { capSumP1 += m.capacity; capNP1++ }
-    capSlots += 30 * m.slotsPerDay * m.uptime * m.loadK * moduleRamp(m)
-    const s = 30 * m.slotsPerDay * m.uptime * m.loadK * (p2 ? bathsLoadP2 : bathsLoad) * moduleRamp(m)
+    capSlots += days * m.slotsPerDay * m.uptime * m.loadK * moduleRamp(m)
+    const s = days * m.slotsPerDay * m.uptime * m.loadK * (p2 ? bathsLoadP2 : bathsLoad) * moduleRamp(m)
     slots += s
     if (p2) slotsP2 += s; else slotsP1 += s
     guests += s * m.capacity
@@ -163,7 +167,7 @@ export function computeRevenueMonth(
   const pbActive = !!pb?.enabled && moduleActive(params, pb.launchDate, at)
   const pbRamp = pbActive ? Math.min(1, monthsSince(pb!.launchDate) / ramp2) : 0
   const pubLoad = Math.min(1, dm * sc.publicBathLoad[yearIdx] * seas * pbRamp)
-  const publicGuests = pbActive ? 30 * pb!.capacity * pubLoad : 0
+  const publicGuests = pbActive ? days * pb!.capacity * pubLoad : 0
   const publicBathRev = publicGuests * (pb?.ticketEur ?? 0) * growth
 
   guests += memberGuests + certGuests
@@ -254,7 +258,7 @@ export function computeRevenueMonth(
     })
 
   const glamping = glampOn
-    ? 30 *
+    ? days *
       (params.units.glampSmall * glampLoad * params.prices.glampSmall +
         params.units.glampBig * glampLoad * params.prices.glampBig) * growth
     : 0
@@ -273,7 +277,7 @@ export function computeRevenueMonth(
     !!rest && rest.enabled !== false && pbActive && sc.restLoad[yearIdx] > 0
   const restInfl = Math.pow(1 + params.general.inflation, Math.floor(k / 12))
   const restCovers = restActive
-    ? 30 * rest!.seats * rest!.turnsPerDay * Math.min(1, dm * sc.restLoad[yearIdx] * seas * pbRamp)
+    ? days * rest!.seats * rest!.turnsPerDay * Math.min(1, dm * sc.restLoad[yearIdx] * seas * pbRamp)
     : 0
   const restaurant = restCovers * (rest?.avgCheck ?? 0) * restInfl
 
@@ -290,6 +294,8 @@ export function computeRevenueMonth(
   return {
     yearIdx,
     monthOfYear: at.month,
+    days,
+    priceIndex: growth,
     ramp,
     bathsLoad,
     bathsLoadP2,

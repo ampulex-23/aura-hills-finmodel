@@ -70,8 +70,9 @@ export function Versions() {
   const [sel, setSel] = useState<string | null>(null)
   const [selState, setSelState] = useState<ModelBundle | null>(null)
   const [busy, setBusy] = useState(false)
+  const [core, setCore] = useState<string | null>(null) // коммит ядра, работающего сейчас
 
-  const refresh = () => api.listVersions().then((r) => setVersions(r.versions)).catch(() => {})
+  const refresh = () => api.listVersions().then((r) => { setVersions(r.versions); setCore(r.core ?? null) }).catch(() => {})
   useEffect(() => { void refresh() }, [baseSha])
 
   useEffect(() => {
@@ -117,6 +118,7 @@ export function Versions() {
           <Table.Thead style={{ background: 'var(--mantine-color-default-hover)' }}>
             <Table.Tr>
               <Table.Th>Версия</Table.Th><Table.Th>Комментарий</Table.Th>
+              <Table.Th>Ядро · методика</Table.Th>
               <Table.Th>Автор</Table.Th><Table.Th>Когда</Table.Th><Table.Th />
             </Table.Tr>
           </Table.Thead>
@@ -136,6 +138,17 @@ export function Versions() {
                   </Group>
                 </Table.Td>
                 <Table.Td><Text size="xs">{v.message}</Text></Table.Td>
+                <Table.Td>
+                  <Group gap={6} wrap="nowrap">
+                    <Text ff="monospace" size="xs" c={v.core && core && v.core !== core ? 'yellow' : 'dimmed'}
+                      title={!v.core ? 'Версия сохранена до привязки к ядру — каким ядром считалась, неизвестно'
+                        : v.core !== core ? 'Сохранена на другой версии ядра: на текущем ядре цифры могут отличаться'
+                        : 'Сохранена на текущей версии ядра'}>
+                      {v.core ? v.core.slice(0, 7) : '—'}
+                    </Text>
+                    {v.methodology && <Text size="xs" c="dimmed">{v.methodology}</Text>}
+                  </Group>
+                </Table.Td>
                 <Table.Td><Text size="xs" c="dimmed">{v.author}</Text></Table.Td>
                 <Table.Td><Text size="xs" c="dimmed">{rel(v.date)}</Text></Table.Td>
                 <Table.Td>

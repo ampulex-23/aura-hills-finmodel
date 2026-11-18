@@ -91,6 +91,10 @@ export function computeProfitTaxes(
   ebit: number[],
   netProfitPreDiv: number[],
   vat: VatMonth[],
+  /** Методика tax.cit='monthly': готовый помесячный CIT и условные проценты
+   *  (считаются в run.ts — зависят от накопленного FCFF). Годовой блок с
+   *  переносом убытков и графиком июль/декабрь тогда не применяется. */
+  monthly?: { cit: number[]; interest: number[] },
 ): { taxes: TaxMonth[]; citByYear: number[] } {
   const r = params.taxes
   const [oy, om] = params.meta.openingDate.slice(0, 7).split('-').map(Number)
@@ -104,7 +108,9 @@ export function computeProfitTaxes(
     const ebitY = ebit.reduce((s, e, k) => s + (calYearOf(k) === y ? e : 0), 0)
     const used = Math.min(Math.max(0, ebitY), lossCarry)
     const taxable = Math.max(0, ebitY - used)
-    citByYear.push(taxable * r.cit)
+    citByYear.push(
+      monthly ? monthly.cit.reduce((s, c, k) => s + (calYearOf(k) === y ? c : 0), 0) : taxable * r.cit,
+    )
     lossCarry = lossCarry - used + Math.max(0, -ebitY)
   }
   const citOf = new Map(yearKeys.map((y, i) => [y, citByYear[i]]))
@@ -126,8 +132,9 @@ export function computeProfitTaxes(
 
   const taxes = vat.map((v, k) => {
     const mo = revenue[k].monthOfYear
-    const cit =
-      mo === 7 || mo === 12
+    const cit = monthly
+      ? monthly.cit[k]
+      : mo === 7 || mo === 12
         ? (citOf.get(calYearOf(k)) ?? 0) / (payCount.get(calYearOf(k)) ?? 1)
         : 0
     const dividends = k >= 12 ? Math.max(0, netProfitPreDiv[k - 12]) * distShare : 0
@@ -144,7 +151,10 @@ export function computeProfitTaxes(
       gesy += taxable * r.gesy
     })
     // total — налоговая нагрузка периода: НДС + CIT + удержания с дивидендов
-    return { ...v, cit, dividends, sdc, gesy, total: v.vatPayable + cit + sdc + gesy }
+    return {
+      ...v, cit, notionalInterest: monthly?.interest[k] ?? 0,
+      dividends, sdc, gesy, total: v.vatPayable + cit + sdc + gesy,
+    }
   })
   return { taxes, citByYear }
 }

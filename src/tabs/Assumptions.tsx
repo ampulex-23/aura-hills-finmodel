@@ -2,12 +2,27 @@ import { ActionIcon, Button, Select, SegmentedControl, Tabs } from '@mantine/cor
 import { useModel } from '../store'
 import { Hint, NumField, TextCell, fmt, fmtPct } from '../components/ui'
 import { capmWacc } from '../model/run'
+import { METHODOLOGY_PRESETS, resolveMethodology } from '../model/methodology'
 
 // Форма «Допущения» — все входы модели, сгруппированные.
 export function Assumptions() {
   const { params, setParam } = useModel()
   const P = params
   const mean = (v: number[]) => v.reduce((a, b) => a + b, 0) / v.length
+  // Методика: выбор пресета сбрасывает переопределения; правка правила —
+  // переопределение поверх пресета (params.methodology хранит только отличия).
+  const M = resolveMethodology(P)
+  const setRule = (patch: Record<string, unknown>) => setParam('methodology', { ...(P.methodology ?? { id: M.id }), ...patch })
+  const setTaxRule = (patch: Record<string, unknown>) => setRule({ tax: { ...(P.methodology?.tax ?? {}), ...patch } })
+  const RuleSelect = ({ label, hint, value, data, onChange }: {
+    label: string; hint: string; value: string
+    data: { value: string; label: string }[]; onChange: (v: string) => void
+  }) => (
+    <label className="field">
+      <Hint hint={{ text: hint }}><span>{label}</span></Hint>
+      <Select size="xs" w={230} data={data} value={value} onChange={(v) => v && onChange(v)} allowDeselect={false} />
+    </label>
+  )
   const SeasonCheck = ({ v, label }: { v: number[]; label: string }) => (
     <small className="note" style={{ color: Math.abs(mean(v) - 1) < 0.005 ? '#9fd3b4' : '#e07a7a' }}>
       {label}: среднее {mean(v).toFixed(3)} {Math.abs(mean(v) - 1) < 0.005 ? '✓' : '— должно быть 1.000'}
@@ -101,6 +116,48 @@ export function Assumptions() {
         <Row label="Exit-мультипликатор EV/EBITDA" path="tv.exitMultiple" value={P.tv.exitMultiple} step={0.5} suffix="×"
           hint="Отраслевой мультипликатор продажи бизнеса (leisure 5–7×) — cross-check гордоновской TV: EBITDA последнего года × множитель, дисконтированная на конец горизонта." />
         <small className="note">TV = FCFF последнего года (после maintenance CAPEX) × (1+g) / (WACC−g); exit-multiple — cross-check (leisure 5–7×). «NPV с TV» — отдельная метрика, база без TV.</small>
+      </fieldset>
+
+      <fieldset>
+        <legend>Методика расчёта</legend>
+        <RuleSelect label="Методика" value={METHODOLOGY_PRESETS[M.id] ? M.id : 'cyprus'}
+          hint="Набор ПРАВИЛ расчёта (не значений): как считаются дни, индекс цен, бонусы и налог на прибыль. Выбор методики сбрасывает правила ниже к её значениям; id методики записывается в каждую сохранённую версию."
+          data={Object.values(METHODOLOGY_PRESETS).map((m) => ({ value: m.id, label: m.label }))}
+          onChange={(v) => setParam('methodology', { id: v })} />
+        <RuleSelect label="Дней в месяце" value={M.daysBasis}
+          hint="Сколько дней работает месяц в потоках «в день»: ровно 30 или календарные 28–31."
+          data={[{ value: 'fixed30', label: '30 во всех месяцах' }, { value: 'calendar', label: 'Календарные' }]}
+          onChange={(v) => setRule({ daysBasis: v })} />
+        <RuleSelect label="Индекс цен услуг" value={M.priceIndex}
+          hint="Когда цены делают ступень роста: в годовщину открытия (операционный год) или 1 января (календарный год). «Таблица» — явные коэффициенты по годам, задаются в данных версии."
+          data={[{ value: 'opsYear', label: 'По операционному году' }, { value: 'calendarYear', label: 'По календарному году' },
+            ...(M.priceIndex === 'table' ? [{ value: 'table', label: 'Таблица по годам' }] : [])]}
+          onChange={(v) => setRule({ priceIndex: v })} />
+        <RuleSelect label="Индексация KPI-бонусов" value={M.bonusIndex}
+          hint="Бонус = проведённые услуги × прайс × доля роли. Правило — растёт ли он со временем: нет, вместе с инфляцией затрат или вместе с ценами услуг."
+          data={[{ value: 'none', label: 'Нет (от базового прайса)' }, { value: 'inflation', label: 'Инфляцией затрат' }, { value: 'price', label: 'Индексом цен услуг' }]}
+          onChange={(v) => setRule({ bonusIndex: v })} />
+        <RuleSelect label="Налог на прибыль" value={M.tax.cit}
+          hint="Годовой — закон Кипра: база за календарный год, перенос убытков, уплата 31 июля и 31 декабря. Помесячный — упрощение: налог от базы каждого месяца в том же месяце."
+          data={[{ value: 'annualLossCarry', label: 'Годовой, с переносом убытков' }, { value: 'monthly', label: 'Помесячный' }]}
+          onChange={(v) => setTaxRule({ cit: v })} />
+        {M.tax.cit === 'monthly' && (
+          <>
+            <label className="field">
+              <Hint hint={{ text: '«Да» — убыточный месяц даёт отрицательный налог, который сразу приходит в кэш. Это упрощение: по закону убыток переносится на будущие периоды, денег в месяце убытка нет.' }}>
+                <span>Отрицательный налог в кэш</span>
+              </Hint>
+              <SegmentedControl size="xs" data={['Да', 'Нет']} value={M.tax.allowNegative ? 'Да' : 'Нет'}
+                onChange={(v) => setTaxRule({ allowNegative: v === 'Да' })} />
+            </label>
+            <label className="field">
+              <Hint hint={{ text: 'Годовая ставка условных процентов на накопленный дефицит денежного потока. Уменьшают базу налога на прибыль, но деньгами не платятся. 0 — выключено.' }}>
+                <span>Условные проценты на дефицит</span>
+              </Hint>
+              <NumField value={M.tax.notionalInterestRate} onChange={(v) => setTaxRule({ notionalInterestRate: v })} pct step={0.005} />
+            </label>
+          </>
+        )}
       </fieldset>
 
       <fieldset>
@@ -278,6 +335,7 @@ export function Assumptions() {
                     ) : (
                       <small className="note">
                         {f.energy ? '× мульт. энергии сценария' : f.perModule ? '× активных модулей' : 'инфляция'}
+                        {f.nonDeductible ? ' · вне базы CIT' : ''}
                       </small>
                     )}
                   </td>
