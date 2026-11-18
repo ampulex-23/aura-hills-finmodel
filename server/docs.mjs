@@ -5,7 +5,7 @@
 // manifest.json — порядок категорий/документов и метаданные (title, confidential).
 // Каждая правка = один коммит; удаление тоже коммит — история append-only.
 import { execFile } from 'node:child_process'
-import { mkdir, readFile, writeFile, rename, readdir, stat, unlink } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, rename, readdir, stat, unlink, copyFile } from 'node:fs/promises'
 import { join, normalize, dirname, extname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -176,9 +176,36 @@ function bootstrap() {
         'commit', '-m', 'seed: встроенные документы приложения'])
       await push()
     }
+    // Слайды презентации из бандла (src/docs/deck/) засеваем в assets/deck —
+    // дальше презу можно обновлять через API без пересборки приложения.
+    if (!(await deckSlides()).length) {
+      const bundled = (await readdir(join(seedDir, 'deck')).catch(() => []))
+        .filter((n) => /^slide-\d+\.(jpe?g|png|webp)$/i.test(n))
+        .sort(natural)
+      if (bundled.length) {
+        await mkdir(join(DOCS_DIR, DECK_DIR), { recursive: true })
+        for (const n of bundled)
+              await copyFile(join(seedDir, 'deck', n), join(DOCS_DIR, DECK_DIR, n))
+        await git(['add', '-A'])
+        await git(['-c', 'user.name=AURA Docs', '-c', 'user.email=aura-docs@local',
+          'commit', '-m', `seed: слайды презентации (${bundled.length})`])
+        await push()
+      }
+    }
     return true
   })().catch((e) => { console.error('[docs] bootstrap failed:', e.message); ready = null; return false })
   return ready
+}
+
+// ---------- презентация (слайды в assets/deck/) ----------
+const DECK_DIR = 'assets/deck'
+const SLIDE_RE = /^slide-\d+\.(jpe?g|png|webp)$/i
+const SLIDE_EXT = new Set(['jpg', 'jpeg', 'png', 'webp'])
+const natural = (a, b) => a.localeCompare(b, undefined, { numeric: true })
+
+async function deckSlides() {
+  const names = await readdir(join(DOCS_DIR, DECK_DIR)).catch(() => [])
+  return names.filter((n) => SLIDE_RE.test(n)).sort(natural)
 }
 
 // ---------- дерево ----------
@@ -366,6 +393,57 @@ export const docsApi = {
       await atomicWrite(join(DOCS_DIR, p), buf)
       const next = await commit(String(body.author || 'web'), `docs: asset ${p}`)
       return { path: p, head: next }
+    })
+  },
+
+  async deck() {
+    if (!(await bootstrap())) throw new Error('docs unavailable')
+    const names = await deckSlides()
+    let updated = null
+    for (const n of names) {
+      const st = await stat(join(DOCS_DIR, DECK_DIR, n)).catch(() => null)
+      if (st && (!updated || st.mtime > updated)) updated = st.mtime
+    }
+    return {
+      slides: names.map((n) => `${DECK_DIR}/${n}`),
+      updated: updated?.toISOString() ?? null,
+      head: await sha(),
+    }
+  },
+
+  // Полная замена слайдов одним коммитом.
+  // body.slides: [{ext:'jpg'|'png'|'webp', dataBase64}] — в порядке показа.
+  async saveDeck(body) {
+    if (!(await bootstrap())) throw new Error('docs unavailable')
+    const list = Array.isArray(body?.slides) ? body.slides : null
+    if (!list?.length || list.length > 200) {
+      const e = new Error('bad slides'); e.status = 400; throw e
+    }
+    const bufs = []
+    let total = 0
+    for (const s of list) {
+      const ext = String(s?.ext || 'jpg').toLowerCase()
+      if (!SLIDE_EXT.has(ext)) { const e = new Error('bad slide ext'); e.status = 400; throw e }
+      let buf
+      try { buf = Buffer.from(String(s?.dataBase64 || ''), 'base64') } catch { buf = null }
+      if (!buf?.length) { const e = new Error('bad slide data'); e.status = 400; throw e }
+      total += buf.length
+      if (total > 120_000_000) { const e = new Error('deck too big'); e.status = 400; throw e }
+      bufs.push([ext, buf])
+    }
+    return enqueue(async () => {
+      const dir = join(DOCS_DIR, DECK_DIR)
+      await mkdir(dir, { recursive: true })
+      for (const n of await deckSlides()) await unlink(join(dir, n)).catch(() => {})
+      const names = []
+      for (let i = 0; i < bufs.length; i++) {
+        const n = `slide-${String(i + 1).padStart(3, '0')}.${bufs[i][0]}`
+        await atomicWrite(join(dir, n), bufs[i][1])
+        names.push(`${DECK_DIR}/${n}`)
+      }
+      const next = await commit(String(body.author || 'web'),
+        `docs: deck обновлён (${bufs.length} слайдов)`)
+      return { slides: names, head: next ?? (await sha()) }
     })
   },
 

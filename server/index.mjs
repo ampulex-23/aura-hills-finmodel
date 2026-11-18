@@ -551,6 +551,13 @@ async function handleDocs(req, res) {
     return json(res, 200, { history: await docsApi.history(q('path')) })
   if (path === '/api/docs/version' && req.method === 'GET')
     return json(res, 200, await docsApi.version(q('path'), q('sha')))
+  if (path === '/api/docs/deck' && req.method === 'GET')
+    return json(res, 200, await docsApi.deck())
+  if (path === '/api/docs/deck' && req.method === 'POST') {
+    const body = await readJsonBody(req, res, 180_000_000) // base64 слайдов ~1.37×
+    if (body == null) return
+    return json(res, 200, await docsApi.saveDeck(body))
+  }
   if (path === '/api/docs/manifest' && req.method === 'PUT') {
     const body = await readJsonBody(req, res)
     if (body == null) return

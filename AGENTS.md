@@ -94,9 +94,15 @@ confidential). Каждая правка/удаление/перенос — к�
 Редактор — `MdEditor` (MDXEditor, lazy-чанк, `dark-theme` + `mdeditor.css`);
 документы с `$$`/mermaid/raw HTML открываются в режиме «Исходник».
 
-- API: `GET /api/docs/tree|file|history|version|raw`, `PUT /api/docs/file`,
-  `POST /api/docs/create|move|asset`, `DELETE /api/docs/file`,
+- API: `GET /api/docs/tree|file|history|version|raw|deck`, `PUT /api/docs/file`,
+  `POST /api/docs/create|move|asset|deck`, `DELETE /api/docs/file`,
   `PUT /api/docs/manifest`. `/api/health → docs: true/false`.
+- **Презентация**: слайды живут в `DOCS_DIR/assets/deck/slide-NNN.(jpg|png|webp)`
+  — при первом старте засеваются из бандла `src/docs/deck/`. `GET /api/docs/deck`
+  отдаёт список, `POST /api/docs/deck` заменяет весь набор одним коммитом.
+  `DeckView` берёт слайды из API (фолбэк — бандл), кнопка «Обновить» принимает
+  pdf (рендерится в jpeg через pdfjs в браузере, `src/lib/slides.ts`) или
+  пачку картинок (натуральная сортировка по имени).
 - Клиент: `src/lib/docsApi.ts`; встроенные доки (`src/docs/*.md`, deck,
   генплан) + библиотека объединяются в дереве `docGroups()` (`src/docs.ts`),
   рендер — `DocPage` (просмотр DocView + правка + история + перенос + удаление),

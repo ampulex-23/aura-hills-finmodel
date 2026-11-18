@@ -75,6 +75,29 @@ test('безопасность: path traversal и неверные расшир�
   await expect(docsApi.raw('../manifest.json')).rejects.toMatchObject({ status: 400 })
 })
 
+test('deck: сид из бандла, замена слайдов одним коммитом', async () => {
+  const d = await docsApi.deck()
+  expect(d.slides.length).toBeGreaterThanOrEqual(2) // seed из src/docs/deck
+  const png1px = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+    'base64')
+  const r = await docsApi.saveDeck({
+    slides: [
+      { ext: 'png', dataBase64: png1px.toString('base64') },
+      { ext: 'png', dataBase64: png1px.toString('base64') },
+    ],
+    author: 'tester',
+  })
+  expect(r.slides).toEqual(['assets/deck/slide-001.png', 'assets/deck/slide-002.png'])
+  const d2 = await docsApi.deck()
+  expect(d2.slides).toHaveLength(2)
+  const raw = await docsApi.raw(d2.slides[0])
+  expect(raw.mime).toBe('image/png')
+  await expect(docsApi.saveDeck({ slides: [] })).rejects.toMatchObject({ status: 400 })
+  await expect(docsApi.saveDeck({ slides: [{ ext: 'exe', dataBase64: 'eA==' }] }))
+    .rejects.toMatchObject({ status: 400 })
+})
+
 test('slugify: кириллица в латиницу', () => {
   expect(slugify('Договор подряда № 1')).toBe('dogovor-podryada-1')
 })

@@ -9,3 +9,8 @@ out/
 data/
 docs-data/
 AUTH.md
+
+# рабочие файлы отладки/стейджинга
+work/
+shot-*.mjs
+test-server.mjs

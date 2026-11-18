@@ -58,6 +58,10 @@ export const docsApi = {
     req('/api/docs/file', body({ path, ...opts }, 'DELETE')) as Promise<{ head: string }>,
   saveAsset: (name: string, dataBase64: string, opts: { dir?: string; author?: string }) =>
     req('/api/docs/asset', body({ name, dataBase64, ...opts })) as Promise<{ path: string; head: string }>,
+  deck: () =>
+    req('/api/docs/deck') as Promise<{ slides: string[]; updated: string | null; head: string }>,
+  saveDeck: (slides: { ext: string; dataBase64: string }[], opts: { author?: string } = {}) =>
+    req('/api/docs/deck', body({ slides, ...opts })) as Promise<{ slides: string[]; head: string }>,
   history: (path: string) =>
     req(`/api/docs/history?path=${encodeURIComponent(path)}`) as Promise<{ history: DocVersion[] }>,
   version: (path: string, sha: string) =>
@@ -65,7 +69,7 @@ export const docsApi = {
   rawUrl: (path: string) => `/api/docs/raw?path=${encodeURIComponent(path)}`,
 }
 
-export const fileToBase64 = (f: File): Promise<string> =>
+export const fileToBase64 = (f: Blob): Promise<string> =>
   new Promise((resolve, reject) => {
     const r = new FileReader()
     r.onload = () => resolve(String(r.result).split(',')[1] ?? '')
